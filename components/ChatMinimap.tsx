@@ -24,7 +24,6 @@ import type {
   TextContent,
   UserMessage,
 } from "@/lib/types";
-import styles from "./ChatMinimap.module.css";
 
 interface Props {
   messages: AgentMessage[];
@@ -94,7 +93,7 @@ function PreviewHeading({
   return (
     <button
       type="button"
-      className={styles.heading}
+      className={"cm-heading"}
       data-level={level}
       data-preview-heading-index={headingIndex ?? undefined}
       disabled={headingIndex === null || !onClick}
@@ -180,7 +179,7 @@ export const AssistantOutline = memo(function AssistantOutline({
   );
   if (!markdown) return null;
   return (
-    <div className={styles.outline}>
+    <div className={"cm-outline"}>
       <ReactMarkdown
         remarkPlugins={previewRemarkPlugins}
         rehypePlugins={previewRehypePlugins}
@@ -218,7 +217,7 @@ export const AssistantOutline = memo(function AssistantOutline({
           p: ({ children }) => (
             <button
               type="button"
-              className={styles.paragraph}
+              className={"cm-paragraph"}
               onClick={onAnswerClick}
             >
               {children}
@@ -773,7 +772,7 @@ export function ChatMinimap({
       {minimapHovered && allNodes.length > 0 && (
         <div
           ref={previewBoxRef}
-          className={styles.preview}
+          className={"cm-preview"}
           data-minimap-preview-box=""
           onMouseEnter={showPreview}
           onMouseDown={(event) => event.stopPropagation()}
@@ -788,33 +787,33 @@ export function ChatMinimap({
                   if (element) previewItemRefs.current.set(node.index, element);
                   else previewItemRefs.current.delete(node.index);
                 }}
-                className={styles.turn}
+                className={"cm-turn"}
                 data-minimap-preview-index={node.index}
                 data-located={isLocated ? "true" : undefined}
               >
-                <span className={styles.number} aria-hidden="true">
+                <span className={"cm-number"} aria-hidden="true">
                   {String(node.index + 1).padStart(2, "0")}
                 </span>
-                <div className={styles.content}>
+                <div className={"cm-content"}>
                   <button
                     type="button"
-                    className={styles.user}
+                    className={"cm-user"}
                     data-minimap-preview-user={node.index}
                     onClick={() => {
                       scrollToNode(node, "smooth");
                     }}
                   >
-                    <span className={styles.userText}>
+                    <span className={"cm-userText"}>
                       {getUserPreview(node.targetTurn.userMessage)}
                     </span>
                   </button>
 
                   {node.targetTurn.assistantPreviews.map(
                     (assistant, assistantIndex) => (
-                      <div key={assistantIndex} className={styles.assistant}>
+                      <div key={assistantIndex} className={"cm-assistant"}>
                         <button
                           type="button"
-                          className={styles.assistantJump}
+                          className={"cm-assistantJump"}
                           data-minimap-preview-assistant={`${node.index}-${assistantIndex}`}
                           onClick={() =>
                             scrollToAssistant(node, assistantIndex)
