@@ -137,6 +137,7 @@ pi-web-x 继续使用 Pi 核心数据目录 `~/.pi/agent`，因为其中保存�
 | 用户把 LAN HTTP 当作安全部署 | 默认 loopback、明确 opt-in、Basic Auth/HTTPS 风险警告 |
 | pi-web-x 命名断裂造成历史偏好丢失 | release note 明确说明；不引入隐式迁移 |
 | CSS 静态化偏差 | 以计算样式和截图回归决定是否暂留 Tailwind |
+| dev 模式 HMR 偶发 `import_*_module is not defined`（Bun 1.4.0 dev bundler，如 ChatMinimap） | 生产二进制不受影响；硬刷新可恢复；升级 Bun 版本观察；不做产品代码迁就 |
 
 ## 9. 迁移方案中已删除的内容
 
