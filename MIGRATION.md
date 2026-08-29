@@ -97,7 +97,7 @@ pi-web-x 继续使用 Pi 核心数据目录 `~/.pi/agent`，因为其中保存�
 | V3 | 安全入口 | Host/API 来源校验、`PI_WEB_X_PASSWORD` Basic Auth、loopback/LAN 行为与错误响应正确 |
 | V4 | SDK 与动态资源 | pi SDK、worker/native 资源，以及用户目录 plugins/skills/prompts/themes 在编译产物中可发现和加载 |
 | V5 | 文件与运行时依赖 | DOCX (`mammoth`) 预览、外部 git/npm/npx 缺失诊断、读写 Pi 通用数据目录正确 |
-| V6 | 测试基线 | 原 Node+jiti 测试链保持可运行；新增 Bun 二进制 HTTP/SSE 集成测试，不以 `bun test` 直接替代基线 |
+| V6 | 测试基线 | 测试链已迁移到 Bun 原生运行器（`npm test` = `bun test`，830 通过）；Playwright 在编译二进制上做 HTTP/PWA 黑盒验证 |
 | V7 | 打包资源 | 八个目标均可构建；静态资源、字体、图标、worker 和版本常量在隔离目录中可用 |
 
 任一项失败时，只能先提交最小复现、根因与修复设计；不得以“后续再修”进入 P1。
@@ -106,9 +106,10 @@ pi-web-x 继续使用 Pi 核心数据目录 `~/.pi/agent`，因为其中保存�
 
 ### 7.1 测试
 
-- 保留现有 Node `--experimental-strip-types --test` 与 jiti 测试，直到 P5 验收结束。
+- 主测试链已迁移到 Bun 原生运行器：`npm test` 即 `bun test`（830 个测试通过，含原 Node+jiti 测试文件——Bun 原生兼容 `node:test` 与 `jiti`）。
+- 迁移过程中处理的运行时差异：`node:module.registerHooks` 改 Bun 原生 `.tsx`/CSS module import；`react-syntax-highlighter` 用 ESM 具名导入；删除依赖 undici dispatcher 的 `lib/http-dispatcher.ts`（Bun `fetch` 不经过 undici，且生产无引用）。
 - 每个迁移域新增在**编译后二进制**上执行的 HTTP/SSE 黑盒契约测试。
-- 使用 Playwright 覆盖会话浏览、创建/恢复对话、SSE 重连、文件预览、配置写入、worktree、缺失外部命令提示、Basic Auth 和关键页面截图。
+- 使用 Playwright 覆盖会话浏览、SSE 重连、文件预览、Basic Auth 与 PWA 注册/离线回退（`tests/e2e/smoke.spec.ts` 已验证离线导航回退到 offline 页）。
 - fixture 必须脱敏、隔离 `HOME`、禁止读取真实凭据或调用真实模型。
 
 ### 7.2 性能

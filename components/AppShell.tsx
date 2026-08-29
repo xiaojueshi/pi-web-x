@@ -819,7 +819,7 @@ export function AppShell() {
         suppressCwdBumpRef.current = true;
       }
       // Skip router.replace when restoring from URL — the param is already correct
-      // and calling replace in production Next.js triggers a Suspense remount loop
+      // 且生产环境直接 replace 会触发 Suspense 重挂载循环
       if (!isRestore) {
         router.replace(`?session=${encodeURIComponent(session.id)}`, {
           scroll: false,

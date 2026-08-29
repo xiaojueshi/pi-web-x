@@ -1,7 +1,7 @@
 import { toSlashPath } from "./paths";
 
 // In-memory roots that should be browsable in addition to roots derived from
-// persisted sessions. Stored on globalThis so Next.js hot-reload keeps them.
+// persisted sessions. Stored on globalThis so dev 热重载不清空。
 declare global {
  var __piAllowedRootsCache:
   | { roots: Set<string>; expiresAt: number }

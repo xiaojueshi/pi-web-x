@@ -46,7 +46,6 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "remark-frontmatter": "^5.0.0",
-    "undici": "8.10.0",
     "web-push": "^3.6.7",
     "katex": "^0.16.47",
     "mammoth": "^1.12.0",
@@ -72,5 +71,28 @@
     "eslint": "^9",
     "jiti": "^2.7.0",
     "typescript": "^5"
+  },
+  "knip": {
+    "entry": [
+      "src/cli.ts",
+      "src/client/main.tsx",
+      "bin/pi-web-x.js"
+    ],
+    "ignoreDependencies": [
+      "katex",
+      "mermaid",
+      "react-syntax-highlighter",
+      "react-markdown",
+      "rehype-katex",
+      "rehype-raw",
+      "rehype-sanitize",
+      "remark-frontmatter",
+      "remark-gfm",
+      "remark-math",
+      "@types/react",
+      "@types/react-dom",
+      "@types/react-syntax-highlighter",
+      "@types/js-yaml"
+    ]
   }
 }
