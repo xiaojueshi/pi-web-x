@@ -110,7 +110,12 @@ const ROUTES: Array<{ pattern: string; module: RouteModule }> = [
 
 /** 将 Bun Request 包装为遗留 route 所需的 HttpRequest 最小形态。 */
 export function createHttpRequest(request: Request): HttpRequest {
-  const nextUrl = new URL(request.url);
+  let nextUrl: URL;
+  try {
+    nextUrl = new URL(request.url);
+  } catch {
+    nextUrl = new URL("about:blank");
+  }
   return new Proxy(request, {
     get(target, property) {
       if (property === "nextUrl") return nextUrl;
@@ -148,6 +153,12 @@ function match(pattern: string, pathname: string): RouteParams | null {
 export function findRoute(
   pathname: string,
 ): { module: RouteModule; params: RouteParams } | null {
+  // 字面路由优先：避免 /api/agent/new 被 /api/agent/[id] 抢占。
+  for (const route of ROUTES) {
+    if (/\[/.test(route.pattern)) continue;
+    const params = match(route.pattern, pathname);
+    if (params) return { module: route.module, params };
+  }
   for (const route of ROUTES) {
     const params = match(route.pattern, pathname);
     if (params) return { module: route.module, params };

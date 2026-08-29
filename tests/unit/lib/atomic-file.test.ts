@@ -14,7 +14,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 const { writePrivateFileAtomicSync } = await import(
   "../../../lib/atomic-file.ts"
 );

@@ -22,7 +22,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 const testAgentDir = await mkdtemp(
   join(tmpdir(), "pi-web-x-subagents-global-"),
@@ -563,7 +562,8 @@ test("project profile directories cannot escape cwd through symbolic links", asy
     );
   } catch (error) {
     if (error?.code === "EPERM") {
-      console.warn("跳过（bun:test 无运行时 skip）：", 
+      console.warn(
+        "跳过（bun:test 无运行时 skip）：",
         "Creating symbolic links requires additional privileges on this platform",
       );
       return;

@@ -21,7 +21,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 const jiti = createJiti(import.meta.url);
 const { sessionPathKey } = await jiti.import("../../../lib/session-path.ts");
 const {

@@ -14,7 +14,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 async function loadSubject() {
   return import("../../../lib/file-upload.ts");
 }
@@ -62,7 +61,8 @@ test("prevents replacing symbolic links", async () => {
     fs.symlinkSync("file.txt", path.join(root, "link.txt"));
   } catch (error) {
     if (error?.code === "EPERM") {
-      console.warn("跳过（bun:test 无运行时 skip）：", 
+      console.warn(
+        "跳过（bun:test 无运行时 skip）：",
         "Creating symbolic links requires additional privileges on this platform",
       );
       return;

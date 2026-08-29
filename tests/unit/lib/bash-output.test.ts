@@ -14,7 +14,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 async function loadSubject() {
   return import("../../../lib/bash-output.ts");
 }
@@ -77,7 +76,8 @@ test("rejects symbolic links when opening bash output", async () => {
       await symlink(targetPath, linkPath);
     } catch (error) {
       if (error?.code === "EPERM") {
-        console.warn("跳过（bun:test 无运行时 skip）：", 
+        console.warn(
+          "跳过（bun:test 无运行时 skip）：",
           "Creating symbolic links requires additional privileges on this platform",
         );
         return;

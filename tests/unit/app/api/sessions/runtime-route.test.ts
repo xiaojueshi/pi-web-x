@@ -15,7 +15,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 const listRoute = await readFile(
   new URL("../../../../../app/api/sessions/route.ts", import.meta.url),
   "utf8",

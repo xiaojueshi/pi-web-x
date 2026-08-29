@@ -14,7 +14,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 async function loadSubject() {
   return import("../../../lib/file-dirent.ts");
 }
@@ -49,7 +48,8 @@ test("follows directory symlinks and skips dangling symlinks", async () => {
     fs.symlinkSync("missing", path.join(root, "dangling-link"), "file");
   } catch (error) {
     if (error?.code === "EPERM") {
-      console.warn("跳过（bun:test 无运行时 skip）：", 
+      console.warn(
+        "跳过（bun:test 无运行时 skip）：",
         "Creating symbolic links requires additional privileges on this platform",
       );
       return;

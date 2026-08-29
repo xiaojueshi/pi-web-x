@@ -16,7 +16,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 const execFileAsync = promisify(execFile);
 
 async function loadSubject() {

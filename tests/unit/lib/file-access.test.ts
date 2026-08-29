@@ -14,7 +14,6 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-
 // Loaded through jiti so the module's own extensionless imports resolve the way
 // the app resolves them (tsconfig moduleResolution: "bundler"); bare
 // `import("../../../lib/path-security.ts")` only works while that file has no imports.

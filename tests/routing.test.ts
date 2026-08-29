@@ -11,3 +11,13 @@ test("matches dynamic and catch-all API routes", () => {
 
   expect(findRoute("/api/does-not-exist")).toBeNull();
 });
+
+/** 字面路由必须优先于 /api/agent/[id] 等动态模式，否则 new/running 被当 id 抢占。 */
+test("literal routes win over dynamic segments", () => {
+  const direct = findRoute("/api/agent/new");
+  expect(direct?.params).toEqual({});
+  // 路由表里 { pattern: "/api/agent/[id]" } 排在 /api/agent/new 之前，
+  // 若 findRoute 仍按首匹配返回，说明字面优先逻辑被破坏。
+  const dynamic = findRoute("/api/agent/abc123");
+  expect(dynamic?.params).toEqual({ id: "abc123" });
+});

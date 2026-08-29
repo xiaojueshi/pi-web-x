@@ -6,7 +6,10 @@ import { APP_VERSION } from "@/src/version";
 export const dynamic = "force-dynamic";
 
 const CURRENT_VERSION = APP_VERSION;
-const NPM_LATEST_URL = "https://registry.npmjs.org/@agegr%2Fpi-web-x/latest";
+// 发布会通过 GitHub Releases（releases/tag/vX.Y.Z）；允许用环境变量覆盖检查源。
+const UPDATE_CHECK_URL =
+  process.env.PI_WEB_X_UPDATE_URL ??
+  "https://api.github.com/repos/agegr/pi-web-x/releases/latest";
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5_000;
 const SKIP_VERSION_CHECK = process.env.PI_WEB_X_SKIP_VERSION_CHECK === "1";
@@ -26,18 +29,21 @@ function getCache(): AppUpdateCache {
 }
 
 async function fetchLatestVersion(): Promise<AppUpdateResponse> {
-  const response = await fetch(NPM_LATEST_URL, {
+  const response = await fetch(UPDATE_CHECK_URL, {
     cache: "no-store",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", "User-Agent": "pi-web-x" },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!response.ok)
-    throw new Error(`npm registry returned HTTP ${response.status}`);
+    throw new Error(`update source returned HTTP ${response.status}`);
 
-  const body = (await response.json()) as { version?: unknown };
-  const latestVersion = typeof body.version === "string" ? body.version : "";
+  const body = (await response.json()) as { tag_name?: unknown };
+  const latestVersion =
+    typeof body.tag_name === "string" && body.tag_name
+      ? body.tag_name.replace(/^v/, "")
+      : "";
   const releaseUrl = getPiWebReleaseUrl(latestVersion);
-  if (!releaseUrl) throw new Error("npm registry returned an invalid version");
+  if (!releaseUrl) throw new Error("update source returned an invalid version");
 
   return {
     currentVersion: CURRENT_VERSION,
@@ -81,10 +87,13 @@ export async function GET() {
   }
   try {
     return HttpResponse.json(await loadUpdateStatus());
-  } catch (error) {
-    return HttpResponse.json(
-      { error: error instanceof Error ? error.message : String(error) },
-      { status: 502 },
-    );
+  } catch {
+    // 更新源不可达或尚未发布时按“无更新”降级，避免每次轮询产生 502 噪音。
+    return HttpResponse.json({
+      currentVersion: CURRENT_VERSION,
+      latestVersion: CURRENT_VERSION,
+      updateAvailable: false,
+      releaseUrl: "",
+    } satisfies AppUpdateResponse);
   }
 }
