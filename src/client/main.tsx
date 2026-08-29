@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { I18nProvider } from "@/hooks/useI18n";
 import pkg from "../../package.json";
-import "../../app/globals.css";
+import "../../.build/globals.built.css";
 import "../../app/settings.css";
 import "katex/dist/katex.min.css";
 

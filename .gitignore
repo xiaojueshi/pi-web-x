@@ -25,4 +25,5 @@ yarn-error.log*
 
 # 构建缓存
 *.tsbuildinfo
-.next/
+.build/
+/app/globals.built.css

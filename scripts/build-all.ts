@@ -14,6 +14,7 @@ const targets = [
 
 /** 构建全部受支持平台的自包含 pi-web-x 二进制。 */
 async function buildAll(): Promise<void> {
+  await import("./build-css.ts");
   await mkdir("dist", { recursive: true });
   const results = await Promise.all(
     targets.map(async (target) => {

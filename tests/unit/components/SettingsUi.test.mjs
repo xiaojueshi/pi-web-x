@@ -80,7 +80,7 @@ test("provides one template for config layout and controls", () => {
 test("loads settings presentation from its dedicated stylesheet", () => {
   assert.match(
     layoutSource,
-    /import "\.\.\/\.\.\/app\/globals\.css";\s*import "\.\.\/\.\.\/app\/settings\.css";/,
+    /import "\.\.\/\.\.\/\.build\/globals\.built\.css";\s*import "\.\.\/\.\.\/app\/settings\.css";/,
   );
   assert.match(cssSource, /\.config-panel-root \{/);
   assert.match(cssSource, /\.settings-dialog-backdrop \{/);

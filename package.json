@@ -22,12 +22,12 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "mise exec bun@1.4.0 -- bun --watch src/cli.ts -- --no-open",
-    "dev:lan": "mise exec bun@1.4.0 -- bun --watch src/cli.ts -- -H 0.0.0.0 --no-open",
-    "build": "mise exec bun@1.4.0 -- bun build --compile --target=bun-linux-x64 src/cli.ts --asset ./public --outfile dist/pi-web-x",
+    "dev": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun --watch src/cli.ts -- --no-open",
+    "dev:lan": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun --watch src/cli.ts -- -H 0.0.0.0 --no-open",
+    "build": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun build --compile --target=bun-linux-x64 src/cli.ts --asset ./public --outfile dist/pi-web-x",
     "build:all": "mise exec bun@1.4.0 -- bun run scripts/build-all.ts",
-    "start": "mise exec bun@1.4.0 -- bun src/cli.ts",
-    "start:lan": "mise exec bun@1.4.0 -- bun src/cli.ts -H 0.0.0.0",
+    "start": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun src/cli.ts",
+    "start:lan": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun src/cli.ts -H 0.0.0.0",
     "test": "mise exec bun@1.4.0 -- bun test --path-ignore-patterns='**/e2e/**'",
     "test:bun": "mise exec bun@1.4.0 -- bun test tests --path-ignore-patterns='**/e2e/**'",
     "typecheck": "mise exec bun@1.4.0 -- bunx tsc --noEmit",
@@ -60,6 +60,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@tailwindcss/cli": "^4.2.2",
     "@types/bun": "^1.4.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25",
@@ -70,6 +71,7 @@
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "jiti": "^2.7.0",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5"
   },
   "knip": {
