@@ -31,9 +31,9 @@
     "test": "mise exec bun@1.4.0 -- bun test --path-ignore-patterns='**/e2e/**'",
     "test:bun": "mise exec bun@1.4.0 -- bun test tests --path-ignore-patterns='**/e2e/**'",
     "typecheck": "mise exec bun@1.4.0 -- bunx tsc --noEmit",
-    "release": "pnpm run build:all",
+    "release": "mise exec bun@1.4.0 -- bun run scripts/build-all.ts",
     "lint": "eslint .",
-    "test:e2e": "npm run build && mise exec bun@1.4.0 -- bunx playwright test"
+    "test:e2e": "mise exec bun@1.4.0 -- bun run build && mise exec bun@1.4.0 -- bunx playwright test"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.84.3",

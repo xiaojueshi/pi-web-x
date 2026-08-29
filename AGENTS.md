@@ -3,12 +3,12 @@
 ## 运行命令
 
 ```bash
-npm run dev             # Bun 监听 127.0.0.1:30141
-npm test                # 保留的 Node 行为基线测试
-npm run test:bun        # Bun 路由测试
-npm run typecheck
-npm run build           # 当前 Linux x64 单文件二进制
-npm run build:all       # 八个平台二进制
+bun run dev             # Bun 监听 127.0.0.1:30141
+bun test               # Bun 原生测试运行器（830 单测 + 3 expect）
+bun run test:bun       # 仅 tests/ 目录路由测试
+bun run typecheck
+bun run build          # 当前 Linux x64 单文件二进制
+bun run build:all       # 八个平台二进制
 ```
 
 使用 `mise exec bun@1.4.0 -- bun ...`，不要引入 Next.js、RSC、SSR 或 Node 服务端运行时。`bun build --compile` 是发布门槛。

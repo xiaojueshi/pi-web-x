@@ -17,9 +17,9 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
-      - run: npm test
-      - run: npm run typecheck
-      - run: npm run build:all
+      - run: bun run test
+      - run: bun run typecheck
+      - run: bun run build:all
 
       # 每个平台原生执行它自己的产物做冒烟验证。
       - name: 原生产物冒烟（Linux）

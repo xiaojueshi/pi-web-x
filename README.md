@@ -38,13 +38,13 @@ pi-web-x [-p <port>] [-H <hostname>] [--no-open]
 
 ```bash
 bun install
-npm test
-npm run test:bun
-npm run typecheck
-npm run build:all
+bun test
+bun run test:bun
+bun run typecheck
+bun run build:all
 ```
 
-`npm run build` 生成本机 Linux x64 二进制；`npm run build:all` 生成八个平台制品。不要引入 Next.js；前端入口是 `src/client/index.html`，服务端入口是 `src/cli.ts`。
+`bun run build` 生成本机 Linux x64 二进制；`bun run build:all` 生成八个平台制品。不要引入 Next.js；前端入口是 `src/client/index.html`，服务端入口是 `src/cli.ts`。
 
 ## 许可证与来源
 

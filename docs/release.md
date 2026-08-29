@@ -6,10 +6,10 @@
 
 ```bash
 bun install --frozen-lockfile
-npm test
-npm run test:bun
-npm run typecheck
-npm run build:all
+bun test
+bun run test:bun
+bun run typecheck
+bun run build:all
 ```
 
 `dist/` 必须包含：
