@@ -37,35 +37,48 @@ export function startServer(
     throw new Error("Static asset server did not receive a port");
   const assetPort = assetServer.port;
 
-  return Bun.serve({
-    hostname: options.hostname,
-    port: options.port,
-    fetch: async (request): Promise<Response> => {
-      const denied = authorizeRequest(request);
-      if (denied) return denied;
-      const url = new URL(request.url);
-      if (!url.pathname.startsWith("/api/")) {
-        const publicAsset =
-          request.method === "GET" || request.method === "HEAD"
-            ? await servePublicAsset(url.pathname)
-            : null;
-        return publicAsset ?? fetchStaticAsset(request, assetPort);
-      }
-      const route = findRoute(url.pathname);
-      if (!route) return new Response("Not Found", { status: 404 });
-      const handler = route.module[request.method];
-      if (typeof handler !== "function") {
-        const allowed = Object.keys(route.module).filter((key) =>
-          /^[A-Z]+$/.test(key),
-        );
-        return new Response("Method Not Allowed", {
-          status: 405,
-          headers: { Allow: allowed.join(", ") },
+  try {
+    return Bun.serve({
+      hostname: options.hostname,
+      port: options.port,
+      fetch: async (request): Promise<Response> => {
+        const denied = authorizeRequest(request);
+        if (denied) return denied;
+        let url: URL;
+        try {
+          url = new URL(request.url);
+        } catch {
+          // 请求行中的 URL 非法时直接拒绝，避免解析异常破坏连接
+          return new Response("Bad Request", { status: 400 });
+        }
+        if (!url.pathname.startsWith("/api/")) {
+          const publicAsset =
+            request.method === "GET" || request.method === "HEAD"
+              ? await servePublicAsset(url.pathname)
+              : null;
+          return publicAsset ?? fetchStaticAsset(request, assetPort);
+        }
+        const route = findRoute(url.pathname);
+        if (!route) return new Response("Not Found", { status: 404 });
+        const handler = route.module[request.method];
+        if (typeof handler !== "function") {
+          const allowed = Object.keys(route.module).filter((key) =>
+            /^[A-Z]+$/.test(key),
+          );
+          return new Response("Method Not Allowed", {
+            status: 405,
+            headers: { Allow: allowed.join(", ") },
+          });
+        }
+        return (handler as RouteHandler)(createHttpRequest(request), {
+          params: Promise.resolve(route.params),
         });
-      }
-      return (handler as RouteHandler)(createHttpRequest(request), {
-        params: Promise.resolve(route.params),
-      });
-    },
-  });
+      },
+    });
+  } catch (error) {
+    // 主服务绑定失败（如端口被占用）时回收静态资源服务，
+    // 避免其保持事件循环活跃导致进程无法退出
+    assetServer.stop(true);
+    throw error;
+  }
 }
