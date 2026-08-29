@@ -8,8 +8,19 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const jiti = createJiti(import.meta.url);
 const { sessionPathKey } = await jiti.import("../../../lib/session-path.ts");
@@ -38,12 +49,12 @@ function resetSessionPathState() {
   globalThis.__piPathToSessionIdCache = undefined;
 }
 
-function setTestAgentDir(t, agentDir) {
+function setTestAgentDir(agentDir) {
   const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
   process.env.PI_CODING_AGENT_DIR = agentDir;
   resetSessionListState();
   resetSessionPathState();
-  t.after(() => {
+  tcompatCleanups.push(() => {
     if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
     resetSessionListState();
@@ -428,7 +439,7 @@ test("returns null for malformed or unbounded session headers", () => {
   }
 });
 
-test("session listing reads subagent relations and terminal status without reopening full session files", async (t) => {
+test("session listing reads subagent relations and terminal status without reopening full session files", async () => {
   const dir = mkdtempSync(join(tmpdir(), "pi-web-x-relation-prefix-"));
   const filePath = join(dir, "child.jsonl");
   const childId = "bounded-relation-child";
@@ -496,7 +507,7 @@ test("session listing reads subagent relations and terminal status without reope
     throw new Error("full session open is not allowed while listing");
   };
   resetSessionListState();
-  t.after(() => {
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
     SessionManager.open = originalOpen;
     invalidateSessionPathCache(childId);
@@ -540,7 +551,7 @@ test("keeps forward and reverse session path caches in sync", async () => {
   );
 });
 
-test("resolves a matching session header without a catalogue scan", async (t) => {
+test("resolves a matching session header without a catalogue scan", async () => {
   const agentDir = mkdtempSync(join(tmpdir(), "pi-web-x-targeted-session-"));
   const sessionId = "target-session";
   const projectDir = join(agentDir, "sessions", "project");
@@ -566,8 +577,8 @@ test("resolves a matching session header without a catalogue scan", async (t) =>
     scans += 1;
     return [];
   };
-  setTestAgentDir(t, agentDir);
-  t.after(() => {
+  setTestAgentDir(agentDir);
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
   });
 
@@ -584,7 +595,7 @@ test("resolves a matching session header without a catalogue scan", async (t) =>
   assert.equal(globalThis.__piSessionPathCache?.get(sessionId), filePath);
 });
 
-test("does not resolve a parent path outside the default session storage", async (t) => {
+test("does not resolve a parent path outside the default session storage", async () => {
   const agentDir = mkdtempSync(join(tmpdir(), "pi-web-x-targeted-outside-"));
   const externalDir = mkdtempSync(
     join(tmpdir(), "pi-web-x-targeted-external-"),
@@ -607,8 +618,8 @@ test("does not resolve a parent path outside the default session storage", async
     scans += 1;
     return [];
   };
-  setTestAgentDir(t, agentDir);
-  t.after(() => {
+  setTestAgentDir(agentDir);
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
     rmSync(externalDir, { recursive: true, force: true });
   });
@@ -619,7 +630,7 @@ test("does not resolve a parent path outside the default session storage", async
 
 test("preserves project symlinks exposed by the session catalogue", {
   skip: process.platform === "win32",
-}, async (t) => {
+}, async () => {
   const agentDir = mkdtempSync(join(tmpdir(), "pi-web-x-targeted-symlink-"));
   const externalDir = mkdtempSync(
     join(tmpdir(), "pi-web-x-targeted-symlink-external-"),
@@ -658,8 +669,8 @@ test("preserves project symlinks exposed by the session catalogue", {
       },
     ];
   };
-  setTestAgentDir(t, agentDir);
-  t.after(() => {
+  setTestAgentDir(agentDir);
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
     rmSync(externalDir, { recursive: true, force: true });
   });
@@ -679,7 +690,7 @@ test("preserves project symlinks exposed by the session catalogue", {
   assert.equal(scans, 0);
 });
 
-test("falls back to the catalogue when a targeted candidate header is invalid", async (t) => {
+test("falls back to the catalogue when a targeted candidate header is invalid", async () => {
   const agentDir = mkdtempSync(join(tmpdir(), "pi-web-x-targeted-fallback-"));
   const sessionId = "target-session";
   const projectDir = join(agentDir, "sessions", "project");
@@ -701,8 +712,8 @@ test("falls back to the catalogue when a targeted candidate header is invalid", 
     scans += 1;
     return [];
   };
-  setTestAgentDir(t, agentDir);
-  t.after(() => {
+  setTestAgentDir(agentDir);
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
   });
 
@@ -710,7 +721,7 @@ test("falls back to the catalogue when a targeted candidate header is invalid", 
   assert.equal(scans, 1);
 });
 
-test("falls back to the catalogue when a targeted lookup finds duplicate IDs", async (t) => {
+test("falls back to the catalogue when a targeted lookup finds duplicate IDs", async () => {
   const agentDir = mkdtempSync(join(tmpdir(), "pi-web-x-targeted-duplicate-"));
   const sessionId = "target-session";
   for (const projectName of ["project-a", "project-b"]) {
@@ -758,8 +769,8 @@ test("falls back to the catalogue when a targeted lookup finds duplicate IDs", a
       },
     ];
   };
-  setTestAgentDir(t, agentDir);
-  t.after(() => {
+  setTestAgentDir(agentDir);
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
   });
 
@@ -767,7 +778,7 @@ test("falls back to the catalogue when a targeted lookup finds duplicate IDs", a
   assert.equal(scans, 1);
 });
 
-test("forced session listing bypasses the fresh server cache", async (t) => {
+test("forced session listing bypasses the fresh server cache", async () => {
   const originalListAll = SessionManager.listAll;
   let scans = 0;
   SessionManager.listAll = async () => {
@@ -775,7 +786,7 @@ test("forced session listing bypasses the fresh server cache", async (t) => {
     return [];
   };
   resetSessionListState();
-  t.after(() => {
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
     resetSessionListState();
   });
@@ -788,7 +799,7 @@ test("forced session listing bypasses the fresh server cache", async (t) => {
   assert.equal(scans, 2);
 });
 
-test("a scan invalidated in flight retries before returning to its caller", async (t) => {
+test("a scan invalidated in flight retries before returning to its caller", async () => {
   const originalListAll = SessionManager.listAll;
   let scans = 0;
   let releaseFirstScan;
@@ -808,7 +819,7 @@ test("a scan invalidated in flight retries before returning to its caller", asyn
     return [];
   };
   resetSessionListState();
-  t.after(() => {
+  tcompatCleanups.push(() => {
     SessionManager.listAll = originalListAll;
     resetSessionListState();
   });

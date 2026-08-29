@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const jiti = createJiti(import.meta.url, {
   alias: { "@": process.cwd() },
@@ -17,9 +28,9 @@ const { projectIdentityKey } = await jiti.import(
   "../../../../../../lib/project-identity.ts",
 );
 
-test("validated cwd responses include server-resolved project identity", async (t) => {
+test("validated cwd responses include server-resolved project identity", async () => {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-web-x-cwd-validate-"));
-  t.after(() => rm(cwd, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(cwd, { recursive: true, force: true }));
 
   const response = await POST(
     new Request("http://localhost/api/cwd/validate", {

@@ -2,20 +2,31 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const { writePrivateFileAtomicSync } = await import(
   "../../../lib/atomic-file.ts"
 );
 
-function createTempRoot(t) {
+function createTempRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-web-x-atomic-file-"));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => fs.rmSync(root, { recursive: true, force: true }));
   return root;
 }
 
-test("atomically replaces a file with restrictive permissions", (t) => {
-  const root = createTempRoot(t);
+test("atomically replaces a file with restrictive permissions", () => {
+  const root = createTempRoot();
   const destination = path.join(root, "models.json");
   fs.writeFileSync(destination, "old", { mode: 0o644 });
 
@@ -28,8 +39,8 @@ test("atomically replaces a file with restrictive permissions", (t) => {
   }
 });
 
-test("keeps the destination and removes the temporary file when replacement fails", (t) => {
-  const root = createTempRoot(t);
+test("keeps the destination and removes the temporary file when replacement fails", () => {
+  const root = createTempRoot();
   const destination = path.join(root, "models.json");
   fs.mkdirSync(destination);
 

@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const {
   isBuiltInSubagentsEnabled,
@@ -13,9 +24,9 @@ const {
   "../../../lib/subagent-settings.ts",
 );
 
-test("subagent settings default the built-in extension to disabled", async (t) => {
+test("subagent settings default the built-in extension to disabled", async () => {
   const root = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-settings-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(root, { recursive: true, force: true }));
   const settingsPath = join(root, "agents", "settings.json");
 
   assert.deepEqual(readSubagentSettings(settingsPath), {
@@ -24,9 +35,9 @@ test("subagent settings default the built-in extension to disabled", async (t) =
   assert.equal(isBuiltInSubagentsEnabled(settingsPath), false);
 });
 
-test("subagent settings persist both states and preserve unrelated fields", async (t) => {
+test("subagent settings persist both states and preserve unrelated fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-settings-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(root, { recursive: true, force: true }));
   const settingsPath = join(root, "agents", "settings.json");
 
   writeBuiltInSubagentsEnabled(true, settingsPath);
@@ -47,9 +58,9 @@ test("subagent settings persist both states and preserve unrelated fields", asyn
   });
 });
 
-test("damaged settings fail closed and are not overwritten", async (t) => {
+test("damaged settings fail closed and are not overwritten", async () => {
   const root = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-settings-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(root, { recursive: true, force: true }));
   const settingsPath = join(root, "settings.json");
   await writeFile(settingsPath, "{");
 

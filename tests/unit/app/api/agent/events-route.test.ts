@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { test } from "bun:test";
 
 const agentEventsSource = await readFile(
   new URL("../../../../../app/api/agent/[id]/events/route.ts", import.meta.url),

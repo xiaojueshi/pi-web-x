@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test, { after } from "node:test";
+import { test, afterAll } from "bun:test";
 import { createJiti } from "jiti";
 
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
@@ -20,7 +20,7 @@ const { GET, PUT } = await jiti.import(
   "../../../../../../app/api/subagents/settings/route.ts",
 );
 
-after(async () => {
+afterAll(async () => {
   if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
   else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
   await rm(testAgentDir, { recursive: true, force: true });

@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const jiti = createJiti(import.meta.url, {
   interopDefault: true,
@@ -40,7 +51,7 @@ function makeRuntimeSession({ id, filePath, running, entries }) {
   };
 }
 
-test("lists an accepted new prompt before its session file exists", (t) => {
+test("lists an accepted new prompt before its session file exists", () => {
   const previousRegistry = globalThis.__piSessions;
   const timestamp = "2026-08-12T01:02:04.000Z";
   const visible = makeRuntimeSession({
@@ -73,7 +84,7 @@ test("lists an accepted new prompt before its session file exists", (t) => {
     ["visible-runtime", visible],
     ["empty-runtime", emptyEnsureSession],
   ]);
-  t.after(() => {
+  tcompatCleanups.push(() => {
     globalThis.__piSessions = previousRegistry;
   });
 
@@ -86,7 +97,7 @@ test("lists an accepted new prompt before its session file exists", (t) => {
   assert.equal(infos[0].transient, true);
 });
 
-test("keeps an idle runtime visible once its JSONL file exists", (t) => {
+test("keeps an idle runtime visible once its JSONL file exists", () => {
   const previousRegistry = globalThis.__piSessions;
   const dir = mkdtempSync(join(tmpdir(), "pi-web-x-runtime-session-"));
   const filePath = join(dir, "session.jsonl");
@@ -102,7 +113,7 @@ test("keeps an idle runtime visible once its JSONL file exists", (t) => {
       }),
     ],
   ]);
-  t.after(() => {
+  tcompatCleanups.push(() => {
     globalThis.__piSessions = previousRegistry;
     rmSync(dir, { recursive: true, force: true });
   });

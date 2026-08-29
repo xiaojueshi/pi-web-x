@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 
 async function loadSubject() {
   return import("../../../lib/directory-browser.ts");

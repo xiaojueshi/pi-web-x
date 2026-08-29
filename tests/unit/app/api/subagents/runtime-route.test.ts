@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const jiti = createJiti(import.meta.url, {
   alias: { "@": process.cwd() },
@@ -22,7 +33,7 @@ function request(body) {
   });
 }
 
-function installRunningSubagent(t) {
+function installRunningSubagent() {
   const previousRegistry = globalThis.__piSessions;
   const previousRuns = globalThis.__piSubagentRuns;
   let running = true;
@@ -68,7 +79,7 @@ function installRunningSubagent(t) {
       },
     ],
   ]);
-  t.after(() => {
+  tcompatCleanups.push(() => {
     globalThis.__piSessions = previousRegistry;
     globalThis.__piSubagentRuns = previousRuns;
   });
@@ -83,8 +94,8 @@ function installRunningSubagent(t) {
   };
 }
 
-test("subagent route reads live state and accepts steer and abort actions", async (t) => {
-  const state = installRunningSubagent(t);
+test("subagent route reads live state and accepts steer and abort actions", async () => {
+  const state = installRunningSubagent();
 
   const getResponse = await GET(
     new Request(`http://localhost/api/subagents/${id}`),
@@ -107,8 +118,8 @@ test("subagent route reads live state and accepts steer and abort actions", asyn
   assert.equal(state.aborts, 1);
 });
 
-test("subagent route validates actions and rejects commands after completion", async (t) => {
-  const state = installRunningSubagent(t);
+test("subagent route validates actions and rejects commands after completion", async () => {
+  const state = installRunningSubagent();
 
   let response = await POST(
     request({ action: "steer", message: "  " }),
@@ -124,12 +135,12 @@ test("subagent route validates actions and rejects commands after completion", a
   assert.match((await response.json()).error, /not running/);
 });
 
-test("subagent GET returns 404 for an unknown session", async (t) => {
+test("subagent GET returns 404 for an unknown session", async () => {
   const previousRegistry = globalThis.__piSessions;
   const previousRuns = globalThis.__piSubagentRuns;
   globalThis.__piSessions = new Map();
   globalThis.__piSubagentRuns = new Map();
-  t.after(() => {
+  tcompatCleanups.push(() => {
     globalThis.__piSessions = previousRegistry;
     globalThis.__piSubagentRuns = previousRuns;
   });

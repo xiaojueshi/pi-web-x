@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { parseCompactionSummary } from "../../../lib/compaction-summary.ts";
 
 test("separates pi file metadata tags from the visible compaction summary", () => {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 const { MAX_PROJECTED_TREE_DEPTH, projectTreeForResponse } = await import(
   "../../../lib/project-tree.ts"

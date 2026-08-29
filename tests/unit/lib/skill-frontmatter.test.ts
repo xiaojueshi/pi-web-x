@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
 
 import { setDisableModelInvocation } from "../../../lib/skill-frontmatter.ts";

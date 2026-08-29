@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 const { skillExpansionToCommand } = await import(
   "../../../lib/slash-display.ts"

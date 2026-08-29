@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 // Loaded through jiti so the module's own extensionless imports resolve the way
 // the app resolves them (tsconfig moduleResolution: "bundler"); bare
@@ -12,10 +23,10 @@ async function loadSubject() {
   return createJiti(import.meta.url).import("../../../lib/path-security.ts");
 }
 
-test("rejects an existing path that escapes an allowed root through a symlink", async (t) => {
+test("rejects an existing path that escapes an allowed root through a symlink", async () => {
   const { isExistingPathWithinRoots, isPathWithinRoots } = await loadSubject();
   const base = fs.mkdtempSync(path.join(os.tmpdir(), "pi-web-x-file-access-"));
-  t.after(() => fs.rmSync(base, { recursive: true, force: true }));
+  tcompatCleanups.push(() => fs.rmSync(base, { recursive: true, force: true }));
   const allowed = path.join(base, "allowed");
   const outside = path.join(base, "outside");
   fs.mkdirSync(allowed);

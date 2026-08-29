@@ -8,8 +8,19 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const jiti = createJiti(import.meta.url);
 const { normalizeModelsConfigCosts, readModelsConfig, writeModelsConfig } =
@@ -21,9 +32,9 @@ const { buildSessionContext, getSessionEntries } = await jiti.import(
   "../../../lib/session-reader.ts",
 );
 
-function createTempRoot(t) {
+function createTempRoot() {
   const root = mkdtempSync(join(tmpdir(), "pi-web-x-models-config-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }
 
@@ -38,8 +49,8 @@ function modelsData(id) {
   };
 }
 
-test("saving models.json atomically invalidates the model-list cache", async (t) => {
-  const root = createTempRoot(t);
+test("saving models.json atomically invalidates the model-list cache", async () => {
+  const root = createTempRoot();
   const modelsPath = join(root, "agent", "models.json");
   const config = {
     providers: {
@@ -68,8 +79,8 @@ test("saving models.json atomically invalidates the model-list cache", async (t)
   }
 });
 
-test("models.json writes fill partial cost groups with zero and remove empty groups", (t) => {
-  const root = createTempRoot(t);
+test("models.json writes fill partial cost groups with zero and remove empty groups", () => {
+  const root = createTempRoot();
   const modelsPath = join(root, "agent", "models.json");
   const config = {
     providers: {
@@ -113,8 +124,8 @@ test("models.json writes fill partial cost groups with zero and remove empty gro
   assert.deepEqual(readModelsConfig(modelsPath), normalized);
 });
 
-test("saving models.json drops blank model rows without hiding other schema errors", (t) => {
-  const root = createTempRoot(t);
+test("saving models.json drops blank model rows without hiding other schema errors", () => {
+  const root = createTempRoot();
   const modelsPath = join(root, "agent", "models.json");
 
   writeModelsConfig(
@@ -156,8 +167,8 @@ test("saving models.json drops blank model rows without hiding other schema erro
   });
 });
 
-test("an existing session opens after its historical model is removed from config", (t) => {
-  const root = createTempRoot(t);
+test("an existing session opens after its historical model is removed from config", () => {
+  const root = createTempRoot();
   const sessionPath = join(root, "session.jsonl");
   const modelsPath = join(root, "models.json");
   const records = [

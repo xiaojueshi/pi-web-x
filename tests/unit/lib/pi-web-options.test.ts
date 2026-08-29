@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import test from "node:test";
+import { test } from "bun:test";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);

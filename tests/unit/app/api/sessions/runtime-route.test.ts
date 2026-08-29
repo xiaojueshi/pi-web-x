@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const listRoute = await readFile(
   new URL("../../../../../app/api/sessions/route.ts", import.meta.url),
@@ -74,7 +85,7 @@ test("live agent state is available before the session file is persisted", () =>
   assert.match(stateRoute, /if \(rpc\?\.isAlive\(\)\)/);
 });
 
-test("deleting an intermediate subagent reparents both relation representations", async (t) => {
+test("deleting an intermediate subagent reparents both relation representations", async () => {
   const dir = await mkdtemp(join(tmpdir(), "pi-web-x-delete-reparent-"));
   const grandparentPath = join(dir, "grandparent.jsonl");
   const parentPath = join(dir, "parent.jsonl");
@@ -116,7 +127,7 @@ test("deleting an intermediate subagent reparents both relation representations"
     ].join("\n"),
   );
   cacheSessionPath(parentId, parentPath);
-  t.after(async () => {
+  tcompatCleanups.push(async () => {
     invalidateSessionPathCache(parentId);
     await rm(dir, { recursive: true, force: true });
   });
@@ -145,7 +156,7 @@ test("deleting an intermediate subagent reparents both relation representations"
   });
 });
 
-test("live detail and state routes work without a persisted JSONL file", async (t) => {
+test("live detail and state routes work without a persisted JSONL file", async () => {
   const previousRegistry = globalThis.__piSessions;
   const id = "live-route-test";
   const timestamp = "2026-08-12T01:02:03.000Z";
@@ -179,7 +190,7 @@ test("live detail and state routes work without a persisted JSONL file", async (
       },
     ],
   ]);
-  t.after(() => {
+  tcompatCleanups.push(() => {
     globalThis.__piSessions = previousRegistry;
   });
 

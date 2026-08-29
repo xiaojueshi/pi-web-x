@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test, { after } from "node:test";
+import { test, afterAll } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 const testAgentDir = await mkdtemp(
@@ -23,7 +34,7 @@ const { allowFileRoot } = await jiti.import(
   "../../../../../../lib/file-access.ts",
 );
 
-after(async () => {
+afterAll(async () => {
   if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
   else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
   await rm(testAgentDir, { recursive: true, force: true });
@@ -53,10 +64,10 @@ function jsonRequest(method, body) {
   });
 }
 
-test("profiles route creates, lists, and deletes a project profile", async (t) => {
+test("profiles route creates, lists, and deletes a project profile", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-route-"));
   allowFileRoot(cwd);
-  t.after(() => rm(cwd, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(cwd, { recursive: true, force: true }));
 
   const putResponse = await PUT(
     jsonRequest("PUT", { cwd, scope: "project", profile: profile() }),
@@ -107,10 +118,10 @@ test("profiles route creates, lists, and deletes a project profile", async (t) =
   );
 });
 
-test("profiles route keeps same-name global and project profiles independently editable", async (t) => {
+test("profiles route keeps same-name global and project profiles independently editable", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-route-"));
   allowFileRoot(cwd);
-  t.after(() => rm(cwd, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(cwd, { recursive: true, force: true }));
 
   let response = await PUT(
     jsonRequest("PUT", {
@@ -213,10 +224,10 @@ test("profiles route keeps same-name global and project profiles independently e
   assert.equal(response.status, 200);
 });
 
-test("profiles route rejects missing paths, malformed profiles, and unsafe names", async (t) => {
+test("profiles route rejects missing paths, malformed profiles, and unsafe names", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-route-"));
   allowFileRoot(cwd);
-  t.after(() => rm(cwd, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(cwd, { recursive: true, force: true }));
 
   let response = await GET(
     new Request("http://localhost/api/subagents/profiles"),

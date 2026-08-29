@@ -4,7 +4,18 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import test from "node:test";
+import { test } from "bun:test";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const execFileAsync = promisify(execFile);
 
@@ -17,9 +28,9 @@ async function git(cwd, args) {
   await execFileAsync("git", ["-C", cwd, ...args]);
 }
 
-test("main and linked worktrees share one canonical project root", async (t) => {
+test("main and linked worktrees share one canonical project root", async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "pi-web-x-worktree-"));
-  t.after(() => rm(tempRoot, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(tempRoot, { recursive: true, force: true }));
 
   const repo = path.join(tempRoot, "repo");
   const linked = path.join(tempRoot, "linked");

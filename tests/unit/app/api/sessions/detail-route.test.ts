@@ -5,7 +5,7 @@
 // lib/session-reader.pagination.test.mjs (sliceActiveBranch + buildSessionContext).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
 
 const routeSrc = await readFileSync(

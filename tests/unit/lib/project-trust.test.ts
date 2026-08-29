@@ -3,26 +3,36 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import {
   getProjectTrustStatus,
   projectTrustReloadOptions,
   trustProject,
 } from "../../../lib/project-trust.ts";
+import { afterEach, beforeEach } from "bun:test";
 
-async function createProjectFixture(t) {
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
+async function createProjectFixture() {
   const root = await mkdtemp(join(tmpdir(), "pi-web-x-project-trust-"));
   const cwd = join(root, "project");
   const agentDir = join(root, "agent");
   await mkdir(cwd, { recursive: true });
   await mkdir(agentDir, { recursive: true });
-  t.after(() => rm(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(root, { recursive: true, force: true }));
   return { root, cwd, agentDir };
 }
 
-test("clean projects stay on the normal trusted load path", async (t) => {
-  const { cwd, agentDir } = await createProjectFixture(t);
+test("clean projects stay on the normal trusted load path", async () => {
+  const { cwd, agentDir } = await createProjectFixture();
 
   assert.deepEqual(getProjectTrustStatus(cwd, agentDir), {
     requiresTrust: false,
@@ -31,8 +41,8 @@ test("clean projects stay on the normal trusted load path", async (t) => {
   assert.equal(projectTrustReloadOptions(cwd, agentDir), undefined);
 });
 
-test("project extensions execute only after the project is trusted", async (t) => {
-  const { root, cwd, agentDir } = await createProjectFixture(t);
+test("project extensions execute only after the project is trusted", async () => {
+  const { root, cwd, agentDir } = await createProjectFixture();
   const extensionDir = join(cwd, ".pi", "extensions");
   const marker = join(root, "extension-executed");
   await mkdir(extensionDir, { recursive: true });
@@ -62,8 +72,8 @@ test("project extensions execute only after the project is trusted", async (t) =
   assert.equal(trustedLoader.getExtensions().extensions.length, 1);
 });
 
-test("the reload resolver reads the latest persisted trust decision", async (t) => {
-  const { cwd, agentDir } = await createProjectFixture(t);
+test("the reload resolver reads the latest persisted trust decision", async () => {
+  const { cwd, agentDir } = await createProjectFixture();
   await mkdir(join(cwd, ".pi", "extensions"), { recursive: true });
 
   const reloadOptions = projectTrustReloadOptions(cwd, agentDir);

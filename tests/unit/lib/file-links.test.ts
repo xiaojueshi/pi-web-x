@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 async function loadSubject() {
   return import("../../../lib/file-links.ts");

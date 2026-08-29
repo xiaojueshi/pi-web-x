@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 async function loadSubject() {
   return import("../../../lib/bash-output.ts");
@@ -55,7 +66,7 @@ test("reads small output and rejects oversized inline output before buffering it
   }
 });
 
-test("rejects symbolic links when opening bash output", async (t) => {
+test("rejects symbolic links when opening bash output", async () => {
   const { readUtf8FileWithinLimit } = await loadSubject();
   const dir = await mkdtemp(join(tmpdir(), "pi-web-x-bash-output-link-"));
   const targetPath = join(dir, "target.log");
@@ -66,7 +77,7 @@ test("rejects symbolic links when opening bash output", async (t) => {
       await symlink(targetPath, linkPath);
     } catch (error) {
       if (error?.code === "EPERM") {
-        t.skip(
+        console.warn("跳过（bun:test 无运行时 skip）：", 
           "Creating symbolic links requires additional privileges on this platform",
         );
         return;

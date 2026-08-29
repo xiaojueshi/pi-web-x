@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import test from "node:test";
+import { test } from "bun:test";
 
 const source = fs.readFileSync(
   new URL("../../../components/AppShell.tsx", import.meta.url),

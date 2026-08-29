@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 
 const { SESSION_ROW_CONTEXT_MENU_EVENT, dispatchSessionRowContextMenu } =
   await import("../../../lib/session-row-context-menu.ts");

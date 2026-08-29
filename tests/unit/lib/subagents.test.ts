@@ -9,8 +9,19 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test, { after } from "node:test";
+import { test, afterAll } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 const testAgentDir = await mkdtemp(
@@ -36,7 +47,7 @@ const { isSubagentProfileOverridden } = await createJiti(
   import.meta.url,
 ).import("../../../lib/subagent-profile-precedence.ts");
 
-after(async () => {
+afterAll(async () => {
   if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
   else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
   await rm(testAgentDir, { recursive: true, force: true });
@@ -526,9 +537,9 @@ test("persisted runs distinguish interrupted, failed, aborted, and latest result
   );
 });
 
-test("project profile directories cannot escape cwd through symbolic links", async (t) => {
+test("project profile directories cannot escape cwd through symbolic links", async () => {
   const base = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-boundary-"));
-  t.after(() => rm(base, { recursive: true, force: true }));
+  tcompatCleanups.push(() => rm(base, { recursive: true, force: true }));
   const cwd = join(base, "project");
   const outside = join(base, "outside");
   await mkdir(join(cwd, ".agents"), { recursive: true });
@@ -552,7 +563,7 @@ test("project profile directories cannot escape cwd through symbolic links", asy
     );
   } catch (error) {
     if (error?.code === "EPERM") {
-      t.skip(
+      console.warn("跳过（bun:test 无运行时 skip）：", 
         "Creating symbolic links requires additional privileges on this platform",
       );
       return;

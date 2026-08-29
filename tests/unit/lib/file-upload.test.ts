@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import { test } from "bun:test";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 async function loadSubject() {
   return import("../../../lib/file-upload.ts");
@@ -24,10 +35,10 @@ test("validates upload names without accepting paths or duplicates", async () =>
   assert.match(validateUploadFileNames([]), /No files/);
 });
 
-test("finds conflicts and prevents replacing directories", async (t) => {
+test("finds conflicts and prevents replacing directories", async () => {
   const { inspectUploadTargets } = await loadSubject();
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-web-x-upload-"));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => fs.rmSync(root, { recursive: true, force: true }));
 
   fs.writeFileSync(path.join(root, "file.txt"), "old");
   fs.mkdirSync(path.join(root, "directory"));
@@ -41,17 +52,17 @@ test("finds conflicts and prevents replacing directories", async (t) => {
   );
 });
 
-test("prevents replacing symbolic links", async (t) => {
+test("prevents replacing symbolic links", async () => {
   const { inspectUploadTargets } = await loadSubject();
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-web-x-upload-link-"));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  tcompatCleanups.push(() => fs.rmSync(root, { recursive: true, force: true }));
 
   fs.writeFileSync(path.join(root, "file.txt"), "old");
   try {
     fs.symlinkSync("file.txt", path.join(root, "link.txt"));
   } catch (error) {
     if (error?.code === "EPERM") {
-      t.skip(
+      console.warn("跳过（bun:test 无运行时 skip）：", 
         "Creating symbolic links requires additional privileges on this platform",
       );
       return;

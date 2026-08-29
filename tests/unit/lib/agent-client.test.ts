@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "bun:test";
 import { createJiti } from "jiti";
+import { afterEach, beforeEach } from "bun:test";
+
+// node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
+const tcompatCleanups: (() => void)[] = [];
+beforeEach(() => {
+  tcompatCleanups.length = 0;
+});
+afterEach(async () => {
+  for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
+});
+
 
 const jiti = createJiti(import.meta.url, {
   interopDefault: true,
@@ -9,9 +20,9 @@ const jiti = createJiti(import.meta.url, {
 const { AgentCommandError, isPromptRejectedError, sendAgentCommand } =
   await jiti.import("../../../lib/agent-client.ts");
 
-test("agent command HTTP rejections are distinguishable from transport failures", async (t) => {
+test("agent command HTTP rejections are distinguishable from transport failures", async () => {
   const originalFetch = globalThis.fetch;
-  t.after(() => {
+  tcompatCleanups.push(() => {
     globalThis.fetch = originalFetch;
   });
 
