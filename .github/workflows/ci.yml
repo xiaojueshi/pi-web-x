@@ -1,0 +1,20 @@
+name: CI
+
+on:
+    push:
+    pull_request:
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: 1.4.0
+            - run: bun install --frozen-lockfile
+            - run: npm test
+            - run: npm run test:bun
+            - run: npm run typecheck
+            - run: npm run build:all
+            - run: ./dist/pi-web-x-linux-x64 --help

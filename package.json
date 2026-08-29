@@ -1,0 +1,76 @@
+{
+  "name": "pi-web-x",
+  "version": "0.8.11",
+  "description": "Bun-native web UI for the pi coding agent",
+  "homepage": "https://github.com/agegr/pi-web-x#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agegr/pi-web-x.git"
+  },
+  "bugs": {
+    "url": "https://github.com/agegr/pi-web-x/issues"
+  },
+  "license": "MIT",
+  "bin": {
+    "pi-web-x": "bin/pi-web-x.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "dev": "mise exec bun@1.4.0 -- bun --watch src/cli.ts -- --no-open",
+    "dev:lan": "mise exec bun@1.4.0 -- bun --watch src/cli.ts -- -H 0.0.0.0 --no-open",
+    "build": "mise exec bun@1.4.0 -- bun build --compile --target=bun-linux-x64 src/cli.ts --asset ./public --outfile dist/pi-web-x",
+    "build:all": "mise exec bun@1.4.0 -- bun run scripts/build-all.ts",
+    "start": "mise exec bun@1.4.0 -- bun src/cli.ts",
+    "start:lan": "mise exec bun@1.4.0 -- bun src/cli.ts -H 0.0.0.0",
+    "test": "node scripts/test-node.mjs",
+    "test:bun": "mise exec bun@1.4.0 -- bun test tests --path-ignore-patterns='**/e2e/**'",
+    "typecheck": "mise exec bun@1.4.0 -- bunx tsc --noEmit",
+    "release": "pnpm run build:all",
+    "lint": "eslint .",
+    "test:e2e": "npm run build && mise exec bun@1.4.0 -- bunx playwright test"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.84.3",
+    "@earendil-works/pi-ai": "0.84.3",
+    "@earendil-works/pi-coding-agent": "0.84.3",
+    "@earendil-works/pi-tui": "0.84.3",
+    "ansi_up": "^6.0.6",
+    "js-yaml": "^5.2.3",
+    "proper-lockfile": "4.1.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remark-frontmatter": "^5.0.0",
+    "undici": "8.10.0",
+    "web-push": "^3.6.7",
+    "katex": "^0.16.47",
+    "mammoth": "^1.12.0",
+    "mermaid": "^11.16.1",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.1",
+    "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/bun": "^1.4.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25",
+    "@types/proper-lockfile": "4.1.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9",
+    "jiti": "^2.7.0",
+    "typescript": "^5"
+  }
+}

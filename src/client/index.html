@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" translate="no" class="notranslate">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Pi Web X" />
+    <meta name="google" content="notranslate" />
+    <title>Pi Web X</title>
+    <script>
+      [
+        ["manifest", "/manifest.webmanifest"],
+        ["icon", "/icons/icon-192.png"],
+        ["apple-touch-icon", "/icons/apple-touch-icon.png"],
+      ].forEach(function (v) {
+        var l = document.createElement("link");
+        l.rel = v[0];
+        l.href = v[1];
+        document.head.appendChild(l);
+      });
+    </script>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("pi-web-x:theme");
+          var d =
+            t === "dark" ||
+            ((t == null || t === "" || t === "auto") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (d) document.documentElement.classList.add("dark");
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body translate="no" class="notranslate">
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
