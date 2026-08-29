@@ -6,7 +6,9 @@ const jiti = createJiti(import.meta.url);
 const { getPreferredToolPreset, setPreferredToolPreset } = await jiti.import(
   "../../../lib/tool-preset-preference.ts",
 );
-const { TOOL_PRESET_VALUES } = await jiti.import("../../../lib/tool-presets.ts");
+const { TOOL_PRESET_VALUES } = await jiti.import(
+  "../../../lib/tool-presets.ts",
+);
 
 function createStorage(initial = {}) {
   const values = new Map(Object.entries(initial));

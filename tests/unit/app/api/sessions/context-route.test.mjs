@@ -9,7 +9,10 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const routeSrc = await readFileSync(
-  new URL("../../../../../app/api/sessions/[id]/context/route.ts", import.meta.url),
+  new URL(
+    "../../../../../app/api/sessions/[id]/context/route.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const jiti = createJiti(import.meta.url, {

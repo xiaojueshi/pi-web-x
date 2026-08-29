@@ -75,7 +75,10 @@ test("restores the settings section and each list detail selection", async () =>
     "PluginsConfig",
   ]) {
     assert.match(
-      await readFile(new URL(`../../../components/${name}.tsx`, import.meta.url), "utf8"),
+      await readFile(
+        new URL(`../../../components/${name}.tsx`, import.meta.url),
+        "utf8",
+      ),
       /getLastSettingsSelection/,
     );
   }

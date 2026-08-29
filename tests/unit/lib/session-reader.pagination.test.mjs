@@ -10,7 +10,9 @@ const jiti = createJiti(import.meta.url);
 const { sliceActiveBranch, buildSessionContext } = await jiti.import(
   "../../../lib/session-reader.ts",
 );
-const { computeSessionStats } = await jiti.import("../../../lib/session-stats.ts");
+const { computeSessionStats } = await jiti.import(
+  "../../../lib/session-stats.ts",
+);
 
 // Build a linear chain of n entries: e0 -> e1 -> ... -> e(n-1).
 function linearChain(n) {

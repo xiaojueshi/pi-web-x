@@ -4,7 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-const { writePrivateFileAtomicSync } = await import("../../../lib/atomic-file.ts");
+const { writePrivateFileAtomicSync } = await import(
+  "../../../lib/atomic-file.ts"
+);
 
 function createTempRoot(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-web-x-atomic-file-"));

@@ -3,8 +3,9 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { normalizeStreamingToolCalls, normalizeToolCalls } =
-  await jiti.import("../../../lib/normalize.ts");
+const { normalizeStreamingToolCalls, normalizeToolCalls } = await jiti.import(
+  "../../../lib/normalize.ts",
+);
 
 function assistant(block) {
   return {

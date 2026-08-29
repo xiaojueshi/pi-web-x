@@ -7,7 +7,9 @@ const {
   appendSessionToolSelection,
   readSessionToolSelection,
   validateSessionToolSelection,
-} = await createJiti(import.meta.url).import("../../../lib/session-tool-selection.ts");
+} = await createJiti(import.meta.url).import(
+  "../../../lib/session-tool-selection.ts",
+);
 
 function entry(data, customType = TOOL_SELECTION_TYPE) {
   return {

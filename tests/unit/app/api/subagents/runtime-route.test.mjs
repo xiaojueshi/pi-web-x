@@ -7,7 +7,9 @@ const jiti = createJiti(import.meta.url, {
   interopDefault: true,
   moduleCache: false,
 });
-const { GET, POST } = await jiti.import("../../../../../app/api/subagents/[id]/route.ts");
+const { GET, POST } = await jiti.import(
+  "../../../../../app/api/subagents/[id]/route.ts",
+);
 
 const id = "subagent-route-test";
 const context = { params: Promise.resolve({ id }) };

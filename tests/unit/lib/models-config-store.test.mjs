@@ -14,8 +14,9 @@ import { createJiti } from "jiti";
 const jiti = createJiti(import.meta.url);
 const { normalizeModelsConfigCosts, readModelsConfig, writeModelsConfig } =
   await jiti.import("../../../lib/models-config-store.ts");
-const { invalidateModelsCache, loadModelsWithCache } =
-  await jiti.import("../../../lib/models-cache.ts");
+const { invalidateModelsCache, loadModelsWithCache } = await jiti.import(
+  "../../../lib/models-cache.ts",
+);
 const { buildSessionContext, getSessionEntries } = await jiti.import(
   "../../../lib/session-reader.ts",
 );

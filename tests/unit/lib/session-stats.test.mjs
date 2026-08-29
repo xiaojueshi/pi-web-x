@@ -3,8 +3,9 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { computeSessionStats, mergeSessionStats } =
-  await jiti.import("../../../lib/session-stats.ts");
+const { computeSessionStats, mergeSessionStats } = await jiti.import(
+  "../../../lib/session-stats.ts",
+);
 const { buildContextEntries } = await jiti.import(
   "@earendil-works/pi-coding-agent",
 );

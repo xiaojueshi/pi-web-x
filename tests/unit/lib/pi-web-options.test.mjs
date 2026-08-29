@@ -9,7 +9,9 @@ const {
   getHelpText,
   parseLaunchOptions,
 } = require("../../../bin/pi-web-x-options.js");
-const cliPath = fileURLToPath(new URL("../../../bin/pi-web-x.js", import.meta.url));
+const cliPath = fileURLToPath(
+  new URL("../../../bin/pi-web-x.js", import.meta.url),
+);
 
 test("opens the browser by default", () => {
   assert.deepEqual(parseLaunchOptions([], {}), {

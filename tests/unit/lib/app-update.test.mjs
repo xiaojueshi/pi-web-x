@@ -3,8 +3,9 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { getPiWebReleaseUrl, isNewerStableVersion } =
-  await jiti.import("../../../lib/app-update.ts");
+const { getPiWebReleaseUrl, isNewerStableVersion } = await jiti.import(
+  "../../../lib/app-update.ts",
+);
 
 test("detects newer stable Pi Web X versions", () => {
   assert.equal(isNewerStableVersion("0.8.8", "0.8.7"), true);

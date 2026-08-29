@@ -8,7 +8,9 @@ const jiti = createJiti(import.meta.url, {
 });
 const React = await jiti.import("react");
 const { renderToStaticMarkup } = await jiti.import("react-dom/server");
-const { MermaidBlock, CodeBlock } = await jiti.import("../../../components/MermaidBlock.tsx");
+const { MermaidBlock, CodeBlock } = await jiti.import(
+  "../../../components/MermaidBlock.tsx",
+);
 const { I18nProvider } = await jiti.import("@/hooks/useI18n");
 
 // Simple sequenceDiagram for testing

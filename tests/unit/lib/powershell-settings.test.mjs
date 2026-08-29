@@ -10,7 +10,9 @@ const {
   readPowerShellToolEnabled,
   resolveShellTools,
   writePowerShellToolEnabled,
-} = await createJiti(import.meta.url).import("../../../lib/powershell-settings.ts");
+} = await createJiti(import.meta.url).import(
+  "../../../lib/powershell-settings.ts",
+);
 
 test("PowerShell is opt-in on Windows and never selected on other platforms", () => {
   assert.equal(isPowerShellToolEnabled(undefined, "win32"), false);

@@ -3,7 +3,9 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const { createSubagentExtension, preferPiWebSubagentExtension } =
-  await createJiti(import.meta.url).import("../../../lib/subagent-extension.ts");
+  await createJiti(import.meta.url).import(
+    "../../../lib/subagent-extension.ts",
+  );
 
 async function loadTools(
   runtime,

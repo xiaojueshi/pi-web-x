@@ -4,7 +4,10 @@ import test from "node:test";
 
 test("API key saves do not use ModelRuntime.login's network refresh", async () => {
   const source = await readFile(
-    new URL("../../../app/api/auth/api-key/[provider]/route.ts", import.meta.url),
+    new URL(
+      "../../../app/api/auth/api-key/[provider]/route.ts",
+      import.meta.url,
+    ),
     "utf-8",
   );
 

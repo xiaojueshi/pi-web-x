@@ -8,7 +8,9 @@ import lockfile from "proper-lockfile";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 
 const { removeStoredCredentialIfType, storeProviderCredential } =
-  await createJiti(import.meta.url).import("../../../lib/provider-credential-store.ts");
+  await createJiti(import.meta.url).import(
+    "../../../lib/provider-credential-store.ts",
+  );
 
 async function withAuthFile(data, run) {
   const dir = await mkdtemp(join(tmpdir(), "pi-web-x-provider-auth-"));

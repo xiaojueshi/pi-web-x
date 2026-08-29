@@ -7,7 +7,9 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url, { tsconfigPaths: true });
-const { AgentSessionWrapper } = await jiti.import("../../../lib/rpc-manager.ts");
+const { AgentSessionWrapper } = await jiti.import(
+  "../../../lib/rpc-manager.ts",
+);
 
 test("get_tools preserves the SDK tool definition fields", async () => {
   const source = await readFile(
@@ -194,7 +196,10 @@ test("RPC session startup opens an existing session file only once and trusts it
     "utf8",
   );
   const autoNameRouteSource = await readFile(
-    new URL("../../../app/api/sessions/[id]/auto-name/route.ts", import.meta.url),
+    new URL(
+      "../../../app/api/sessions/[id]/auto-name/route.ts",
+      import.meta.url,
+    ),
     "utf8",
   );
 

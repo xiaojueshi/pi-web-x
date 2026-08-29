@@ -23,7 +23,9 @@ const {
   isExactSlashCommand,
   shouldCompressImageFile,
 } = await jiti.import("../../../components/ChatInput.tsx");
-const { ModelSelector } = await jiti.import("../../../components/ModelSelector.tsx");
+const { ModelSelector } = await jiti.import(
+  "../../../components/ModelSelector.tsx",
+);
 const {
   clearDraft,
   getDraft,

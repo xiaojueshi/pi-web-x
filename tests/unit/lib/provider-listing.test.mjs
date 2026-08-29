@@ -4,7 +4,9 @@ import test from "node:test";
 async function loadSubject() {
   try {
     const { createJiti } = await import("jiti");
-    return createJiti(import.meta.url).import("../../../lib/provider-listing.ts");
+    return createJiti(import.meta.url).import(
+      "../../../lib/provider-listing.ts",
+    );
   } catch {
     return import("../../../lib/provider-listing.ts");
   }

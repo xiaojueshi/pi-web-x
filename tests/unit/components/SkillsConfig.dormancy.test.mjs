@@ -11,7 +11,9 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
 });
-const { orderSkillsByDormancy } = await jiti.import("../../../components/SkillsConfig.tsx");
+const { orderSkillsByDormancy } = await jiti.import(
+  "../../../components/SkillsConfig.tsx",
+);
 
 test("lists active skills before dormant skills while preserving their order", () => {
   const skills = [

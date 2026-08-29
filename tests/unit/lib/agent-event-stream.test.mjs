@@ -3,7 +3,9 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { createAgentEventStream } = await jiti.import("../../../lib/agent-event-stream.ts");
+const { createAgentEventStream } = await jiti.import(
+  "../../../lib/agent-event-stream.ts",
+);
 const decoder = new TextDecoder();
 
 function deferred() {

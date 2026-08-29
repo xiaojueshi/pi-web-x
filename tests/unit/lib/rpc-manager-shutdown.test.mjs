@@ -6,7 +6,9 @@ const jiti = createJiti(import.meta.url, {
   interopDefault: true,
   moduleCache: false,
 });
-const { AgentSessionWrapper } = await jiti.import("../../../lib/rpc-manager.ts");
+const { AgentSessionWrapper } = await jiti.import(
+  "../../../lib/rpc-manager.ts",
+);
 
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
 

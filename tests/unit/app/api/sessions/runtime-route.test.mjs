@@ -14,11 +14,17 @@ const detailRoute = await readFile(
   "utf8",
 );
 const contextRoute = await readFile(
-  new URL("../../../../../app/api/sessions/[id]/context/route.ts", import.meta.url),
+  new URL(
+    "../../../../../app/api/sessions/[id]/context/route.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const stateRoute = await readFile(
-  new URL("../../../../../app/api/sessions/[id]/state/route.ts", import.meta.url),
+  new URL(
+    "../../../../../app/api/sessions/[id]/state/route.ts",
+    import.meta.url,
+  ),
   "utf8",
 );
 const jiti = createJiti(import.meta.url, {
@@ -26,9 +32,12 @@ const jiti = createJiti(import.meta.url, {
   interopDefault: true,
   moduleCache: false,
 });
-const { DELETE: deleteSession, GET: getSessionDetail } =
-  await jiti.import("../../../../../app/api/sessions/[id]/route.ts");
-const { GET: getSessionState } = await jiti.import("../../../../../app/api/sessions/[id]/state/route.ts");
+const { DELETE: deleteSession, GET: getSessionDetail } = await jiti.import(
+  "../../../../../app/api/sessions/[id]/route.ts",
+);
+const { GET: getSessionState } = await jiti.import(
+  "../../../../../app/api/sessions/[id]/state/route.ts",
+);
 const { cacheSessionPath, invalidateSessionPathCache } = await jiti.import(
   "../../../../../lib/session-reader.ts",
 );

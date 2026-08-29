@@ -10,7 +10,9 @@ const jiti = createJiti(import.meta.url, {
   interopDefault: true,
   moduleCache: false,
 });
-const { POST } = await jiti.import("../../../../../../app/api/cwd/validate/route.ts");
+const { POST } = await jiti.import(
+  "../../../../../../app/api/cwd/validate/route.ts",
+);
 const { projectIdentityKey } = await jiti.import(
   "../../../../../../lib/project-identity.ts",
 );

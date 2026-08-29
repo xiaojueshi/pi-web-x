@@ -3,7 +3,9 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { projectIdentityKey } = await jiti.import("../../../lib/project-identity.ts");
+const { projectIdentityKey } = await jiti.import(
+  "../../../lib/project-identity.ts",
+);
 const { getProjectActivity, getRecentProjects, sessionsForProject } =
   await jiti.import("../../../lib/project-groups.ts");
 

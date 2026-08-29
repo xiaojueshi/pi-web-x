@@ -8,7 +8,9 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
 });
-const { MarkdownBody } = await jiti.import("../../../components/MarkdownBody.tsx");
+const { MarkdownBody } = await jiti.import(
+  "../../../components/MarkdownBody.tsx",
+);
 const { normalizeDisplayMath } = await jiti.import("../../../lib/markdown.ts");
 
 function renderMarkdown(markdown) {

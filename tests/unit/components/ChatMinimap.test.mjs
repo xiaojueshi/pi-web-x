@@ -4,7 +4,9 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 // Bun 原生转译器直接支持 .tsx 与 CSS module import，无需 registerHooks 拦截。
-const { AssistantOutline } = await import("../../../components/ChatMinimap.tsx");
+const { AssistantOutline } = await import(
+  "../../../components/ChatMinimap.tsx"
+);
 
 test("renders math in headings without disabling heading navigation", () => {
   const html = renderToStaticMarkup(

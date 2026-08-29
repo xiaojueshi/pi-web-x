@@ -30,7 +30,10 @@ const configSources = await Promise.all(
   ["ModelsConfig", "SkillsConfig", "AgentsConfig", "PluginsConfig"].map(
     async (name) => [
       name,
-      await readFile(new URL(`../../../components/${name}.tsx`, import.meta.url), "utf8"),
+      await readFile(
+        new URL(`../../../components/${name}.tsx`, import.meta.url),
+        "utf8",
+      ),
     ],
   ),
 );

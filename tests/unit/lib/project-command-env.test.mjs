@@ -13,7 +13,9 @@ const {
   createProjectCommandBashOperations,
   preferUserBashExtension,
   sanitizeProjectCommandEnvironment,
-} = await createJiti(import.meta.url).import("../../../lib/project-command-env.ts");
+} = await createJiti(import.meta.url).import(
+  "../../../lib/project-command-env.ts",
+);
 
 const HOST_ENVIRONMENT = {
   PORT: "30141",
