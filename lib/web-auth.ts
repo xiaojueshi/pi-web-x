@@ -1,9 +1,11 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 
 export const PI_WEB_X_AUTH_USERNAME = "pi";
 
-function hashSecret(value: string): Buffer {
-  return createHash("sha256").update(value, "utf8").digest();
+function hashSecret(value: string): Uint8Array {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(value);
+  return hasher.digest();
 }
 
 function secretsEqual(actual: string, expected: string): boolean {

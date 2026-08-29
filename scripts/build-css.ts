@@ -1,5 +1,4 @@
 import { mkdir } from "node:fs/promises";
-import { spawnSync } from "node:child_process";
 
 /**
  * 把 app/globals.css（含 @import "tailwindcss" 与 @theme）静态化为
@@ -7,9 +6,9 @@ import { spawnSync } from "node:child_process";
  */
 async function buildCss(): Promise<void> {
   await mkdir(".build", { recursive: true });
-  const result = spawnSync(
-    process.execPath,
-    [
+  const result = Bun.spawnSync({
+    cmd: [
+      process.execPath,
       "x",
       "@tailwindcss/cli",
       "-i",
@@ -17,11 +16,12 @@ async function buildCss(): Promise<void> {
       "-o",
       ".build/globals.built.css",
     ],
-    { stdio: "inherit" },
-  );
-  if (result.status !== 0) {
-    console.error(`build-css 失败：退出码 ${String(result.status)}`);
-    process.exit(result.status ?? 1);
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  if (result.exitCode !== 0) {
+    console.error(`build-css 失败：退出码 ${String(result.exitCode)}`);
+    process.exit(result.exitCode ?? 1);
   }
 }
 

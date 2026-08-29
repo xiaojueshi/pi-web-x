@@ -26,7 +26,9 @@
 | `web-push` | 保留（首版） | 原样使用 | VAPID、加密载荷、真实推送服务互通 | 安全协议实现错误 |
 | `undici` | 已替代 | 移除；Bun 原生 `fetch` 不经过 undici dispatcher，且唯一使用方（`lib/http-dispatcher.ts`）在生产中无引用，该模块与测试已删除 | 所有出站请求改用 Bun `fetch`；代理语义由 Bun 环境变量自行定义 | 在企业代理环境下出站行为需重新验证 |
 | `js-yaml` | 候选 | 原样使用 | YAML 1.2、错误位置、多文档、序列化输出兼容 | `Bun.YAML` 与 `js-yaml` 语义差异 |
-| `child_process` | 候选 | 原样使用 | argv 转义、Windows、信号、流、环境隔离、退出码 | `Bun.spawn` 生命周期和错误语义差异 |
+| `child_process` | 部分已替代 | `scripts/build-css.ts` 改用 `Bun.spawnSync`；其余（`lib/bash-output.ts` 等）可由 `Bun.spawn` 渐进替换 | argv 转义、Windows、信号、流、环境隔离、退出码 | `Bun.spawn` 生命周期和错误语义差异 |
+| `node:path`/`node:fs`/`node:os`/`node:net`/`node:stream`/`node:url`/`node:module` | 保留 | Bun 对这些模块提供**原生实现**（非 JS polyfill），行为与语义等价；测试代码中用法同理 | 无——替换无收益且引入回归面 | 无 |
+| `node:crypto` | 部分已替代 | `lib/web-auth.ts` 的 `createHash` 改用 `Bun.CryptoHasher`；`timingSafeEqual` 保留（Bun 无公开均等比较 API） | 哈希结果字节与长度必须与上游一致 | 哈希算法/编码差异 |
 | `fs` 目录遍历 | 候选 | 原样使用 | ignore、symlink、排序、权限、Windows 路径语义等价 | `Bun.Glob` 与现有遍历语义不同 |
 | `Bun.Image` | 候选 | 不作为迁移任务 | 预览尺寸、格式、内存和跨平台测试 | 无实际需求时引入额外回归面 |
 | `bun:sqlite` 会话索引 | 不适用 | 本迁移明确不引入 | 未来独立性能项目才可评估 | 缓存失效、并发、隐私、数据损坏 |
