@@ -12,7 +12,8 @@ const hookSource = await readFile(
 );
 
 test("renders temporary notices once at the top right of the chat column", () => {
-  const noticeShelfUsages = source.match(/<NoticeShelf\s+notices=\{notices\}/g) ?? [];
+  const noticeShelfUsages =
+    source.match(/<NoticeShelf\s+notices=\{notices\}/g) ?? [];
 
   assert.equal(noticeShelfUsages.length, 1);
   assert.match(

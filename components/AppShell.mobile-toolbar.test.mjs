@@ -125,10 +125,7 @@ test("closes the mobile action layer on outside click, Escape, layout changes, a
 
 test("keeps the mobile action layer open after using an expanded action", () => {
   const toggleStart = source.indexOf("const toggleTopPanel = useCallback(");
-  const toggleEnd = source.indexOf(
-    "[isMobile, isNarrowMobile],",
-    toggleStart,
-  );
+  const toggleEnd = source.indexOf("[isMobile, isNarrowMobile],", toggleStart);
   assert.ok(toggleStart >= 0, "toggleTopPanel definition missing");
   assert.ok(toggleEnd > toggleStart, "toggleTopPanel deps missing");
   const toggleDef = source.slice(toggleStart, toggleEnd);
@@ -137,10 +134,7 @@ test("keeps the mobile action layer open after using an expanded action", () => 
   assert.match(toggleDef, /setMobileToolbarMoreOpen\(true\)/);
   assert.doesNotMatch(toggleDef, /setMobileToolbarMoreOpen\(false\)/);
   const openUsages = source.match(/setMobileToolbarMoreOpen\(true\)/g) ?? [];
-  assert.ok(
-    openUsages.length >= 4,
-    "每个展开动作都应保持移动工具栏打开",
-  );
+  assert.ok(openUsages.length >= 4, "每个展开动作都应保持移动工具栏打开");
 
   assert.match(source, /toggleTopPanel\("branches", true\)/);
   assert.match(source, /handleSystemInfoToggle\("system", mobile\)/);

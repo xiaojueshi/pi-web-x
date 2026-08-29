@@ -58,9 +58,9 @@ test("keeps enabled configuration surfaces inside the settings panel", () => {
   for (const section of ["general", "models", "skills", "plugins"]) {
     assert.match(panelSource, new RegExp(`id: "${section}"`));
   }
-for (const component of ["ModelsConfig", "SkillsConfig", "PluginsConfig"]) {
+  for (const component of ["ModelsConfig", "SkillsConfig", "PluginsConfig"]) {
     assert.match(panelSource, new RegExp(`<${component}[\\s\\S]*?embedded`));
-}
+  }
   assert.doesNotMatch(panelSource, /id: "agents"|<AgentsConfig embedded/);
 });
 

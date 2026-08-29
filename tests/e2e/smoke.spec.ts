@@ -48,5 +48,7 @@ test("service worker serves the offline fallback after activation", async ({
   await context.setOffline(true);
   await page.goto("/");
   await expect(page).toHaveTitle(/Pi Web X|Offline/i);
-  await expect(page.locator("body")).toContainText(/offline|离线|无法连接|Pi Web X/i);
+  await expect(page.locator("body")).toContainText(
+    /offline|离线|无法连接|Pi Web X/i,
+  );
 });

@@ -767,7 +767,10 @@ test("keeps prompt anchor measurement outside the React update cycle", () => {
     anchorSyncEffectSource,
     /promptAnchorUpdateRef\.current\?\.\(\);\s*\}, \[streamState\.streamingMessage\]\)/,
   );
-  assert.match(chatWindowSource, /<div[\s\S]*?ref=\{messageContentRef\}[\s\S]*?style=\{\{/);
+  assert.match(
+    chatWindowSource,
+    /<div[\s\S]*?ref=\{messageContentRef\}[\s\S]*?style=\{\{/,
+  );
 });
 
 test("uses the prompt anchor as the only trailing message spacer", () => {

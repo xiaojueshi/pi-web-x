@@ -56,10 +56,7 @@ test("offers a persisted built-in sub-agent switch with explicit session reload"
 });
 
 test("marks profiles shadowed by a higher-precedence source", () => {
-  assert.match(
-    source,
-    /isSubagentProfileOverridden\(\s*profile,\s*profiles,/,
-  );
+  assert.match(source, /isSubagentProfileOverridden\(\s*profile,\s*profiles,/);
   assert.match(
     source,
     /className="agents-overridden-label"[\s\S]*?t\("agents\.overridden"\)/,
@@ -201,7 +198,10 @@ test("uses the same form controls for editable and readonly profiles", () => {
     source,
     /<textarea[\s\S]*?className="agents-system-prompt"[\s\S]*?disabled=\{disabled\}/,
   );
-  assert.match(source, /<Toggle[\s\S]*?key=\{tool\}[\s\S]*?disabled=\{disabled\}/);
+  assert.match(
+    source,
+    /<Toggle[\s\S]*?key=\{tool\}[\s\S]*?disabled=\{disabled\}/,
+  );
   assert.match(
     source,
     /<select[\s\S]*?aria-label=\{t\("agents\.thinking"\)\}[\s\S]*?disabled=\{disabled\}/,
