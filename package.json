@@ -28,7 +28,7 @@
     "build:all": "mise exec bun@1.4.0 -- bun run scripts/build-all.ts",
     "start": "mise exec bun@1.4.0 -- bun src/cli.ts",
     "start:lan": "mise exec bun@1.4.0 -- bun src/cli.ts -H 0.0.0.0",
-    "test": "node scripts/test-node.mjs",
+    "test": "mise exec bun@1.4.0 -- bun test --path-ignore-patterns='**/e2e/**'",
     "test:bun": "mise exec bun@1.4.0 -- bun test tests --path-ignore-patterns='**/e2e/**'",
     "typecheck": "mise exec bun@1.4.0 -- bunx tsc --noEmit",
     "release": "pnpm run build:all",

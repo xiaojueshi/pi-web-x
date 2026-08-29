@@ -47,11 +47,11 @@ test("uses shared sidebar sizing for providers and matching indented model rows"
 test("ignores malformed auth provider responses", () => {
   assert.match(
     source,
-    /if \(Array\.isArray\(d\.oauthProviders\)\) setOauthProviders\(d\.oauthProviders\)/,
+    /if \(Array\.isArray\(d\.oauthProviders\)\)\s*setOauthProviders\(d\.oauthProviders\)/,
   );
   assert.match(
     source,
-    /if \(Array\.isArray\(d\.apiKeyProviders\)\) setApiKeyProviders\(d\.apiKeyProviders\)/,
+    /if \(Array\.isArray\(d\.apiKeyProviders\)\)\s*setApiKeyProviders\(d\.apiKeyProviders\)/,
   );
 });
 
@@ -75,7 +75,7 @@ test("custom model config exposes model headers and supportsDeveloperRole compat
   // model entry as an explicit per-model override.
   assert.match(
     source,
-    /effectiveCompat\(provider, model\)\["supportsDeveloperRole"\] !== false/,
+    /effectiveCompat\(provider, model\)\[\s*"supportsDeveloperRole"\s*\]\s*!== false/,
   );
   assert.match(source, /setCompatBool\(model, "supportsDeveloperRole", v\)/);
 });

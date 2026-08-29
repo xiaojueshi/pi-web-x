@@ -12,20 +12,19 @@ const hookSource = await readFile(
 );
 
 test("renders temporary notices once at the top right of the chat column", () => {
-  const noticeShelfUsages =
-    source.match(/<NoticeShelf notices=\{notices\}/g) ?? [];
+  const noticeShelfUsages = source.match(/<NoticeShelf\s+notices=\{notices\}/g) ?? [];
 
   assert.equal(noticeShelfUsages.length, 1);
   assert.match(
     source,
-    /position: "absolute",\s*top: 12,\s*left: 0,\s*right: isMobile \? 0 : CHAT_MINIMAP_WIDTH,[\s\S]*?justifyContent: "flex-end",[\s\S]*?<NoticeShelf notices=\{notices\} floating onPauseChange=\{setNoticePaused\} \/>/,
+    /position: "absolute",\s*top: 12,\s*left: 0,\s*right: isMobile \? 0 : CHAT_MINIMAP_WIDTH,[\s\S]*?justifyContent: "flex-end",[\s\S]*?<NoticeShelf[\s\S]*?notices=\{notices\}[\s\S]*?floating[\s\S]*?onPauseChange=\{setNoticePaused\}[\s\S]*?\/>/,
   );
 });
 
 test("pauses only for a visible notice", () => {
   assert.match(
     hookSource,
-    /noticeState\.visible\.some\(\(notice\) => notice\.id === pausedNoticeId\)\) return/,
+    /noticeState\.visible\.some\(\(notice\) => notice\.id === pausedNoticeId\)\)\s*return/,
   );
 });
 
@@ -37,7 +36,7 @@ test("lets keyboard users pause and scroll long notices", () => {
   );
   assert.match(
     source,
-    /onMouseLeave=\{\(event\) => \{\s*if \(!event\.currentTarget\.contains\(document\.activeElement\)\) onPauseChange\?\.\(null\)/,
+    /onMouseLeave=\{\(event\) => \{\s*if \(!event\.currentTarget\.contains\(document\.activeElement\)\)\s*onPauseChange\?\.\(null\)/,
   );
   assert.match(
     source,

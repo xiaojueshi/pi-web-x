@@ -16,7 +16,7 @@ test("file watching survives same-path replacement", () => {
   assert.match(watchBlock, /watcher = fs\.watch\(watchedDirectory/);
   assert.match(
     watchBlock,
-    /samePath\(path\.join\(watchedDirectory, changedName\.toString\(\)\), filePath\)/,
+    /samePath\(\s*path\.join\(watchedDirectory, changedName\.toString\(\)\),\s*filePath\s*,?\s*\)/,
   );
   assert.match(watchBlock, /s\.ctimeMs === lastCtimeMs/);
   assert.match(watchBlock, /s\.ino === lastIno/);

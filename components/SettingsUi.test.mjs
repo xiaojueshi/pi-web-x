@@ -15,7 +15,7 @@ const globalCssSource = await readFile(
   "utf8",
 );
 const layoutSource = await readFile(
-  new URL("../app/layout.tsx", import.meta.url),
+  new URL("../src/client/main.tsx", import.meta.url),
   "utf8",
 );
 const enSource = await readFile(
@@ -77,7 +77,7 @@ test("provides one template for config layout and controls", () => {
 test("loads settings presentation from its dedicated stylesheet", () => {
   assert.match(
     layoutSource,
-    /import "\.\/globals\.css";\s*import "\.\/settings\.css";/,
+    /import "\.\.\/\.\.\/app\/globals\.css";\s*import "\.\.\/\.\.\/app\/settings\.css";/,
   );
   assert.match(cssSource, /\.config-panel-root \{/);
   assert.match(cssSource, /\.settings-dialog-backdrop \{/);
@@ -238,15 +238,15 @@ test("embedded sections do not repeat Settings close actions", () => {
   const sources = Object.fromEntries(configSources);
   assert.match(
     sources.ModelsConfig,
-    /!embedded && <ConfigButton onClick=\{onClose\}>\{t\("i18n\.cancel"\)\}/,
+    /!embedded &&\s*\(\s*<ConfigButton onClick=\{onClose\}>\{t\("i18n\.cancel"\)\}/,
   );
   assert.match(
     sources.SkillsConfig,
-    /!embedded && <ConfigButton onClick=\{onClose\}>\{t\("i18n\.close"\)\}/,
+    /!embedded &&\s*\(\s*<ConfigButton onClick=\{onClose\}>\{t\("i18n\.close"\)\}/,
   );
   assert.match(
     sources.PluginsConfig,
-    /!embedded && <ConfigButton onClick=\{onClose\}>\{t\("i18n\.close"\)\}/,
+    /!embedded &&\s*\(\s*<ConfigButton onClick=\{onClose\}>\{t\("i18n\.close"\)\}/,
   );
 });
 
@@ -272,11 +272,11 @@ test("subpanel footers share sizing while maintenance actions stay secondary", (
   );
   assert.match(
     sources.SkillsConfig,
-    /<ConfigButton variant="secondary" onClick=\{\(\) => void checkForUpdates\(\)\}/,
+    /<ConfigButton[\s\S]*?variant="secondary"[\s\S]*?onClick=\{\(\) => void checkForUpdates\(\)\}/,
   );
   assert.match(
     sources.PluginsConfig,
-    /<ConfigButton variant="secondary" onClick=\{\(\) => void loadPlugins\(\)\}/,
+    /<ConfigButton[\s\S]*?variant="secondary"[\s\S]*?onClick=\{\(\) => void loadPlugins\(\)\}/,
   );
 });
 

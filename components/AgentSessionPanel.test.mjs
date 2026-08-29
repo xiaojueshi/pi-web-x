@@ -25,7 +25,7 @@ test("sorts running subagents first and enables search only for larger families"
   assert.match(source, /subagents\.length > 8/);
   assert.match(
     source,
-    /relation\?\.description, relation\?\.profile, session\.name, session\.firstMessage/,
+    /relation\?\.description,\s*relation\?\.profile,\s*session\.name,\s*session\.firstMessage/,
   );
   assert.match(source, /maxHeight: "min\(58dvh, 480px\)"/);
 });
@@ -39,7 +39,7 @@ test("renders as a compact left-positioned dropdown without a centered inner wid
 test("shows persisted completion states while live running state takes precedence", () => {
   assert.match(
     source,
-    /const status: SubagentSessionStatus = running \? "running" : relation\?\.status \?\? "completed"/,
+    /const status: SubagentSessionStatus = running\s*\?\s*"running"\s*:\s*\(?relation\?\.status \?\? "completed"/,
   );
   assert.match(source, /t\(`agentSwitcher\.status\.\$\{status\}`\)/);
   assert.match(source, /status === "failed"/);

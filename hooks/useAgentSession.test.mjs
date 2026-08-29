@@ -52,7 +52,7 @@ test("keeps the session event stream open through the idle grace window", () => 
   assert.match(source, /const EVENT_STREAM_IDLE_GRACE_MS = 30_000/);
   assert.match(
     graceSource,
-    /setTimeout\(\(\) => void checkServerIdle\(\), EVENT_STREAM_IDLE_GRACE_MS\)/,
+    /setTimeout\(\s*\(\) => void checkServerIdle\(\),\s*EVENT_STREAM_IDLE_GRACE_MS,\s*\)/,
   );
   assert.match(
     graceSource,
@@ -69,7 +69,7 @@ test("keeps the session event stream open through the idle grace window", () => 
   assert.match(promptDoneSource, /scheduleEventStreamClose\(sid\)/);
   assert.match(
     sendSource,
-    /const definitivelyRejected = !promptRequestStarted/,
+    /const definitivelyRejected =\s*!promptRequestStarted/,
   );
   assert.match(
     sendSource,
@@ -118,7 +118,7 @@ test("opening System or Tools lazily starts a dormant session without sending a 
 
   assert.match(
     loadSystemInfoSource,
-    /sessionIdRef\.current \?\? await ensureNewSession\(\)/,
+    /sessionIdRef\.current \?\? \(?await ensureNewSession\(\)\)/,
   );
   assert.doesNotMatch(loadSystemInfoSource, /promoteNewSession\(\)/);
   assert.match(
@@ -173,9 +173,9 @@ test("new-session promotion rekeys drafts before publishing the real session", (
   assert.match(promoteSource, /input\.rekeyDraft\(provisionalDraftKey, sid\)/);
   assert.ok(
     promoteSource.indexOf("input.rekeyDraft(provisionalDraftKey, sid)") <
-      promoteSource.indexOf("onSessionCreated?.({"),
+      promoteSource.indexOf("onSessionCreated?.("),
   );
-  assert.match(promoteSource, /}, provisionalDraftKey\)/);
+  assert.match(promoteSource, /rekeyDraft\([\s\S]*?provisionalDraftKey, sid\)/);
   assert.match(
     chatWindowSource,
     /draftKey=\{session\?\.id \?\? newSessionDraftKey \?\? undefined\}/,
@@ -206,7 +206,7 @@ test("fresh sessions use the preference while persisted and live sessions restor
   );
   assert.match(
     source,
-    /d\.toolNames !== undefined \? getPresetFromToolNames\(d\.toolNames\) : "default"/,
+    /d\.toolNames !== undefined\s*\?\s*getPresetFromToolNames\(d\.toolNames\)\s*:\s*"default"/,
   );
   assert.match(changeSource, /setPreferredToolPreset\(preset\)/);
   assert.match(changeSource, /\(sid, \{ type: "set_tools", toolNames \}\)/);
@@ -230,7 +230,7 @@ test("existing-session prompts rely on the persisted tool selection", () => {
 
 test("submission recovery updates live refs before a possible session rekey", () => {
   const restoreMethod = chatInputSource.slice(
-    chatInputSource.indexOf("    restoreSubmission(text:"),
+    chatInputSource.indexOf("    restoreSubmission("),
     chatInputSource.indexOf("    insertText(text:"),
   );
 
@@ -276,7 +276,7 @@ test("stale fresh-session completion cannot replace the active composer", () => 
   );
   assert.match(
     cwdChangeSource,
-    /currentProject === newProject\s*&& \(selectedSession !== null \|\| currentFreshCwd === cwd\)/,
+    /currentProject === newProject\s*&&\s*\(selectedSession !== null \|\| currentFreshCwd === cwd\)/,
   );
   assert.match(
     cwdChangeSource,
@@ -370,11 +370,11 @@ test("delegates event stream readiness and hides an empty agent phase", () => {
   assert.match(ensureSource, /eventConnectionRef\.current!\.maintain\(sid\)/);
   assert.match(
     chatWindowSource,
-    /const hasStreamingContent = Boolean\(streamState\.streamingMessage\?\.content\.length\)/,
+    /const hasStreamingContent = Boolean\(\s*streamState\.streamingMessage\?\.content\.length/,
   );
   assert.match(
     chatWindowSource,
-    /streamState\.isStreaming && hasStreamingContent && streamState\.streamingMessage/,
+    /streamState\.isStreaming &&\s*hasStreamingContent &&\s*streamState\.streamingMessage/,
   );
   assert.match(
     chatWindowSource,
@@ -422,7 +422,7 @@ test("connects a selected session when another browser reports it running", () =
   assert.match(source, /maintainEventsConnected\(session\.id\)/);
   assert.doesNotMatch(source, /void connectEvents\(/);
   assert.match(chatWindowSource, /sessionRunning\?: boolean/);
-  assert.match(chatWindowSource, /session, sessionRunning, newSessionCwd/);
+  assert.match(chatWindowSource, /session,\s*sessionRunning,\s*newSessionCwd/);
   assert.match(appShellSource, /runningSessionIds\.has\(selectedSession\.id\)/);
   assert.match(
     appShellSource,
@@ -455,12 +455,12 @@ test("keeps one reducer-owned assistant partial and consumes Pi JSON deltas", ()
   );
   assert.match(
     streamSource,
-    /event\.assistantMessageEvent as ClientAssistantMessageEvent/,
+    /event\.assistantMessageEvent as[\s\S]*?ClientAssistantMessageEvent/,
   );
   assert.match(streamSource, /dispatch\(\{ type: "delta", event: delta \}\)/);
   assert.match(
     streamSource,
-    /delta\.type !== "toolcall_start" && delta\.type !== "toolcall_delta"/,
+    /delta\.type !== "toolcall_start" &&\s*delta\.type !== "toolcall_delta"/,
   );
   assert.doesNotMatch(streamSource, /case "message_delta"/);
   assert.match(
@@ -559,7 +559,7 @@ test("routes blocking extension requests through deduplicated browser attention 
     extensionRequestSource,
     /isBlockingExtensionUiRequest\(request\)[\s\S]*?onAttentionNeeded\?\.\(request\)/,
   );
-  assert.match(chatWindowSource, /onAttentionNeeded, onSessionCreated/);
+  assert.match(chatWindowSource, /onAttentionNeeded,\s*onSessionCreated/);
   assert.match(
     completionSource,
     /if \(!shouldShowBrowserNotification\(\)\) return/,
@@ -567,7 +567,7 @@ test("routes blocking extension requests through deduplicated browser attention 
   assert.doesNotMatch(completionSource, /pushActive/);
   assert.match(
     completionSource,
-    /tag: targetSession \? `pi-session-complete:\$\{targetSession\.id\}`/,
+    /tag: targetSession\s*\?\s* `pi-session-complete:\$\{targetSession\.id\}`/,
   );
   assert.doesNotMatch(
     completionSource,
@@ -576,7 +576,7 @@ test("routes blocking extension requests through deduplicated browser attention 
   assert.match(attentionSource, /shouldShowBrowserNotification\(\)/);
   assert.match(
     attentionSource,
-    /claimExtensionAttentionNotification\(request, notifiedAttentionRequestIdsRef\.current\)/,
+    /claimExtensionAttentionNotification\(\s*request,\s*notifiedAttentionRequestIdsRef\.current,?\s*\)/,
   );
   assert.match(attentionSource, /tag: `pi-extension-ui:\$\{request\.id\}`/);
   assert.match(appShellSource, /onAttentionNeeded=\{handleAttentionNeeded\}/);
@@ -653,7 +653,7 @@ test("keeps a newly sent user message at the top while its response starts", () 
 
   assert.match(
     streamUpdateSource,
-    /!pendingScrollToUserRef\.current && isNearBottomRef\.current/,
+    /!pendingScrollToUserRef\.current &&\s*isNearBottomRef\.current/,
   );
   assert.match(
     source,
@@ -683,7 +683,7 @@ test("keeps a newly sent user message at the top while its response starts", () 
   );
   assert.match(
     chatWindowSource,
-    /const contentEnd = spacer\.getBoundingClientRect\(\)\.top[\s\S]*?getPromptAnchorSpacerHeight\([\s\S]*?targetTop,[\s\S]*?contentEnd,[\s\S]*?container\.clientHeight/,
+    /const contentEnd =\s*spacer\.getBoundingClientRect\(\)\.top[\s\S]*?getPromptAnchorSpacerHeight\([\s\S]*?targetTop,[\s\S]*?contentEnd,[\s\S]*?container\.clientHeight/,
   );
   assert.match(
     chatWindowSource,
@@ -737,7 +737,7 @@ test("keeps prompt anchor measurement outside the React update cycle", () => {
   );
   assert.match(
     anchorLifecycleEffectSource,
-    /spacer\.style\.height = nextPromptAnchorSpacerHeight > 0/,
+    /spacer\.style\.height =\s*nextPromptAnchorSpacerHeight > 0/,
   );
   assert.match(
     anchorLifecycleEffectSource,
@@ -767,7 +767,7 @@ test("keeps prompt anchor measurement outside the React update cycle", () => {
     anchorSyncEffectSource,
     /promptAnchorUpdateRef\.current\?\.\(\);\s*\}, \[streamState\.streamingMessage\]\)/,
   );
-  assert.match(chatWindowSource, /<div ref=\{messageContentRef\} style=\{\{/);
+  assert.match(chatWindowSource, /<div[\s\S]*?ref=\{messageContentRef\}[\s\S]*?style=\{\{/);
 });
 
 test("uses the prompt anchor as the only trailing message spacer", () => {

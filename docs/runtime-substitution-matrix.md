@@ -24,7 +24,7 @@
 | `mammoth` | 保留（首版） | 移至 `dependencies`，由 Bun 打包 | 编译二进制 DOCX 路由返回正确预览 | 运行时动态 import、生产依赖遗漏 |
 | `proper-lockfile` | 保留（首版） | 原样使用 | 双进程并发、崩溃恢复、跨平台文件锁与原实现等价 | 数据丢失、死锁、语义变化 |
 | `web-push` | 保留（首版） | 原样使用 | VAPID、加密载荷、真实推送服务互通 | 安全协议实现错误 |
-| `undici` | 保留（首版） | 原样使用 | 代理、超时、重试、TLS、错误语义与现有调用对照 | Bun `fetch` 不等价 undici dispatcher |
+| `undici` | 已替代 | 移除；Bun 原生 `fetch` 不经过 undici dispatcher，且唯一使用方（`lib/http-dispatcher.ts`）在生产中无引用，该模块与测试已删除 | 所有出站请求改用 Bun `fetch`；代理语义由 Bun 环境变量自行定义 | 在企业代理环境下出站行为需重新验证 |
 | `js-yaml` | 候选 | 原样使用 | YAML 1.2、错误位置、多文档、序列化输出兼容 | `Bun.YAML` 与 `js-yaml` 语义差异 |
 | `child_process` | 候选 | 原样使用 | argv 转义、Windows、信号、流、环境隔离、退出码 | `Bun.spawn` 生命周期和错误语义差异 |
 | `fs` 目录遍历 | 候选 | 原样使用 | ignore、symlink、排序、权限、Windows 路径语义等价 | `Bun.Glob` 与现有遍历语义不同 |

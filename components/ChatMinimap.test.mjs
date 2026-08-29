@@ -1,26 +1,10 @@
 import assert from "node:assert/strict";
-import { registerHooks } from "node:module";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createJiti } from "jiti";
 
-registerHooks({
-  load(url, context, nextLoad) {
-    if (!url.endsWith(".module.css")) return nextLoad(url, context);
-    return {
-      format: "module",
-      shortCircuit: true,
-      source: "export default new Proxy({}, { get: (_, key) => String(key) });",
-    };
-  },
-});
-
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const { AssistantOutline } = await jiti.import("./ChatMinimap.tsx");
+// Bun 原生转译器直接支持 .tsx 与 CSS module import，无需 registerHooks 拦截。
+const { AssistantOutline } = await import("./ChatMinimap.tsx");
 
 test("renders math in headings without disabling heading navigation", () => {
   const html = renderToStaticMarkup(

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const layoutSource = await readFile(
-  new URL("../app/layout.tsx", import.meta.url),
+  new URL("../src/client/index.html", import.meta.url),
   "utf8",
 );
 const settingsCssSource = await readFile(

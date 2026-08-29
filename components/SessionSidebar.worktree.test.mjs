@@ -15,7 +15,7 @@ test("uses the server-resolved current worktree identity", () => {
   );
   assert.match(
     source,
-    /if \(currentWorktreePath === path\) setSelectedCwd\(worktreeState\.projectRoot\)/,
+    /if \(currentWorktreePath === path\)\s*setSelectedCwd\(worktreeState\.projectRoot\)/,
   );
   assert.doesNotMatch(source, /const isCurrent = wt\.path === selectedCwd/);
 });

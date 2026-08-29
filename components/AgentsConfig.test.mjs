@@ -56,10 +56,13 @@ test("offers a persisted built-in sub-agent switch with explicit session reload"
 });
 
 test("marks profiles shadowed by a higher-precedence source", () => {
-  assert.match(source, /isSubagentProfileOverridden\(profile, profiles\)/);
   assert.match(
     source,
-    /overridden && <span className="agents-overridden-label">\{t\("agents\.overridden"\)\}<\/span>/,
+    /isSubagentProfileOverridden\(\s*profile,\s*profiles,/,
+  );
+  assert.match(
+    source,
+    /className="agents-overridden-label"[\s\S]*?t\("agents\.overridden"\)/,
   );
   assert.match(
     cssSource,
@@ -75,7 +78,7 @@ test("treats global and project profiles as directly editable", () => {
   );
   assert.match(
     source,
-    /selected && isWritableScope\(selected\.scope\) && mode === "edit"/,
+    /selected &&\s*isWritableScope\(selected\.scope\) &&\s*mode === "edit"/,
   );
 });
 
@@ -103,14 +106,14 @@ test("sends the selected scope for saves and the source scope for deletes", () =
   );
   assert.match(
     source,
-    /JSON\.stringify\(\{ cwd, scope: selected\.scope, name: selected\.name \}\)/,
+    /JSON\.stringify\(\{\s*cwd,\s*scope: selected\.scope,\s*name: selected\.name,\s*\}\)/,
   );
 });
 
 test("shows a Skills-style path row with the same switch in editable and readonly modes", () => {
   assert.match(
     source,
-    /function displayProfilePath\(profile: SubagentProfile, cwd: string\)/,
+    /function displayProfilePath\(\s*profile: SubagentProfile,\s*cwd: string,/,
   );
   assert.match(
     source,
@@ -122,7 +125,7 @@ test("shows a Skills-style path row with the same switch in editable and readonl
   );
   assert.match(
     source,
-    /<ConfigSwitch checked=\{draft\.enabled\} disabled=\{disabled\}/,
+    /<ConfigSwitch[\s\S]*?checked=\{draft\.enabled\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.doesNotMatch(source, /agents-readonly-status/);
   assert.doesNotMatch(source, /<Toggle label=\{t\("agents\.enabled"\)\}/);
@@ -133,7 +136,7 @@ test("persists existing profile toggles immediately without submitting unsaved f
   assert.match(source, /method: "PATCH"/);
   assert.match(
     source,
-    /JSON\.stringify\(\{ cwd, scope: selected\.scope, name: selected\.name, enabled \}\)/,
+    /JSON\.stringify\(\{\s*cwd,\s*scope: selected\.scope,\s*name: selected\.name,\s*enabled,\s*\}\)/,
   );
   assert.match(
     source,
@@ -145,7 +148,7 @@ test("persists existing profile toggles immediately without submitting unsaved f
 test("reuses the ChatInput model selector with scoped models", () => {
   assert.match(
     source,
-    /fetch\(`\/api\/models\?cwd=\$\{encodeURIComponent\(cwd\)\}`/,
+    /fetch\(\s*`\/api\/models\?cwd=\$\{encodeURIComponent\(cwd\)\}`/,
   );
   assert.match(source, /import \{ ModelSelector \} from "\.\/ModelSelector"/);
   assert.match(
@@ -176,11 +179,11 @@ test("reuses the ChatInput model selector with scoped models", () => {
 test("renders the stable agent id as text outside create mode", () => {
   assert.match(
     source,
-    /creating \? \(\s*<input aria-label=\{t\("agents\.name"\)\}/,
+    /creating \?\s*\(\s*<input\s*aria-label=\{t\("agents\.name"\)\}/,
   );
   assert.match(
     source,
-    /<code style=\{\{ minHeight: 34,[\s\S]*?\{draft\.name\}[\s\S]*?<\/code>/,
+    /<code[\s\S]*?minHeight: 34,[\s\S]*?\{draft\.name\}[\s\S]*?<\/code>/,
   );
   assert.doesNotMatch(source, /disabled=\{disabled \|\| !creating\}/);
 });
@@ -188,40 +191,40 @@ test("renders the stable agent id as text outside create mode", () => {
 test("uses the same form controls for editable and readonly profiles", () => {
   assert.match(
     source,
-    /<input aria-label=\{t\("agents\.displayName"\)\}[\s\S]*?disabled=\{disabled\}/,
+    /<input\s*aria-label=\{t\("agents\.displayName"\)\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.match(
     source,
-    /<input aria-label=\{t\("agents\.description"\)\}[\s\S]*?disabled=\{disabled\}/,
+    /<input\s*aria-label=\{t\("agents\.description"\)\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.match(
     source,
-    /<textarea className="agents-system-prompt"[\s\S]*?disabled=\{disabled\}/,
+    /<textarea[\s\S]*?className="agents-system-prompt"[\s\S]*?disabled=\{disabled\}/,
   );
-  assert.match(source, /<Toggle key=\{tool\}[\s\S]*?disabled=\{disabled\}/);
+  assert.match(source, /<Toggle[\s\S]*?key=\{tool\}[\s\S]*?disabled=\{disabled\}/);
   assert.match(
     source,
-    /<select aria-label=\{t\("agents\.thinking"\)\}[\s\S]*?disabled=\{disabled\}/,
-  );
-  assert.match(
-    source,
-    /<input aria-label=\{t\("agents\.maxTurns"\)[\s\S]*?disabled=\{disabled\}/,
+    /<select[\s\S]*?aria-label=\{t\("agents\.thinking"\)\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.match(
     source,
-    /<Toggle label=\{t\("agents\.inheritContext"\)\} disabled=\{disabled\}/,
+    /<input[\s\S]*?aria-label=\{t\("agents\.maxTurns"\)[\s\S]*?disabled=\{disabled\}/,
   );
   assert.match(
     source,
-    /<Toggle label=\{t\("agents\.background"\)\} disabled=\{disabled\}/,
+    /<Toggle[\s\S]*?label=\{t\("agents\.inheritContext"\)\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.match(
     source,
-    /<Toggle label=\{t\("agents\.loadSkills"\)\} disabled=\{disabled\}/,
+    /<Toggle[\s\S]*?label=\{t\("agents\.background"\)\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.match(
     source,
-    /<Toggle label=\{t\("agents\.loadExtensions"\)\} disabled=\{disabled\}/,
+    /<Toggle[\s\S]*?label=\{t\("agents\.loadSkills"\)\}[\s\S]*?disabled=\{disabled\}/,
+  );
+  assert.match(
+    source,
+    /<Toggle[\s\S]*?label=\{t\("agents\.loadExtensions"\)\}[\s\S]*?disabled=\{disabled\}/,
   );
   assert.doesNotMatch(
     source,
@@ -254,7 +257,7 @@ test("shows disabled controls with a gray background", () => {
 test("keeps a larger resize corner when system instructions need a scrollbar", () => {
   assert.match(
     source,
-    /<textarea className="agents-system-prompt" aria-label=\{t\("agents\.prompt"\)\}/,
+    /<textarea\s*className="agents-system-prompt"\s*aria-label=\{t\("agents\.prompt"\)\}/,
   );
   assert.match(
     cssSource,
@@ -273,11 +276,11 @@ test("keeps a larger resize corner when system instructions need a scrollbar", (
 test("duplicates any selected profile through the existing create flow", () => {
   assert.match(
     source,
-    /function duplicateProfileName\(name: string, profiles: readonly SubagentProfile\[\]\)/,
+    /function duplicateProfileName\(\s*name: string,\s*profiles: readonly SubagentProfile\[\]/,
   );
   assert.match(
     source,
-    /while \(existing\.has\(candidate\.toLowerCase\(\)\)\) candidate = `\$\{base\}-\$\{suffix\+\+\}`/,
+    /while \(existing\.has\(candidate\.toLowerCase\(\)\)\)\s*candidate = `\$\{base\}-\$\{suffix\+\+\}`/,
   );
   assert.match(source, /const beginDuplicate = \(\) =>/);
   assert.match(
@@ -298,7 +301,7 @@ test("duplicates any selected profile through the existing create flow", () => {
 test("places duplicate and delete immediately before the enabled switch", () => {
   assert.match(
     source,
-    /onClick=\{beginDuplicate\}[\s\S]*?onClick=\{\(\) => void remove\(\)\}[\s\S]*?<ConfigSwitch checked=\{draft\.enabled\}/,
+    /onClick=\{beginDuplicate\}[\s\S]*?onClick=\{\(\) => void remove\(\)\}[\s\S]*?<ConfigSwitch[\s\S]*?checked=\{draft\.enabled\}/,
   );
 });
 
@@ -309,7 +312,7 @@ test("confirms deletion and limits it to writable profiles", () => {
   );
   assert.match(
     source,
-    /selected && isWritableScope\(selected\.scope\) && mode === "edit"/,
+    /selected &&\s*isWritableScope\(selected\.scope\) &&\s*mode === "edit"/,
   );
   assert.match(source, /method: "DELETE"/);
 });

@@ -18,7 +18,7 @@ test("agent SSE starts sessions asynchronously and disables response buffering",
   );
   assert.match(
     agentEventsSource,
-    /sessionPromise = startRpcSession\([\s\S]*?\.then\(\(result\) => result\.session\)/,
+    /sessionPromise = startRpcSession\([\s\S]*?\.then\(\s*\(result\) => result\.session\s*,?\s*\)/,
   );
   assert.doesNotMatch(agentEventsSource, /await startRpcSession\(/);
   assert.match(

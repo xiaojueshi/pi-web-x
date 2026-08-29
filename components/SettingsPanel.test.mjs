@@ -38,7 +38,7 @@ test("opens one settings panel from direct sidebar shortcuts", () => {
   assert.match(shellSource, /translate\("common\.settings"\)/);
   assert.match(
     shellSource,
-    /<SettingsSectionIcon section=\{section\} size=\{14\} strokeWidth=\{2\} \/>\s*<span>\{label\}<\/span>/,
+    /<SettingsSectionIcon[\s\S]*?section=\{section\}[\s\S]*?size=\{14\}[\s\S]*?strokeWidth=\{2\}[\s\S]*?\/>\s*<span>\{label\}<\/span>/,
   );
   assert.match(
     shellSource,
@@ -58,9 +58,9 @@ test("keeps enabled configuration surfaces inside the settings panel", () => {
   for (const section of ["general", "models", "skills", "plugins"]) {
     assert.match(panelSource, new RegExp(`id: "${section}"`));
   }
-  for (const component of ["ModelsConfig", "SkillsConfig", "PluginsConfig"]) {
-    assert.match(panelSource, new RegExp(`<${component} embedded`));
-  }
+for (const component of ["ModelsConfig", "SkillsConfig", "PluginsConfig"]) {
+    assert.match(panelSource, new RegExp(`<${component}[\\s\\S]*?embedded`));
+}
   assert.doesNotMatch(panelSource, /id: "agents"|<AgentsConfig embedded/);
 });
 
