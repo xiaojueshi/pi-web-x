@@ -50,7 +50,14 @@ jobs:
       - name: 生成 SHA256SUMS
         run: |
           cd dist
-          sha256sum pi-web-x-darwin-x64 pi-web-x-darwin-arm64 \
+          ASSETS="$(ls pi-web-x-assets-*.tar.gz | head -1)"
+          if [ -z "$ASSETS" ]; then
+            echo "缺少 assets 发布物（pi-web-x-assets-<version>.tar.gz）" >&2
+            exit 1
+          fi
+          sha256sum \
+            $ASSETS \
+            pi-web-x-darwin-x64 pi-web-x-darwin-arm64 \
             pi-web-x-linux-x64 pi-web-x-linux-arm64 \
             pi-web-x-linux-x64-musl pi-web-x-linux-arm64-musl \
             pi-web-x-windows-x64.exe pi-web-x-windows-arm64.exe > SHA256SUMS

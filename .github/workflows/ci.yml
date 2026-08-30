@@ -30,6 +30,29 @@ jobs:
       - name: 原生产物冒烟（Linux）
         if: runner.os == 'Linux'
         run: ./dist/pi-web-x-linux-x64 --help
+
+      # 目录化自举冒烟：模拟二进制旁的资产生命周期（隔离 HOME，无网络）。
+      - name: 内置资产生命周期冒烟（Linux）
+        if: runner.os == 'Linux'
+        run: |
+          export HOME="$(mktemp -d)"
+          export PATH="$PWD/dist:$PATH"
+          rm -rf /tmp/piwx-smoke && mkdir -p /tmp/piwx-smoke
+          cp dist/pi-web-x-linux-x64 /tmp/piwx-smoke/pi-web-x
+          ASSETS="$(ls dist/pi-web-x-assets-*.tar.gz | head -1)"
+          # 1) 初始应报告缺失
+          /tmp/piwx-smoke/pi-web-x assets status 2>&1 | grep -q "缺失" \
+            || { echo "预期 assets status 报缺失"; exit 1; }
+          # 2) 离线安装资产包
+          /tmp/piwx-smoke/pi-web-x assets install "$ASSETS" 2>&1 | grep -q "安装完成" \
+            || { echo "assets install 失败"; exit 1; }
+          # 3) 安装后就绪
+          /tmp/piwx-smoke/pi-web-x assets status 2>&1 | grep -q "就绪" \
+            || { echo "预期 assets status 报就绪"; exit 1; }
+          # 4) 主题文件真实就位（与底层 getThemesDir 查找路径一致）
+          test -f /tmp/piwx-smoke/theme/dark.json \
+            || { echo "theme/dark.json 缺失"; exit 1; }
+          echo "assets 生命周期冒烟通过"
       - name: 原生产物冒烟（macOS）
         if: runner.os == 'macOS'
         run: ./dist/pi-web-x-darwin-arm64 --help

@@ -27,3 +27,6 @@ yarn-error.log*
 *.tsbuildinfo
 .build/
 /app/globals.built.css
+
+# 测试临时目录（bootstrap-assets 单测物化资产用）
+/tests/.tmp/

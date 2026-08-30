@@ -2,6 +2,12 @@ import { startServer } from "@/src/server";
 import { runServiceCommand } from "@/src/service-command";
 import { formatPortInUseHint, isPiWebXRunning } from "@/lib/port-conflict";
 import { APP_VERSION } from "@/src/version";
+import { ensureAssets } from "@/src/bootstrap-assets";
+import {
+  getUpdateCommandHelp,
+  runAssetsCommand,
+  runUpdateCommand,
+} from "@/src/update-command";
 
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
@@ -46,12 +52,22 @@ Service:
   service uninstall          Stop and remove the OS service
   service --help             Show service subcommand help
 
+Update & assets:
+  update                     Check for and install the latest version
+  update --check             Only check for a newer version
+  assets status              Show built-in asset status
+  assets install <path>      Install assets from a tarball (offline)
+
 Environment:
   PORT                       Default port when --port is omitted
   PI_WEB_X_HOSTNAME          Default hostname when --hostname is omitted
   PI_WEB_X_NO_OPEN           Set to 1/true/yes/on to disable browser open
   PI_WEB_X_PASSWORD          Enable HTTP Basic Auth (username is always "pi")
   PI_WEB_X_ALLOWED_HOSTS     Extra exact proxy/custom hostnames, comma-separated
+  PI_WEB_X_ASSETS_URL        Mirror URL for the built-in assets tarball
+  PI_WEB_X_UPDATE_URL        Mirror URL for update checks (default: GitHub API)
+  PI_WEB_X_RELEASE_BASE      Mirror base for release downloads (default: GitHub)
+  PI_WEB_X_SKIP_VERSION_CHECK   Set to 1 to disable the app-update endpoint
 `;
 }
 
@@ -59,9 +75,17 @@ Environment:
 export function parseLaunchOptions(
   args = process.argv.slice(2),
   env = process.env,
-): LaunchOptions | { help: true } | { version: true } | { service: true } {
+):
+  | LaunchOptions
+  | { help: true }
+  | { version: true }
+  | { service: true }
+  | { update: true }
+  | { assets: true } {
   // service 子命令交给 src/service-command.ts 处理，主解析器不校验其参数
   if (args[0] === "service") return { service: true };
+  if (args[0] === "update") return { update: true };
+  if (args[0] === "assets") return { assets: true };
   let port = env.PORT ?? "30141";
   let hostname = env.PI_WEB_X_HOSTNAME ?? "127.0.0.1";
   let openBrowser = !isEnabled(env.PI_WEB_X_NO_OPEN);
@@ -158,7 +182,9 @@ export async function main(): Promise<void> {
     | LaunchOptions
     | { help: true }
     | { version: true }
-    | { service: true };
+    | { service: true }
+    | { update: true }
+    | { assets: true };
   try {
     options = parseLaunchOptions();
   } catch (error) {
@@ -178,6 +204,14 @@ export async function main(): Promise<void> {
     process.exitCode = await runServiceCommand(process.argv.slice(3));
     return;
   }
+  if ("update" in options) {
+    process.exitCode = await runUpdateCommand(process.argv.slice(3));
+    return;
+  }
+  if ("assets" in options) {
+    process.exitCode = await runAssetsCommand(process.argv.slice(3));
+    return;
+  }
   if (!LOOPBACK_HOSTNAMES.has(options.hostname)) {
     const passwordEnabled = Boolean(process.env.PI_WEB_X_PASSWORD);
     console.warn(
@@ -186,6 +220,11 @@ export async function main(): Promise<void> {
         : `Warning: pi-web-x is listening on ${options.hostname} without authentication. Only use this on a trusted network.`,
     );
   }
+
+  // 编译二进制：启动前校验/自举内置资产（主题等目录级资产）；
+  // dev 模式自动跳过。失败仅降级提示，不阻塞服务启动。
+  await ensureAssets();
+
   const server = await startServerWithFriendlyErrors(options);
   if (server === null) {
     process.exitCode = 1;
