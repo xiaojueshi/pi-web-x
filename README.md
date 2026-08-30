@@ -32,6 +32,28 @@ pi-web-x [-p <port>] [-H <hostname>] [--no-open]
 
 非 loopback 监听会暴露可执行高权限项目操作的服务。请使用长随机 `PI_WEB_X_PASSWORD`，并通过 HTTPS 反向代理或可信 VPN 保护传输。
 
+### 注册为系统服务
+
+`pi-web-x service` 子命令把服务注册为操作系统服务（用户级，无需 root），登录后自动启动：
+
+```bash
+pi-web-x service install                # 注册并启动（快照当前 PORT / PI_WEB_X_HOSTNAME）
+pi-web-x service install -p 8080 -H 0.0.0.0 --force   # 指定快照并覆盖已有服务
+pi-web-x service uninstall              # 停止并移除服务（保留配置）
+pi-web-x service --help
+```
+
+平台支持：
+
+| 平台 | 注册机制 | 说明 |
+| --- | --- | --- |
+| Linux（systemd） | `~/.config/systemd/user/pi-web-x.service` | 日志：`journalctl --user -u pi-web-x`；自动尝试 `loginctl enable-linger` 实现无登录自启 |
+| macOS | `~/Library/LaunchAgents/com.pi-web-x.plist` | 日志：`~/Library/Logs/pi-web-x.{out,err}.log`；`KeepAlive` 崩溃自动重启 |
+| Windows | Task Scheduler 任务 `pi-web-x`（ONLOGON） | 日志重定向到 `%USERPROFILE%\.pi-web-x\service.log`；无崩溃重启 |
+| 无 systemd 的 Linux | 不支持 | 报错并给出手动指引 |
+
+安装时以**调用用户**的身份运行，保证 `~/.pi/agent` 数据归属正确；配置快照落盘后可直接编辑（Linux 为 `~/.config/pi-web-x/env`，0600 权限）。Windows 上若快照了 `PI_WEB_X_PASSWORD`，密码会以明文出现在任务定义中，安装时会警告。已存在服务时安装会交互确认，可用 `--force` 跳过、`--no-input` 禁止提示。
+
 ## 开发
 
 需要 mise 中的 Bun 1.4：

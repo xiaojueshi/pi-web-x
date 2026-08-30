@@ -15,3 +15,11 @@ _Avoid_: Host environment, inherited environment
 **Built-in Project Shell**:
 A shell entry point owned and operated by Pi Web for commands associated with a project.
 _Avoid_: Extension shell, arbitrary child process
+
+**System Service**:
+An OS-managed persistent run of the Pi Web X web server — a systemd user unit, a launchd LaunchAgent, or a Windows scheduled task — that outlives the launching shell and can start at login.
+_Avoid_: server, daemon, web service
+
+**Service Command**:
+The `pi-web-x service` command family that installs and uninstalls a System Service, snapshotting the web server's launch configuration at install time.
+_Avoid_: daemonize flag, install flag

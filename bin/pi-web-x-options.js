@@ -32,6 +32,7 @@ function normalizePort(value) {
 
 function getHelpText() {
   return `Usage: pi-web-x [options]
+       pi-web-x service <install|uninstall> [options]
 
 Start the Pi Web X UI server.
 
@@ -40,6 +41,11 @@ Options:
   -H, --hostname <host>      Bind hostname (default: 127.0.0.1, or PI_WEB_X_HOSTNAME)
       --no-open              Do not open a browser automatically
   -h, --help                 Show this help message and exit
+
+Service:
+  service install            Register as an OS service and enable autostart
+  service uninstall          Stop and remove the OS service
+  service --help             Show service subcommand help
 
 Environment:
   PORT                       Default port when --port is omitted
@@ -51,6 +57,10 @@ Environment:
 }
 
 function parseLaunchOptions(args = process.argv.slice(2), env = process.env) {
+  // service 子命令由编译二进制处理，wrapper 仅负责透传
+  if (args[0] === "service") {
+    return { help: false, service: true };
+  }
   let values;
   let positionals;
   try {

@@ -1,8 +1,6 @@
 import { startServer } from "@/src/server";
-import {
-  formatPortInUseHint,
-  isPiWebXRunning,
-} from "@/lib/port-conflict";
+import { runServiceCommand } from "@/src/service-command";
+import { formatPortInUseHint, isPiWebXRunning } from "@/lib/port-conflict";
 
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
@@ -31,6 +29,7 @@ function parsePort(value: string): number {
 /** 返回 pi-web-x CLI 帮助文本。 */
 export function getHelpText(): string {
   return `Usage: pi-web-x [options]
+       pi-web-x service <install|uninstall> [options]
 
 Start the Pi Web X UI server.
 
@@ -39,6 +38,11 @@ Options:
   -H, --hostname <host>      Bind hostname (default: 127.0.0.1, or PI_WEB_X_HOSTNAME)
       --no-open              Do not open a browser automatically
   -h, --help                 Show this help message and exit
+
+Service:
+  service install            Register as an OS service and enable autostart
+  service uninstall          Stop and remove the OS service
+  service --help             Show service subcommand help
 
 Environment:
   PORT                       Default port when --port is omitted
@@ -53,7 +57,9 @@ Environment:
 export function parseLaunchOptions(
   args = process.argv.slice(2),
   env = process.env,
-): LaunchOptions | { help: true } {
+): LaunchOptions | { help: true } | { service: true } {
+  // service 子命令交给 src/service-command.ts 处理，主解析器不校验其参数
+  if (args[0] === "service") return { service: true };
   let port = env.PORT ?? "30141";
   let hostname = env.PI_WEB_X_HOSTNAME ?? "127.0.0.1";
   let openBrowser = !isEnabled(env.PI_WEB_X_NO_OPEN);
@@ -145,7 +151,7 @@ async function startServerWithFriendlyErrors(
 
 /** 启动 CLI 服务，并在需要时打开默认浏览器。 */
 export async function main(): Promise<void> {
-  let options: LaunchOptions | { help: true };
+  let options: LaunchOptions | { help: true } | { service: true };
   try {
     options = parseLaunchOptions();
   } catch (error) {
@@ -155,6 +161,10 @@ export async function main(): Promise<void> {
   }
   if ("help" in options) {
     process.stdout.write(getHelpText());
+    return;
+  }
+  if ("service" in options) {
+    process.exitCode = await runServiceCommand(process.argv.slice(3));
     return;
   }
   if (!LOOPBACK_HOSTNAMES.has(options.hostname)) {
