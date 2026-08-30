@@ -2051,7 +2051,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
           >
             {attachedImages.map((img, i) => (
               <div key={i} style={{ position: "relative", flexShrink: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.previewUrl}
                   alt=""

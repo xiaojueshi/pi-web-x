@@ -480,7 +480,6 @@ function UserMessageView({
             : "";
         return (
           <ImagePreview key={i} src={src}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
               alt=""
@@ -1979,7 +1978,6 @@ function PairedResult({
                 src={src}
                 style={{ maxWidth: "100%" }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
                   alt=""
@@ -2264,7 +2262,6 @@ function CustomMessageView({
                   if (!src) return null;
                   return (
                     <ImagePreview key={i} src={src}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt=""

@@ -13,7 +13,7 @@ function makeEnvironment({
   sessionNames = new Map([["session-1", "My session"]]),
   errorFor = () => null,
 } = {}) {
-  let state = initialState;
+  const state = initialState;
   let saved = null;
   const sent = [];
 
