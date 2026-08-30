@@ -26,8 +26,11 @@ irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
 - 默认安装**最新版本**（也可 `sh install.sh --version v0.8.11` 固定版本）
 - 交互终端下显示实时进度条与下载大小预估，分步输出每一步的完成状态；下载失败会给出明确提示与重试建议
 - 下载后校验 `SHA256SUMS`，哈希不符即中止
-- 安装到 `~/.local/bin`（`--dir` 可覆盖），自动 `chmod +x`；Windows 同时注册用户 PATH
+- 安装到 `~/pi-web-x`（真实安装根，二进制与内置资产同目录；`--dir` 可覆盖），
+  并在 `~/.local/bin` 建立命令入口符号链接；Windows 将安装目录注册进用户 PATH
 - 已安装同版本时跳过（幂等），`--force` 强制重装
+- 首次启动自动获取内置资产（主题等目录级资产）；内网离线可用
+  `pi-web-x assets install <包路径>` 手动安装；`pi-web-x update` 一键自更新
 
 > 安全提示：脚本经 HTTPS 从本仓库拉取，二进制哈希与 Release 内 `SHA256SUMS` 交叉校验。不信任管道安装时，可先下载 `install.sh` 审阅后再执行，或直接下载二进制 `sha256sum -c SHA256SUMS` 手动安装。
 

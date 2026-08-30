@@ -7,7 +7,7 @@
     pi-web-x.exe，校验 SHA256SUMS 后安装到用户目录，并注册到用户级 PATH。
 
 .PARAMETER Dir
-    安装目录（默认 $HOME\.local\bin，与 install.sh 的 Unix 惯例对齐）。
+    安装目录（默认 $HOME\pi-web-x：真实二进制与内置资产同目录）。
 
 .PARAMETER Version
     指定版本（如 v0.8.11）；缺省时跟随 GitHub latest 重定向。
@@ -33,7 +33,7 @@ $Repo = "xiaojueshi/pi-web-x"
 $BaseUrl = "https://github.com/$Repo"
 
 if ([string]::IsNullOrWhiteSpace($Dir)) {
-    $Dir = Join-Path $HOME ".local\bin"
+    $Dir = Join-Path $HOME "pi-web-x"
 }
 $InstallDir = [System.IO.Path]::GetFullPath($Dir)
 $Exe = Join-Path $InstallDir "pi-web-x.exe"
@@ -139,3 +139,4 @@ if ($UserPath -and $UserPath.Split(";") -contains $Token) {
 }
 
 Write-Host "Run 'pi-web-x --help' to get started, or just 'pi-web-x' to open the UI."
+Write-Host "首次启动会自动获取内置资产（主题等）；内网离线请先获取 pi-web-x-assets 压缩包，再执行: pi-web-x assets install <包路径>"

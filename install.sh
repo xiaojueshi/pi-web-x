@@ -10,7 +10,8 @@
 #   1. 自动探测 OS / 架构 / libc（glibc vs musl），对应 GitHub Release 资产
 #   2. 默认下载最新版本（releases/latest 重定向，无需 API token）
 #   3. 下载 SHA256SUMS 并校验二进制完整性
-#   4. chmod +x 后安装到 ~/.local/bin（可 -D 覆盖），并给出 PATH 提示
+#   4. chmod +x 后安装到 ~/pi-web-x（可 -D 覆盖），并在 ~/.local/bin 建立
+#      命令入口符号链接（真实二进制与内置资产同目录，供启动时自举）
 #   5. 已安装且为最新版本时跳过（幂等），--force 强制重装
 #
 # 设计约束: 全部 POSIX sh（无 bash 特性），set -eu 出错即停；
@@ -24,7 +25,10 @@ BASE_URL="https://github.com/${REPO}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO}/main"
 
 # 默认安装目录；可用 --dir 覆盖，尊重用户自定义
-INSTALL_DIR="${PI_WEB_X_INSTALL_DIR:-$HOME/.local/bin}"
+# 默认安装目录（真实安装根：二进制与内置资产同目录）；可用 --dir 覆盖
+INSTALL_DIR="${PI_WEB_X_INSTALL_DIR:-$HOME/pi-web-x}"
+# 命令入口目录（PATH 内），仅存放指向真实二进制的符号链接
+BIN_DIR="${PI_WEB_X_BIN_DIR:-$HOME/.local/bin}"
 VERSION=""        # 空 = latest；可传 v0.x.y
 FORCE=""
 
@@ -35,7 +39,7 @@ Usage: sh install.sh [options]
 Install the latest pi-web-x binary for this platform.
 
 Options:
-  -d, --dir <dir>      Install directory (default: \$HOME/.local/bin)
+  -d, --dir <dir>      Install directory (default: \$HOME/pi-web-x)
   -v, --version <ver>  Install a specific version, e.g. v0.8.11 (default: latest)
   -f, --force          Reinstall even if the same version is already installed
   -n, --dry-run        Probe the platform and print the asset name without downloading
@@ -212,6 +216,7 @@ if [ -z "$FORCE" ] && [ -x "$INSTALLED" ]; then
   RESOLVED_NORM="${RESOLVED_VERSION#v}"
   if [ -n "$RESOLVED_NORM" ] && [ "$INSTALLED_NORM" = "$RESOLVED_NORM" ]; then
     echo "pi-web-x ${INSTALLED_NORM} is already installed at ${INSTALLED}. Use --force to reinstall."
+    ensure_bin_entry || true
     exit 0
   fi
   [ -z "$VERSION" ] && echo "Found installed pi-web-x ${INSTALLED_VERSION}; installing ${TARGET_VERSION_LABEL}…"
@@ -267,23 +272,55 @@ else
   echo "Checksum verified (${ACTUAL})"
 fi
 
-# 赋权并落盘
+# 赋权并落盘（真实安装根，内置资产与二进制同目录）
 mkdir -p "$INSTALL_DIR"
 chmod +x "$TMP_DIR/pi-web-x"
 mv "$TMP_DIR/pi-web-x" "$INSTALL_DIR/pi-web-x"
 echo "Installed pi-web-x ${TARGET_VERSION_LABEL} to ${INSTALL_DIR}/pi-web-x"
 
-# PATH 提示
+# ---------------------------------------------------------------------------
+# 命令入口：$BIN_DIR/pi-web-x 符号链接 → 真实二进制
+#
+# 旧布局（单文件直接装在 $BIN_DIR）会被自动迁移：实体文件先备份再替换。
+# 符号链接让 PATH 目录保持“只放命令”的纯粹性，资产仍随真实二进制旁。
+# ---------------------------------------------------------------------------
+ensure_bin_entry() {
+  mkdir -p "$BIN_DIR"
+  if [ -L "$BIN_DIR/pi-web-x" ]; then
+    if [ "$(readlink "$BIN_DIR/pi-web-x")" = "$INSTALL_DIR/pi-web-x" ]; then
+      return 0
+    fi
+    rm -f "$BIN_DIR/pi-web-x"
+  elif [ -e "$BIN_DIR/pi-web-x" ]; then
+    # 旧布局的实体文件：备份（保留 --version 后缀）后再替换，避免误删用户文件
+    OLD_VERSION="$("$BIN_DIR/pi-web-x" --version 2>/dev/null || echo legacy)"
+    OLD_BACKUP="$BIN_DIR/pi-web-x.old-${OLD_VERSION}"
+    mv "$BIN_DIR/pi-web-x" "$OLD_BACKUP"
+    echo "Migrated legacy install: ${BIN_DIR}/pi-web-x → ${OLD_BACKUP}"
+  fi
+  ln -s "$INSTALL_DIR/pi-web-x" "$BIN_DIR/pi-web-x"
+  echo "Command entry created: ${BIN_DIR}/pi-web-x → ${INSTALL_DIR}/pi-web-x"
+}
+
+ensure_bin_entry
+
+# PATH 提示（针对命令入口目录）
 case ":$PATH:" in
-  *":$INSTALL_DIR:"*) : ;; # 已在 PATH 中
+  *":$BIN_DIR:"*) : ;; # 已在 PATH 中
   *)
     echo
-    echo "NOTE: ${INSTALL_DIR} is not on your PATH."
+    echo "NOTE: ${BIN_DIR} is not on your PATH."
     echo "Add it with:"
-    echo "  echo 'export PATH=\"${INSTALL_DIR}:\$PATH\"' >> ~/.$(basename "$SHELL")rc"
-    echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+    echo "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.$(basename "$SHELL")rc"
+    echo "  export PATH=\"${BIN_DIR}:\$PATH\""
     ;;
 esac
 
 echo
+echo "Next steps:"
+echo "  - Run 'pi-web-x' to start the UI; built-in assets (themes etc.) are"
+echo "    fetched automatically on first start (needs network or a mirror)."
+echo "  - Fully offline environment: fetch pi-web-x-assets-${TARGET_VERSION_LABEL}.tar.gz"
+echo "    and run 'pi-web-x assets install <path>' once (or unpack it next to the binary)."
+echo "  - Update anytime with 'pi-web-x update' (or re-run this script)."
 echo "Run 'pi-web-x --help' to get started, or just 'pi-web-x' to open the UI."
