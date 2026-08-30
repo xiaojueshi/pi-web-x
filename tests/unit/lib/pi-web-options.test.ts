@@ -29,6 +29,17 @@ test("supports --help and -h without starting the server", () => {
   assert.match(getHelpText(), /--port/);
   assert.match(getHelpText(), /--hostname/);
   assert.match(getHelpText(), /--no-open/);
+  assert.match(getHelpText(), /--version/);
+});
+
+test("supports --version and -v without starting the server", () => {
+  assert.deepEqual(parseLaunchOptions(["--version"], {}), { version: true });
+  assert.deepEqual(parseLaunchOptions(["-v"], {}), { version: true });
+  const out = spawnSync(process.execPath, [cliPath, "--version"], {
+    encoding: "utf8",
+  });
+  assert.equal(out.status, 0);
+  assert.match(out.stdout, /^\d+\.\d+\.\d+\n$/);
 });
 
 test("rejects unknown options with a help hint", () => {

@@ -1,6 +1,7 @@
 import { startServer } from "@/src/server";
 import { runServiceCommand } from "@/src/service-command";
 import { formatPortInUseHint, isPiWebXRunning } from "@/lib/port-conflict";
+import { APP_VERSION } from "@/src/version";
 
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
@@ -37,6 +38,7 @@ Options:
   -p, --port <port>          Server port (default: 30141, or PORT)
   -H, --hostname <host>      Bind hostname (default: 127.0.0.1, or PI_WEB_X_HOSTNAME)
       --no-open              Do not open a browser automatically
+  -v, --version              Print the pi-web-x version and exit
   -h, --help                 Show this help message and exit
 
 Service:
@@ -57,7 +59,7 @@ Environment:
 export function parseLaunchOptions(
   args = process.argv.slice(2),
   env = process.env,
-): LaunchOptions | { help: true } | { service: true } {
+): LaunchOptions | { help: true } | { version: true } | { service: true } {
   // service 子命令交给 src/service-command.ts 处理，主解析器不校验其参数
   if (args[0] === "service") return { service: true };
   let port = env.PORT ?? "30141";
@@ -66,6 +68,7 @@ export function parseLaunchOptions(
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "-h" || arg === "--help") return { help: true };
+    if (arg === "-v" || arg === "--version") return { version: true };
     if (arg === "--no-open") {
       openBrowser = false;
       continue;
@@ -151,7 +154,11 @@ async function startServerWithFriendlyErrors(
 
 /** 启动 CLI 服务，并在需要时打开默认浏览器。 */
 export async function main(): Promise<void> {
-  let options: LaunchOptions | { help: true } | { service: true };
+  let options:
+    | LaunchOptions
+    | { help: true }
+    | { version: true }
+    | { service: true };
   try {
     options = parseLaunchOptions();
   } catch (error) {
@@ -161,6 +168,10 @@ export async function main(): Promise<void> {
   }
   if ("help" in options) {
     process.stdout.write(getHelpText());
+    return;
+  }
+  if ("version" in options) {
+    process.stdout.write(`${APP_VERSION}\n`);
     return;
   }
   if ("service" in options) {

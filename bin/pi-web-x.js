@@ -11,6 +11,10 @@ try {
     process.stdout.write(getHelpText());
     process.exit(0);
   }
+  if (options.version) {
+    process.stdout.write(`${require("../package.json").version}\n`);
+    process.exit(0);
+  }
 } catch (error) {
   process.stderr.write(
     `${error instanceof Error ? error.message : String(error)}\n`,

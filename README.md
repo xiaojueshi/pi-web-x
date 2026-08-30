@@ -6,6 +6,32 @@ Pi Web X 是 [pi coding agent](https://github.com/earendil-works/pi) 的 Bun 原
 
 ## 安装与运行
 
+### 一键安装（自动探测平台 + 最新版本）
+
+macOS / Linux（需要 curl 或 wget）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.sh | sh
+```
+
+Windows（PowerShell 5.1+）：
+
+```powershell
+irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
+```
+
+脚本行为：
+
+- 自动探测 OS / 架构 / libc（glibc vs musl），选择对应的 GitHub Release 二进制
+- 默认安装**最新版本**（也可 `sh install.sh --version v0.8.11` 固定版本）
+- 下载后校验 `SHA256SUMS`，哈希不符即中止
+- 安装到 `~/.local/bin`（`--dir` 可覆盖），自动 `chmod +x`；Windows 同时注册用户 PATH
+- 已安装同版本时跳过（幂等），`--force` 强制重装
+
+> 安全提示：脚本经 HTTPS 从本仓库拉取，二进制哈希与 Release 内 `SHA256SUMS` 交叉校验。不信任管道安装时，可先下载 `install.sh` 审阅后再执行，或直接下载二进制 `sha256sum -c SHA256SUMS` 手动安装。
+
+### 手动下载
+
 从对应平台的 GitHub Release 下载二进制后执行：
 
 ```bash
