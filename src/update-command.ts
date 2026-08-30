@@ -40,6 +40,10 @@ export interface UpdateCommandDeps {
   fetchFn?: typeof fetch;
   /** 编译二进制判定（测试可注入 true 以覆盖更新全链路）。 */
   isBinary?: () => boolean;
+  /** 目标平台（测试注入；默认当前进程平台）。 */
+  platform?: NodeJS.Platform;
+  /** 目标架构（测试注入；默认当前进程架构）。 */
+  arch?: string;
   /** 输出函数；默认 stderr。 */
   out?: (message: string) => void;
 }
@@ -48,6 +52,8 @@ interface ResolvedDeps {
   execPath: string;
   fetchFn: typeof fetch;
   isBinary: () => boolean;
+  platform: NodeJS.Platform;
+  arch: string;
   out: (message: string) => void;
 }
 
@@ -56,6 +62,8 @@ function resolveDeps(deps: UpdateCommandDeps = {}): ResolvedDeps {
     execPath: deps.execPath ?? process.execPath,
     fetchFn: deps.fetchFn ?? fetch,
     isBinary: deps.isBinary ?? (() => isCompiledBinary()),
+    platform: deps.platform ?? process.platform,
+    arch: deps.arch ?? process.arch,
     out: deps.out ?? ((message) => process.stderr.write(message + "\n")),
   };
 }
@@ -278,7 +286,7 @@ export async function runUpdateCommand(
   }
   if (checkOnly) return 0;
 
-  const assetName = getPlatformAssetName();
+  const assetName = getPlatformAssetName(resolved.platform, resolved.arch);
   if (assetName === null) {
     out("当前平台不受支持，无法自动更新。请手动从 Release 下载。");
     return 1;

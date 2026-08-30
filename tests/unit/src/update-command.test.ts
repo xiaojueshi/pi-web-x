@@ -124,6 +124,10 @@ test("runUpdateCommand：完整更新流——下载→校验→备份→替换"
     execPath,
     out,
     isBinary: () => true,
+    // 固定为 linux/x64：使下载 URL 与 fakeFetch 的分支匹配
+    // （macOS/Windows runner 上默认资产名不同，会走到 unexpected url 分支）。
+    platform: "linux",
+    arch: "x64",
     fetchFn: fakeFetch,
   });
 
