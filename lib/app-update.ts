@@ -27,5 +27,5 @@ export function isNewerStableVersion(
 
 export function getPiWebReleaseUrl(version: string): string | null {
   if (!parseStableVersion(version)) return null;
-  return `https://github.com/agegr/pi-web-x/releases/tag/v${version}`;
+  return `https://github.com/xiaojueshi/pi-web-x/releases/tag/v${version}`;
 }

@@ -9,7 +9,7 @@ const CURRENT_VERSION = APP_VERSION;
 // 发布会通过 GitHub Releases（releases/tag/vX.Y.Z）；允许用环境变量覆盖检查源。
 const UPDATE_CHECK_URL =
   process.env.PI_WEB_X_UPDATE_URL ??
-  "https://api.github.com/repos/agegr/pi-web-x/releases/latest";
+  "https://api.github.com/repos/xiaojueshi/pi-web-x/releases/latest";
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5_000;
 const SKIP_VERSION_CHECK = process.env.PI_WEB_X_SKIP_VERSION_CHECK === "1";

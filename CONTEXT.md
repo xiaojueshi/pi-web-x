@@ -1,4 +1,4 @@
-# Pi Web
+# Pi Web X
 
 Pi Web hosts coding-agent sessions for user-selected projects while keeping the web server's runtime concerns separate from project work.
 
