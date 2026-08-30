@@ -35,6 +35,21 @@
 | `mermaid`、`katex`、`react-markdown`、remark/rehype | 保留（首版） | 前端 bundle 打包 | 仅在等价渲染和安全策略可证明时评估 | Markdown/数学/图表渲染回归 |
 | `ansi_up` | 保留（首版） | 前端 bundle 打包 | ANSI 输出的快照测试 | 安全转义与显示兼容 |
 
+## 目录级资产（单文件二进制无法内嵌的磁盘依赖）
+
+pi-coding-agent 在 Bun 二进制下把内置主题等解析为 `dirname(execPath)/xxx` 磁盘目录，
+单文件发布物无法携带。自 v0.8.12 起采用「目录化发布物 + 启动自举 + 防御层」三层方案：
+
+| 资产目录 | 底层解析路径 | 处置 | 复现/验证 | 风险与回退 |
+| --- | --- | --- | --- | --- |
+| `theme/`（dark.json、light.json、theme-schema.json） | `getThemesDir()` | 构建期收集为 `pi-web-x-assets-<v>.tar.gz` 随 Release 发布；启动时 `src/bootstrap-assets.ts` 校验/下载/解压到二进制旁；`lib/theme-init.ts` 在自举失败时注入无样式主题兜底 | `bun run build` 生成产物后：`assets install` 离线安装、`assets status` 校验、CI 资产生命周期冒烟 | 内网离线：`assets install` 手动安装；镜像：`PI_WEB_X_ASSETS_URL`；失败降级不阻断会话创建 |
+| `assets/`（interactive 媒体） | `getInteractiveAssetsDir()` | 同上打包；当前 Web UI 不触达，仅随发布物对齐 | CI 冒烟确认解压后目录存在 | 无实际使用面，缺失仅影响未来功能 |
+| `export-html/`（HTML 导出模板） | `getExportTemplateDir()`／`dist/core/export-html` | 同上打包；导出功能仍依赖 Node 运行时（`pi --export` 子进程），纯二进制部署给出友好降级提示 | 编译二进制 `GET /api/sessions/[id]/export` 返回明确错误信息 | 需 Node 环境；无 Node 时提示手动操作 |
+| `docs/`、`examples/`、`README.md`、`CHANGELOG.md`、`package.json` | `getDocsPath()` 等 | 不收集、不触达（Web 模式不需要） | grep 确认零引用 | 未来若使用需按同样模式登记 |
+
+运行期自举失败不会阻塞服务启动（`ensureAssets` 冷却 24h 重试；`PI_WEB_X_ASSETS_FORCE=1` 立即重试），
+会话创建另有 `initWebTheme` 兜底，主题色缺失不影响 Web 功能。
+
 ## 每次评审模板
 
 ```md

@@ -6,8 +6,18 @@
 
 ### 新增
 
-- 一键安装脚本：`install.sh`（macOS/Linux，POSIX sh）与 `install.ps1`（Windows PowerShell），自动探测平台与 libc、下载对应最新二进制、SHA256SUMS 校验、安装到 `~/.local/bin` 并注册 PATH；幂等（同版本跳过）、支持 `--dir/--version/--force/--dry-run`。
+- 目录级资产自举：pi-coding-agent 的内置主题/导出模板等目录资产打包为 `pi-web-x-assets-<版本>.tar.gz` 随 Release 发布；二进制启动时自动校验、下载并解压到自身目录（`PI_WEB_X_ASSETS_URL` 可配内网镜像；失败冷却 24h 重试且不阻断启动）。
+- CLI 子命令：
+  - `update`：检测并一键自更新（SHA256SUMS 校验、旧版备份、原子替换；`--check` 仅检测；`PI_WEB_X_UPDATE_URL`/`PI_WEB_X_RELEASE_BASE` 可配镜像）
+  - `assets status` / `assets install <包路径>`：查看内置资产状态、内网离线安装资产包
+- 安装脚本新布局：`install.sh`/`install.ps1` 默认安装到 `~/pi-web-x`（真实二进制与资产同目录），命令入口改为 `~/.local/bin/pi-web-x` 符号链接（Windows 注册目录 PATH）；旧的单文件直装 `~/.local/bin` 布局自动备份迁移。
+- 一键安装脚本：`install.sh`（macOS/Linux，POSIX sh）与 `install.ps1`（Windows PowerShell），自动探测平台与 libc、下载对应最新二进制、SHA256SUMS 校验、安装到 `~/pi-web-x` 并注册 PATH 入口；幂等（同版本跳过）、支持 `--dir/--version/--force/--dry-run`。
 - CLI 新增 `--version`/`-v`（编译二进制与 npm wrapper 同步支持）。
+
+### 修复
+
+- 编译二进制部署下（单文件发布物无内置主题资产），`/api/agent/new` 会因 `initTheme()` 抛 `ENOENT: theme/dark.json` 而整体 500。现由 `lib/theme-init.ts` 兜底（失败注入无样式主题、告警一次、不阻断会话创建），配合启动自举彻底消除。
+- `app/api/sessions/[id]/export`：纯二进制部署（无 Node 环境）下给出明确的中文降级提示，不再抛出难以理解的 “pi CLI not found”。
 
 ## [0.8.11] - 2026-02-11
 

@@ -251,7 +251,12 @@ async function exportSession(
   }
 
   const packageDir = await getPiPackageDir();
-  if (!packageDir) throw new Error("pi CLI not found");
+  if (!packageDir) {
+    throw new Error(
+      "找不到 pi CLI（dist/cli.js）。HTML 导出依赖含 Node.js 运行时的安装环境；" +
+        "请在安装有 Node.js 的环境中使用，或改用源码/npm 方式安装 pi-web-x。",
+    );
+  }
 
   const exporterUrl = pathToFileURL(
     join(packageDir, "dist", "core", "export-html", "index.js"),
