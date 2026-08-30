@@ -3,12 +3,12 @@ import {
   createAgentSessionFromServices,
   createAgentSessionServices,
   getAgentDir,
-  initTheme,
   SessionManager,
   SettingsManager,
   type ModelRuntime,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentSessionLike } from "./pi-types";
+import { initWebTheme } from "./theme-init";
 import {
   subagentFinalText,
   subagentToolDetails,
@@ -195,9 +195,11 @@ export function createSubagentController(
       }
 
       const agentDir = getAgentDir();
-      const parentModelRuntime = (
-        parent.inner as unknown as { modelRuntime: ModelRuntime }
-      ).modelRuntime;
+      const parentModelRuntime =
+        // SAFETY: parent 为父会话的 SDK 实例，modelRuntime 是其类型层未
+        // 暴露但运行时始终存在的内部字段。
+        (parent.inner as unknown as { modelRuntime: ModelRuntime })
+          .modelRuntime;
       const settingsManager = SettingsManager.create(parent.cwd, agentDir);
       const inheritedParentContext = inheritContext
         ? `The following is the active conversation context from the parent session. Use it only as background for the delegated task:\n${parentContextText(parent)}`
@@ -215,7 +217,8 @@ export function createSubagentController(
         inheritedParentContext,
       });
       const { chatOnly, appendSystemPrompt, delegatedTask } = promptPlan;
-      if (!chatOnly) initTheme();
+      // 初始化底层的全局主题；失败时降级为无样式主题，不阻断 subagent 启动。
+      if (!chatOnly) initWebTheme();
       const services = await createAgentSessionServices({
         cwd: parent.cwd,
         agentDir,
@@ -424,6 +427,8 @@ export function createSubagentController(
     const wrapper = dependencies.getSession(sessionId);
     if (wrapper?.isAlive()) {
       const run = readSubagentRun(
+        // SAFETY: SDK 条目运行时即 SessionEntry 兼容的 JSONL 结构，
+        // 类型层导出集合差异需跨类型断言。
         wrapper.inner.sessionManager.getEntries() as unknown as SessionEntry[],
         sessionId,
         wrapper.sessionFile,
@@ -435,6 +440,7 @@ export function createSubagentController(
     if (!sessionPath) return null;
     const manager = SessionManager.open(sessionPath);
     return readSubagentRun(
+      // SAFETY: 与上述 getEntries 断言同源——SDK 条目即 SessionEntry 结构。
       manager.getEntries() as unknown as SessionEntry[],
       sessionId,
       sessionPath,

@@ -3,10 +3,8 @@ import {
   createAgentSessionFromServices,
   createAgentSessionServices,
   getAgentDir,
-  initTheme,
   SessionManager,
   SettingsManager,
-  Theme,
 } from "@earendil-works/pi-coding-agent";
 import {
   KeybindingsManager as TuiKeybindingsManager,
@@ -17,6 +15,8 @@ import { existsSync, realpathSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { validateAgentImages } from "./image-attachments";
 import { invalidateModelsCache } from "./models-cache";
+import { initWebTheme } from "./theme-init";
+import { PLAIN_TEXT_THEME } from "./plain-text-theme";
 import { resolveVisibleModels, selectInitialModelScope } from "./model-scope";
 import {
   createProjectCommandBashExtension,
@@ -34,7 +34,7 @@ import {
 } from "./project-trust";
 import { persistExplicitStartupPreferences } from "./startup-preferences";
 import { notifySessionComplete } from "./web-push";
-import type { SlashCommandInfo } from "@earendil-works/pi-coding-agent";
+import type { SlashCommandInfo, Theme } from "@earendil-works/pi-coding-agent";
 import type {
   AgentSessionLike,
   ExtensionUiContextLike,
@@ -196,54 +196,6 @@ const THINKING_LEVEL_NAMES = new Set<ThinkingLevel>([
   "max",
 ]);
 
-// Extensions require a complete Theme, while the web UI applies its own styling.
-class PlainTextTheme extends Theme {
-  constructor() {
-    super(
-      { thinkingXhigh: "", searchMatchText: "" } as ConstructorParameters<
-        typeof Theme
-      >[0],
-      { selectedBg: "" } as ConstructorParameters<typeof Theme>[1],
-      "truecolor",
-    );
-  }
-
-  override fg(...[, text]: Parameters<Theme["fg"]>): string {
-    return text;
-  }
-  override bg(...[, text]: Parameters<Theme["bg"]>): string {
-    return text;
-  }
-  override bold(text: string): string {
-    return text;
-  }
-  override italic(text: string): string {
-    return text;
-  }
-  override underline(text: string): string {
-    return text;
-  }
-  override inverse(text: string): string {
-    return text;
-  }
-  override strikethrough(text: string): string {
-    return text;
-  }
-  override getFgAnsi(): string {
-    return "";
-  }
-  override getBgAnsi(): string {
-    return "";
-  }
-  override getThinkingBorderColor(): (text: string) => string {
-    return (text) => text;
-  }
-  override getBashModeBorderColor(): (text: string) => string {
-    return (text) => text;
-  }
-}
-
-const PLAIN_TEXT_THEME = new PlainTextTheme();
 const CUSTOM_UI_KEYBINDINGS = new TuiKeybindingsManager(TUI_KEYBINDINGS);
 
 function withExtensionTools(
@@ -430,7 +382,7 @@ export class AgentSessionWrapper {
               notifyType: "warning",
               message:
                 "Extension requested shutdown, but shutdown is not supported in Pi Web X.",
-            } as ExtensionUiRequest as AgentEvent),
+            } as AgentEvent),
           onError: (error) =>
             this.emit({
               type: "extension_error",
@@ -570,8 +522,8 @@ export class AgentSessionWrapper {
     writeFileSync(sessionFile, content, { encoding: "utf8", flag: "wx" });
 
     // Pi normally delays the first flush until an assistant message exists.
-    // A leading shell command has no assistant message, so mark this SDK
-    // manager as flushed after writing its own generated entries.
+    // SAFETY: SDK SessionManager 未在类型层暴露 flushed 字段；注释说明的
+    // 写入时序保证该字段在读取前已存在（参数即自写条目的会话）。
     (manager as unknown as { flushed: boolean }).flushed = true;
     cacheSessionPath(this.inner.sessionId, sessionFile);
   }
@@ -1281,7 +1233,7 @@ export class AgentSessionWrapper {
       widgetKey: key,
       widgetLines: undefined,
       widgetPlacement: undefined,
-    } as ExtensionUiRequest as AgentEvent);
+    } as AgentEvent);
   }
 
   private clearExtensionWidget(key: string, emitClear = true): number {
@@ -1408,7 +1360,7 @@ export class AgentSessionWrapper {
       widgetKey: active.key,
       widgetLines,
       widgetPlacement: active.placement,
-    } as ExtensionUiRequest as AgentEvent);
+    } as AgentEvent);
   }
 
   private setExtensionWidgetFactory(
@@ -1494,7 +1446,7 @@ export class AgentSessionWrapper {
       id,
       method: "custom",
       lines,
-    } as ExtensionUiRequest as AgentEvent;
+    } as AgentEvent;
     this.pendingUiRequests.set(id, event);
     this.emit(event);
   }
@@ -1516,7 +1468,7 @@ export class AgentSessionWrapper {
       method: "custom",
       lines: [],
       closed: true,
-    } as ExtensionUiRequest as AgentEvent);
+    } as AgentEvent);
     custom.resolve(value);
   }
 
@@ -1710,7 +1662,7 @@ export class AgentSessionWrapper {
           method: "notify",
           message,
           notifyType: type,
-        } as ExtensionUiRequest as AgentEvent);
+        } as AgentEvent);
       },
       onTerminalInput: () => () => {},
       setStatus: (key, text) => {
@@ -1722,7 +1674,7 @@ export class AgentSessionWrapper {
           method: "setStatus",
           statusKey: key,
           statusText: text,
-        } as ExtensionUiRequest as AgentEvent);
+        } as AgentEvent);
       },
       setWorkingMessage: () => {},
       setWorkingVisible: () => {},
@@ -1733,6 +1685,8 @@ export class AgentSessionWrapper {
         if (typeof content === "function") {
           this.setExtensionWidgetFactory(
             key,
+            // SAFETY: setWidget 的 content 在运行时已按 typeof 分支判定为函数
+            // 才会走到 factory 路径，此处断言只收窄类型层的 string[]|fn 联合。
             content as unknown as ExtensionWidgetFactory,
             options,
           );
@@ -1759,7 +1713,7 @@ export class AgentSessionWrapper {
           widgetKey: key,
           widgetLines: content,
           widgetPlacement: options?.placement,
-        } as ExtensionUiRequest as AgentEvent);
+        } as AgentEvent);
       },
       setFooter: () => {},
       setHeader: () => {},
@@ -1769,7 +1723,7 @@ export class AgentSessionWrapper {
           id: randomUUID(),
           method: "setTitle",
           title,
-        } as ExtensionUiRequest as AgentEvent);
+        } as AgentEvent);
       },
       custom: <T = unknown>(factory: unknown, options?: unknown) =>
         this.requestExtensionCustomUi<T>(factory, options),
@@ -1779,7 +1733,7 @@ export class AgentSessionWrapper {
           id: randomUUID(),
           method: "set_editor_text",
           text,
-        } as ExtensionUiRequest as AgentEvent);
+        } as AgentEvent);
       },
       setEditorText: (text) => {
         this.emit({
@@ -1787,7 +1741,7 @@ export class AgentSessionWrapper {
           id: randomUUID(),
           method: "set_editor_text",
           text,
-        } as ExtensionUiRequest as AgentEvent);
+        } as AgentEvent);
       },
       getEditorText: () => "",
       addAutocompleteProvider: () => {},
@@ -1979,6 +1933,8 @@ export async function setRpcSessionTools(
     const manager = SessionManager.open(sessionFile, undefined);
     if (
       readSubagentSessionResources(
+        // SAFETY: SDK SessionManager 运行时的条目即 SessionEntry 兼容的
+        // JSONL 结构，类型层因导出集合差异需跨类型断言。
         manager.getEntries() as unknown as SessionEntry[],
       )
     ) {
@@ -1998,6 +1954,8 @@ export async function setRpcSessionTools(
     throw new Error("Cannot change tools while the session is running");
   if (
     readSubagentSessionResources(
+      // SAFETY: 见上——SDK 条目与 SessionEntry 为同一 JSONL 结构，
+      // 类型层导出集合不同故需断言。
       existing.inner.sessionManager.getEntries() as unknown as SessionEntry[],
     )
   ) {
@@ -2092,6 +2050,8 @@ export function getRpcSessionInfos(): SessionInfo[] {
 
     const manager = session.inner.sessionManager;
     const header = manager.getHeader();
+    // SAFETY: SDK SessionManager 运行时的条目即 SessionEntry 兼容的
+    // JSONL 结构，类型层因导出集合差异需跨类型断言。
     const entries = manager.getEntries() as unknown as Array<
       { type: string; timestamp: string } | SessionMessageEntry
     >;
@@ -2104,6 +2064,7 @@ export function getRpcSessionInfos(): SessionInfo[] {
     const sessionFile = manager.getSessionFile() ?? session.sessionFile;
     const persisted = Boolean(sessionFile && existsSync(sessionFile));
     const subagent = readSubagentRun(
+      // SAFETY: 与 getEntries 断言同源——SDK 条目即 SessionEntry 结构。
       entries as unknown as SessionEntry[],
       header?.id ?? session.sessionId,
       sessionFile ?? "",
@@ -2230,12 +2191,14 @@ export async function startRpcSession(
   const sessionCwd = sessionManager.getCwd();
   const subagentResources = sessionFile
     ? readSubagentSessionResources(
+        // SAFETY: 与上述 getEntries 断言同源——SDK 条目即 SessionEntry 结构。
         sessionManager.getEntries() as unknown as SessionEntry[],
       )
     : null;
   const persistedToolNames = subagentResources
     ? undefined
     : readSessionToolSelection(
+        // SAFETY: 与上述 getEntries 断言同源——SDK 条目即 SessionEntry 结构。
         sessionManager.getEntries() as unknown as SessionEntry[],
       );
   const selectedToolNames =
@@ -2254,7 +2217,9 @@ export async function startRpcSession(
   const finishStartingSession = trackStartingSession(sessionCwd);
   const starting = (async () => {
     // Some extensions access the SDK's global theme even outside the terminal UI.
-    if (!chatOnly) initTheme();
+    // 初始化底层的全局主题；失败时降级为无样式主题，不阻断会话创建。
+    // （见 lib/theme-init.ts：单文件二进制下内置主题资产可能缺失）
+    if (!chatOnly) initWebTheme();
     const agentDir = getAgentDir();
 
     // Determine which tools to pass based on requested toolNames.
