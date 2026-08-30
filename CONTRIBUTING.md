@@ -5,12 +5,11 @@
 
 ## 环境准备
 
-- 语言版本管理统一使用 **mise**，Bun 固定 **1.4.0**。不要引入 nvm/fnm/sdkman 等其它版本管理器。
+- Bun 固定 **1.4.0**。不要引入 nvm/fnm/sdkman 等其它版本管理器。
 - 不要引入 Next.js、RSC、SSR 或 Node 服务端运行时；`bun build --compile` 是发布门槛。
 - 包管理器使用 Bun 自带安装（`bun install`），不要使用 pnpm 接管依赖。
 
 ```bash
-mise install
 bun install
 ```
 

@@ -56,7 +56,7 @@ pi-web-x service --help
 
 ## 开发
 
-需要 mise 中的 Bun 1.4：
+需要 Bun 1.4：
 
 ```bash
 bun install

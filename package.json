@@ -22,18 +22,18 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun --watch src/cli.ts -- --no-open",
-    "dev:lan": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun --watch src/cli.ts -- -H 0.0.0.0 --no-open",
-    "build": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun build --compile --target=bun-linux-x64 src/cli.ts --asset ./public --outfile dist/pi-web-x",
-    "build:all": "mise exec bun@1.4.0 -- bun run scripts/build-all.ts",
-    "start": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun src/cli.ts",
-    "start:lan": "mise exec bun@1.4.0 -- bun run scripts/build-css.ts && mise exec bun@1.4.0 -- bun src/cli.ts -H 0.0.0.0",
-    "test": "mise exec bun@1.4.0 -- bun test --path-ignore-patterns='**/e2e/**'",
-    "test:bun": "mise exec bun@1.4.0 -- bun test tests --path-ignore-patterns='**/e2e/**'",
-    "typecheck": "mise exec bun@1.4.0 -- bunx tsc --noEmit",
-    "release": "mise exec bun@1.4.0 -- bun run scripts/build-all.ts",
+    "dev": "bun run scripts/build-css.ts && bun --watch src/cli.ts -- --no-open",
+    "dev:lan": "bun run scripts/build-css.ts && bun --watch src/cli.ts -- -H 0.0.0.0 --no-open",
+    "build": "bun run scripts/build-css.ts && bun build --compile --target=bun-linux-x64 src/cli.ts --asset ./public --outfile dist/pi-web-x",
+    "build:all": "bun run scripts/build-all.ts",
+    "start": "bun run scripts/build-css.ts && bun src/cli.ts",
+    "start:lan": "bun run scripts/build-css.ts && bun src/cli.ts -H 0.0.0.0",
+    "test": "bun test --path-ignore-patterns='**/e2e/**'",
+    "test:bun": "bun test tests --path-ignore-patterns='**/e2e/**'",
+    "typecheck": "bunx tsc --noEmit",
+    "release": "bun run scripts/build-all.ts",
     "lint": "eslint .",
-    "test:e2e": "mise exec bun@1.4.0 -- bun run build && mise exec bun@1.4.0 -- bunx playwright test"
+    "test:e2e": "bun run build && bunx playwright test"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.84.3",

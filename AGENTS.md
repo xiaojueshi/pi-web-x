@@ -11,7 +11,7 @@ bun run build          # 当前 Linux x64 单文件二进制
 bun run build:all       # 八个平台二进制
 ```
 
-使用 `mise exec bun@1.4.0 -- bun ...`，不要引入 Next.js、RSC、SSR 或 Node 服务端运行时。`bun build --compile` 是发布门槛。
+使用 `bun ...`，不要引入 Next.js、RSC、SSR 或 Node 服务端运行时。`bun build --compile` 是发布门槛。
 
 ## 架构
 
