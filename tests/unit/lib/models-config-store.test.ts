@@ -9,7 +9,6 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -21,13 +20,12 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-const jiti = createJiti(import.meta.url);
 const { normalizeModelsConfigCosts, readModelsConfig, writeModelsConfig } =
-  await jiti.import("../../../lib/models-config-store.ts");
-const { invalidateModelsCache, loadModelsWithCache } = await jiti.import(
+  await import("../../../lib/models-config-store.ts");
+const { invalidateModelsCache, loadModelsWithCache } = await import(
   "../../../lib/models-cache.ts",
 );
-const { buildSessionContext, getSessionEntries } = await jiti.import(
+const { buildSessionContext, getSessionEntries } = await import(
   "../../../lib/session-reader.ts",
 );
 

@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const {
   buildSkillUpdateArgs,
   checkSkillUpdate,
   checkSkillUpdates,
   skillUpdateKey,
-} = await jiti.import("../../../lib/skill-updates.ts");
+} = await import("../../../lib/skill-updates.ts");
 
 function install(overrides = {}) {
   return {

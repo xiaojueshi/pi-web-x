@@ -4,13 +4,11 @@
 // size exceeded) and #555. Slicing bounds conversion and transfer to O(tail).
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { sliceActiveBranch, buildSessionContext } = await jiti.import(
+const { sliceActiveBranch, buildSessionContext } = await import(
   "../../../lib/session-reader.ts",
 );
-const { computeSessionStats } = await jiti.import(
+const { computeSessionStats } = await import(
   "../../../lib/session-stats.ts",
 );
 

@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { loadExplorerOpen, saveExplorerOpen } = await jiti.import(
+const { loadExplorerOpen, saveExplorerOpen } = await import(
   "../../../lib/file-explorer-state.ts",
 );
 

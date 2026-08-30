@@ -4,8 +4,7 @@ import { test } from "bun:test";
 const isWindows = process.platform === "win32";
 
 async function loadSubject() {
-  const { createJiti } = await import("jiti");
-  return createJiti(import.meta.url).import("../../../lib/paths.ts");
+  return import("../../../lib/paths.ts");
 }
 
 test("toNativePath converts git's POSIX output to native separators", async () => {

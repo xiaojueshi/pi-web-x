@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, afterAll } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -21,15 +20,10 @@ const testAgentDir = await mkdtemp(
 );
 process.env.PI_CODING_AGENT_DIR = testAgentDir;
 
-const jiti = createJiti(import.meta.url, {
-  alias: { "@": process.cwd() },
-  interopDefault: true,
-  moduleCache: false,
-});
-const { GET, PUT, PATCH, DELETE } = await jiti.import(
+const { GET, PUT, PATCH, DELETE } = await import(
   "../../../../../../app/api/subagents/profiles/route.ts",
 );
-const { allowFileRoot } = await jiti.import(
+const { allowFileRoot } = await import(
   "../../../../../../lib/file-access.ts",
 );
 

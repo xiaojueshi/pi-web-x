@@ -2,13 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const { AnsiText } = await jiti.import("../../../components/AnsiText.tsx");
+const { AnsiText } = await import("../../../components/AnsiText.tsx");
 
 function toHtml(text) {
   return renderToStaticMarkup(React.createElement(AnsiText, { text }));

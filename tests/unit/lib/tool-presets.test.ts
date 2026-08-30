@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const {
   PRESET_DEFAULT,
   PRESET_FULL,
@@ -10,7 +8,7 @@ const {
   PRESET_READ_ONLY,
   getPresetFromTools,
   getToolNamesForPreset,
-} = await jiti.import("../../../lib/tool-presets.ts");
+} = await import("../../../lib/tool-presets.ts");
 
 const BUILTIN_NAMES = [
   "bash",

@@ -4,11 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
 import { SettingsManager } from "@earendil-works/pi-coding-agent";
-import { createJiti } from "jiti";
 
-const { persistExplicitStartupPreferences } = await createJiti(
-  import.meta.url,
-).import("../../../lib/startup-preferences.ts");
+const { persistExplicitStartupPreferences } = await import(
+  "../../../lib/startup-preferences.ts",
+);
 
 async function withSettings(run) {
   const root = await mkdtemp(join(tmpdir(), "pi-web-x-startup-preferences-"));

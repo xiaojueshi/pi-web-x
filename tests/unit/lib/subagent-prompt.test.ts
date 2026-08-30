@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const { buildSubagentPromptPlan } = await createJiti(import.meta.url).import(
+const { buildSubagentPromptPlan } = await import(
   "../../../lib/subagent-prompt.ts",
 );
 

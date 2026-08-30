@@ -3,14 +3,13 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const {
   isPowerShellToolEnabled,
   readPowerShellToolEnabled,
   resolveShellTools,
   writePowerShellToolEnabled,
-} = await createJiti(import.meta.url).import(
+} = await import(
   "../../../lib/powershell-settings.ts",
 );
 

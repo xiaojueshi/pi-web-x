@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const { buildSlashCommandLayout } = await jiti.import(
+const { buildSlashCommandLayout } = await import(
   "../../../components/ChatInput.tsx",
 );
 

@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const {
   getLastSettingsSection,
   getLastSettingsSelection,
   setLastSettingsSection,
   setLastSettingsSelection,
-} = await jiti.import("../../../lib/settings-navigation.ts");
+} = await import("../../../lib/settings-navigation.ts");
 
 function createStorage(initial = {}) {
   const values = new Map(Object.entries(initial));

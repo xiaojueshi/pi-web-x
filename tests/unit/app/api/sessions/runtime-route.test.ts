@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -37,18 +36,13 @@ const stateRoute = await readFile(
   ),
   "utf8",
 );
-const jiti = createJiti(import.meta.url, {
-  alias: { "@": process.cwd() },
-  interopDefault: true,
-  moduleCache: false,
-});
-const { DELETE: deleteSession, GET: getSessionDetail } = await jiti.import(
+const { DELETE: deleteSession, GET: getSessionDetail } = await import(
   "../../../../../app/api/sessions/[id]/route.ts",
 );
-const { GET: getSessionState } = await jiti.import(
+const { GET: getSessionState } = await import(
   "../../../../../app/api/sessions/[id]/state/route.ts",
 );
-const { cacheSessionPath, invalidateSessionPathCache } = await jiti.import(
+const { cacheSessionPath, invalidateSessionPathCache } = await import(
   "../../../../../lib/session-reader.ts",
 );
 

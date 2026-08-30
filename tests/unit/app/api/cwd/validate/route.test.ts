@@ -3,7 +3,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -15,15 +14,10 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-const jiti = createJiti(import.meta.url, {
-  alias: { "@": process.cwd() },
-  interopDefault: true,
-  moduleCache: false,
-});
-const { POST } = await jiti.import(
+const { POST } = await import(
   "../../../../../../app/api/cwd/validate/route.ts",
 );
-const { projectIdentityKey } = await jiti.import(
+const { projectIdentityKey } = await import(
   "../../../../../../lib/project-identity.ts",
 );
 

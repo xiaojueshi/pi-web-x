@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { computeSessionStats, mergeSessionStats } = await jiti.import(
+const { computeSessionStats, mergeSessionStats } = await import(
   "../../../lib/session-stats.ts",
 );
-const { buildContextEntries } = await jiti.import(
+const { buildContextEntries } = await import(
   "@earendil-works/pi-coding-agent",
 );
 

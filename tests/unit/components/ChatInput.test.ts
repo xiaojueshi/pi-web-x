@@ -1,13 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const React = await jiti.import("react");
-const { renderToStaticMarkup } = await jiti.import("react-dom/server");
+const React = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
 const {
   ChatInput,
   ModelErrorBanner,
@@ -22,8 +17,8 @@ const {
   getUserMessageDraftImages,
   isExactSlashCommand,
   shouldCompressImageFile,
-} = await jiti.import("../../../components/ChatInput.tsx");
-const { ModelSelector } = await jiti.import(
+} = await import("../../../components/ChatInput.tsx");
+const { ModelSelector } = await import(
   "../../../components/ModelSelector.tsx",
 );
 const {
@@ -33,8 +28,8 @@ const {
   mergeRestoredSubmissionText,
   rekeyDraft,
   setDraft,
-} = await jiti.import("@/lib/draft-store.ts");
-const { I18nProvider } = await jiti.import("@/hooks/useI18n");
+} = await import("@/lib/draft-store.ts");
+const { I18nProvider } = await import("@/hooks/useI18n");
 
 test("renders the upstream model error", () => {
   const html = renderToStaticMarkup(

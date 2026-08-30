@@ -1,20 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const React = await jiti.import("react");
-const { renderToStaticMarkup } = await jiti.import("react-dom/server");
+const React = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
 const {
   ExtensionStatusBar,
   formatExtensionStatusLine,
   sanitizeExtensionStatusText,
-} = await jiti.import("../../../components/ExtensionStatusBar.tsx");
-const { I18nProvider } = await jiti.import("@/hooks/useI18n");
+} = await import("../../../components/ExtensionStatusBar.tsx");
+const { I18nProvider } = await import("@/hooks/useI18n");
 
 function renderStatusBar(props) {
   return renderToStaticMarkup(

@@ -3,12 +3,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import lockfile from "proper-lockfile";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 
 const { removeStoredCredentialIfType, storeProviderCredential } =
-  await createJiti(import.meta.url).import(
+  await import(
     "../../../lib/provider-credential-store.ts",
   );
 

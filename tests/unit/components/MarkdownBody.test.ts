@@ -2,16 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const { MarkdownBody } = await jiti.import(
+const { MarkdownBody } = await import(
   "../../../components/MarkdownBody.tsx",
 );
-const { normalizeDisplayMath } = await jiti.import("../../../lib/markdown.ts");
+const { normalizeDisplayMath } = await import("../../../lib/markdown.ts");
 
 function renderMarkdown(markdown) {
   return renderToStaticMarkup(

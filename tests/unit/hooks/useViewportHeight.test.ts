@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { shouldUseVisualViewportHeight } = await jiti.import(
+const { shouldUseVisualViewportHeight } = await import(
   "../../../hooks/useViewportHeight.ts",
 );
 

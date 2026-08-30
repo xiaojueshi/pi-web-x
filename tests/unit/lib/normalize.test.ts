@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { normalizeStreamingToolCalls, normalizeToolCalls } = await jiti.import(
+const { normalizeStreamingToolCalls, normalizeToolCalls } = await import(
   "../../../lib/normalize.ts",
 );
 

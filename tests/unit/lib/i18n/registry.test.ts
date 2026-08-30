@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const { getLocalePlugin, getSupportedLocales, resolveBrowserLocale } =
-        await jiti.import("../../../../lib/i18n/registry.ts");
+        await import("../../../../lib/i18n/registry.ts");
 
 test("uses the first supported browser language and falls back to English", () => {
         assert.equal(resolveBrowserLocale(["zh-CN", "en-US"]), "zh-CN");

@@ -4,10 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, { tsconfigPaths: true });
-const { AgentSessionWrapper } = await jiti.import(
+const { AgentSessionWrapper } = await import(
   "../../../lib/rpc-manager.ts",
 );
 

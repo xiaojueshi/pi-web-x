@@ -3,11 +3,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const { annotateSkillsWithInstallInfo, getGlobalSkillsLockPath } =
-  await jiti.import("../../../lib/skill-lock.ts");
+  await import("../../../lib/skill-lock.ts");
 
 function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");

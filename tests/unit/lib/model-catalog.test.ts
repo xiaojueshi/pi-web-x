@@ -3,8 +3,7 @@ import { test } from "bun:test";
 
 async function loadSubject() {
   try {
-    const { createJiti } = await import("jiti");
-    return createJiti(import.meta.url).import("../../../lib/model-catalog.ts");
+    return import("../../../lib/model-catalog.ts");
   } catch {
     return import("../../../lib/model-catalog.ts");
   }

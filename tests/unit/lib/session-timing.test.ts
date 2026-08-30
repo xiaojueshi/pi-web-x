@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, { tsconfigPaths: true });
-const { computeSessionTotalActiveMs } = await jiti.import(
+const { computeSessionTotalActiveMs } = await import(
   "../../../lib/session-timing.ts",
 );
 

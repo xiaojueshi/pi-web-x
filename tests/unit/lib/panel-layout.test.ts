@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const {
   clampPanelWidth,
   getDefaultRightPanelWidth,
   getRightPanelMaxWidth,
   getSidebarMaxWidth,
-} = await jiti.import("../../../lib/panel-layout.ts");
+} = await import("../../../lib/panel-layout.ts");
 
 test("clamps panel widths to finite bounds", () => {
   assert.equal(clampPanelWidth(420.4, 180, 480), 420);

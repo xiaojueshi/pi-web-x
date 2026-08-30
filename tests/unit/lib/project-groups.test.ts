@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { projectIdentityKey } = await jiti.import(
+const { projectIdentityKey } = await import(
   "../../../lib/project-identity.ts",
 );
 const { getProjectActivity, getRecentProjects, sessionsForProject } =
-  await jiti.import("../../../lib/project-groups.ts");
+  await import("../../../lib/project-groups.ts");
 
 function session(id, projectRoot, modified) {
   return {

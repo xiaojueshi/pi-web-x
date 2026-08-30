@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, afterAll } from "bun:test";
-import { createJiti } from "jiti";
 
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 const testAgentDir = await mkdtemp(
@@ -11,12 +10,7 @@ const testAgentDir = await mkdtemp(
 );
 process.env.PI_CODING_AGENT_DIR = testAgentDir;
 
-const jiti = createJiti(import.meta.url, {
-  alias: { "@": process.cwd() },
-  interopDefault: true,
-  moduleCache: false,
-});
-const { GET, PUT } = await jiti.import(
+const { GET, PUT } = await import(
   "../../../../../../app/api/subagents/settings/route.ts",
 );
 

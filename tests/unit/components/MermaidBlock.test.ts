@@ -1,17 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const React = await jiti.import("react");
-const { renderToStaticMarkup } = await jiti.import("react-dom/server");
-const { MermaidBlock, CodeBlock } = await jiti.import(
+const React = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { MermaidBlock, CodeBlock } = await import(
   "../../../components/MermaidBlock.tsx",
 );
-const { I18nProvider } = await jiti.import("@/hooks/useI18n");
+const { I18nProvider } = await import("@/hooks/useI18n");
 
 // Simple sequenceDiagram for testing
 const mermaidSrc = `sequenceDiagram

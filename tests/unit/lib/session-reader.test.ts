@@ -9,7 +9,6 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -21,8 +20,7 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-const jiti = createJiti(import.meta.url);
-const { sessionPathKey } = await jiti.import("../../../lib/session-path.ts");
+const { sessionPathKey } = await import("../../../lib/session-path.ts");
 const {
   listAllSessions,
   mergeSessionLists,
@@ -33,8 +31,8 @@ const {
   readSessionHeader,
   resolveSessionIdByPath,
   resolveSessionPath,
-} = await jiti.import("../../../lib/session-reader.ts");
-const { SessionManager } = await jiti.import("@earendil-works/pi-coding-agent");
+} = await import("../../../lib/session-reader.ts");
+const { SessionManager } = await import("@earendil-works/pi-coding-agent");
 
 function resetSessionListState() {
   globalThis.__piSessionListCache = undefined;

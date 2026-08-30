@@ -6,7 +6,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const routeSrc = await readFileSync(
   new URL(
@@ -15,12 +14,7 @@ const routeSrc = await readFileSync(
   ),
   "utf8",
 );
-const jiti = createJiti(import.meta.url, {
-  alias: { "@": process.cwd() },
-  interopDefault: true,
-  moduleCache: false,
-});
-const { buildSessionContext } = await jiti.import("@/lib/session-reader");
+const { buildSessionContext } = await import("@/lib/session-reader");
 
 test("context route parses ?tail and ?before, excluding the boundary on paging", () => {
   assert.match(

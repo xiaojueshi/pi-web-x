@@ -3,14 +3,13 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const {
   appendSubagentInputFiles,
   loadSubagentInputFiles,
   MAX_SUBAGENT_INPUT_BYTES,
   MAX_SUBAGENT_INPUT_FILES,
-} = await createJiti(import.meta.url).import("../../../lib/subagent-input.ts");
+} = await import("../../../lib/subagent-input.ts");
 
 test("loads cwd-relative UTF-8 files and formats them as delegated user input", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-input-"));

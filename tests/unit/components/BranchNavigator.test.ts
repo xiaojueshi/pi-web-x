@@ -1,17 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
 const {
   buildActivePath,
   compressChain,
   hasSessionBranches,
   selectTopLevelBranches,
-} = await jiti.import("../../../components/BranchNavigator.tsx");
+} = await import("../../../components/BranchNavigator.tsx");
 
 const msg = (id, role, text) => ({
   type: "message",

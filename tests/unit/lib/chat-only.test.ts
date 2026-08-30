@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const { CHAT_ONLY_RESOURCE_LOADER_OPTIONS, contextFilesSystemPrompt } =
-  await createJiti(import.meta.url).import("../../../lib/chat-only.ts");
+  await import("../../../lib/chat-only.ts");
 
 test("Chat only disables optional resources but retains Pi context discovery", () => {
   assert.equal(CHAT_ONLY_RESOURCE_LOADER_OPTIONS.noExtensions, true);

@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const {
   TOOL_SELECTION_TYPE,
   appendSessionToolSelection,
   readSessionToolSelection,
   validateSessionToolSelection,
-} = await createJiti(import.meta.url).import(
+} = await import(
   "../../../lib/session-tool-selection.ts",
 );
 

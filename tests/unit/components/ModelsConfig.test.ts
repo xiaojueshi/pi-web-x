@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, { tsconfigPaths: true });
 const {
   hasModelCostDraftValue,
   modelCostToDraft,
@@ -11,7 +9,7 @@ const {
   serializeHeaderRows,
   setCompatBool,
   updateHeaderRow,
-} = await jiti.import("../../../components/models-config-helpers.ts");
+} = await import("../../../components/models-config-helpers.ts");
 
 const source = await readFile(
   new URL("../../../components/ModelsConfig.tsx", import.meta.url),

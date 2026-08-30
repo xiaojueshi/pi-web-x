@@ -3,7 +3,6 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -15,11 +14,7 @@ afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
 
-const jiti = createJiti(import.meta.url, {
-  interopDefault: true,
-  moduleCache: false,
-});
-const { getRpcSessionInfos } = await jiti.import("../../../lib/rpc-manager.ts");
+const { getRpcSessionInfos } = await import("../../../lib/rpc-manager.ts");
 
 function makeRuntimeSession({ id, filePath, running, entries }) {
   const timestamp = "2026-08-12T01:02:03.000Z";

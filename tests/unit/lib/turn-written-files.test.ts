@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url, { tsconfigPaths: true });
-const { extractTurnWrittenFiles } = await jiti.import(
+const { extractTurnWrittenFiles } = await import(
   "../../../lib/turn-written-files.ts",
 );
 

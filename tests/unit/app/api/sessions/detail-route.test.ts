@@ -6,18 +6,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const routeSrc = await readFileSync(
     new URL("../../../../../app/api/sessions/[id]/route.ts", import.meta.url),
     "utf8",
 );
-const jiti = createJiti(import.meta.url, {
-    alias: { "@": process.cwd() },
-    interopDefault: true,
-    moduleCache: false,
-});
-const { buildSessionContext } = await jiti.import("@/lib/session-reader");
+const { buildSessionContext } = await import("@/lib/session-reader");
 
 test("detail route parses ?tail: default 50, NaN-safe, capped at 1000", () => {
     assert.match(

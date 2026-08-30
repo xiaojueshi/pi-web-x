@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { INITIAL_STREAMING_STATE, streamReducer } = await jiti.import(
+const { INITIAL_STREAMING_STATE, streamReducer } = await import(
   "../../../lib/streaming-message.ts",
 );
 

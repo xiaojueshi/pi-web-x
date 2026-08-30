@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const {
   getLastOpenSession,
   setLastOpenSession,
   clearLastOpen,
   workspaceKeyOf,
-} = await jiti.import("../../../lib/workspace-memory.ts");
+} = await import("../../../lib/workspace-memory.ts");
 
 function createStorage(initial = {}) {
   const values = new Map(Object.entries(initial));

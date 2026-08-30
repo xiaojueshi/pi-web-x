@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { getPreferredToolPreset, setPreferredToolPreset } = await jiti.import(
+const { getPreferredToolPreset, setPreferredToolPreset } = await import(
   "../../../lib/tool-preset-preference.ts",
 );
-const { TOOL_PRESET_VALUES } = await jiti.import(
+const { TOOL_PRESET_VALUES } = await import(
   "../../../lib/tool-presets.ts",
 );
 

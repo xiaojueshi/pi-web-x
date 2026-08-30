@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { isEventIncludedInSnapshot, toClientAgentEvent } = await jiti.import(
+const { isEventIncludedInSnapshot, toClientAgentEvent } = await import(
   "../../../lib/agent-event-wire.ts",
 );
 

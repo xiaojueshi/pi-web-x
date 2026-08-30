@@ -1,17 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
 const source = await readFile(
   new URL("../../../components/SkillsConfig.tsx", import.meta.url),
   "utf8",
 );
-const jiti = createJiti(import.meta.url, {
-  jsx: { runtime: "automatic" },
-  tsconfigPaths: true,
-});
-const { orderSkillsByDormancy } = await jiti.import(
+const { orderSkillsByDormancy } = await import(
   "../../../components/SkillsConfig.tsx",
 );
 

@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
-const { getPiWebReleaseUrl, isNewerStableVersion } = await jiti.import(
+const { getPiWebReleaseUrl, isNewerStableVersion } = await import(
   "../../../lib/app-update.ts",
 );
 

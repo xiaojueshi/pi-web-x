@@ -19,8 +19,7 @@ afterEach(async () => {
 const execFileAsync = promisify(execFile);
 
 async function loadSubject() {
-  const { createJiti } = await import("jiti");
-  return createJiti(import.meta.url).import("../../../lib/worktree.ts");
+  return import("../../../lib/worktree.ts");
 }
 
 async function git(cwd, args) {

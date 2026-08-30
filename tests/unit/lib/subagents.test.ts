@@ -10,7 +10,6 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, afterAll } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -41,10 +40,10 @@ const {
   SUBAGENT_META_TYPE,
   SUBAGENT_RESULT_TYPE,
   withSubagentExtensionTools,
-} = await createJiti(import.meta.url).import("../../../lib/subagents.ts");
-const { isSubagentProfileOverridden } = await createJiti(
-  import.meta.url,
-).import("../../../lib/subagent-profile-precedence.ts");
+} = await import("../../../lib/subagents.ts");
+const { isSubagentProfileOverridden } = await import(
+  "../../../lib/subagent-profile-precedence.ts",
+);
 
 afterAll(async () => {
   if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;

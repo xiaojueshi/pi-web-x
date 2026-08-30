@@ -18,8 +18,7 @@ afterEach(async () => {
 // the app resolves them (tsconfig moduleResolution: "bundler"); bare
 // `import("../../../lib/path-security.ts")` only works while that file has no imports.
 async function loadSubject() {
-  const { createJiti } = await import("jiti");
-  return createJiti(import.meta.url).import("../../../lib/path-security.ts");
+  return import("../../../lib/path-security.ts");
 }
 
 test("rejects an existing path that escapes an allowed root through a symlink", async () => {

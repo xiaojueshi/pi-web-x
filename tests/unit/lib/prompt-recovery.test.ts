@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const { userMessageKey } = await createJiti(import.meta.url).import(
+const { userMessageKey } = await import(
   "../../../lib/prompt-recovery.ts",
 );
 

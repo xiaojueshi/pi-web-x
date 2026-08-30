@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 
 async function loadSubject() {
-  const { createJiti } = await import("jiti");
-  return createJiti(import.meta.url).import("../../../lib/web-push.ts");
+  return import("../../../lib/web-push.ts");
 }
 
 const { createWebPushNotifier, localeText } = await loadSubject();

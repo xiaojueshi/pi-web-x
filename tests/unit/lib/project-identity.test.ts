@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 
 async function loadSubject() {
-  const { createJiti } = await import("jiti");
-  return createJiti(import.meta.url).import("../../../lib/project-identity.ts");
+  return import("../../../lib/project-identity.ts");
 }
 
 test("Windows project identity ignores full-path casing and separator style", async () => {

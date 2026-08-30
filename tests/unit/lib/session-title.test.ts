@@ -2,16 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { convertToLlm } from "@earendil-works/pi-coding-agent";
-import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
 const {
   appendTitleRequestToTrailingUser,
   buildSessionTitleAgentOptions,
   generateSessionTitle,
   parseGeneratedSessionTitle,
   sanitizeTitleMessages,
-} = await jiti.import("../../../lib/session-title.ts");
+} = await import("../../../lib/session-title.ts");
 
 function assistantMessage(text) {
   return {

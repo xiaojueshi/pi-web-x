@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const { getSessionFamily, listSessionFamilies } = await createJiti(
-  import.meta.url,
-).import("../../../lib/session-family.ts");
+const { getSessionFamily, listSessionFamilies } = await import(
+  "../../../lib/session-family.ts",
+);
 
 function session(id, modified, relation) {
   return {

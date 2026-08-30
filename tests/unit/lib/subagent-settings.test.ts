@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 import { afterEach, beforeEach } from "bun:test";
 
 // node:test t.after 的 Bun 原生替代：测试开始前清空、结束后按 LIFO 执行清理。
@@ -19,7 +18,7 @@ const {
   isBuiltInSubagentsEnabled,
   readSubagentSettings,
   writeBuiltInSubagentsEnabled,
-} = await createJiti(import.meta.url).import(
+} = await import(
   "../../../lib/subagent-settings.ts",
 );
 

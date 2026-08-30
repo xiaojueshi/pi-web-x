@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { createJiti } from "jiti";
 
-const { createSubagentController } = await createJiti(import.meta.url).import(
+const { createSubagentController } = await import(
   "../../../lib/subagent-runtime.ts",
 );
 

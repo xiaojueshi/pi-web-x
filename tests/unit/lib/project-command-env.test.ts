@@ -6,14 +6,13 @@ import {
   createLocalBashOperations,
   getAgentDir,
 } from "@earendil-works/pi-coding-agent";
-import { createJiti } from "jiti";
 
 const {
   createProjectCommandBashExtension,
   createProjectCommandBashOperations,
   preferUserBashExtension,
   sanitizeProjectCommandEnvironment,
-} = await createJiti(import.meta.url).import(
+} = await import(
   "../../../lib/project-command-env.ts",
 );
 
