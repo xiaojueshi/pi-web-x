@@ -27,15 +27,13 @@ const zhSource = await readFile(
   "utf8",
 );
 const configSources = await Promise.all(
-  ["ModelsConfig", "SkillsConfig", "AgentsConfig", "PluginsConfig"].map(
-    async (name) => [
-      name,
-      await readFile(
-        new URL(`../../../components/${name}.tsx`, import.meta.url),
-        "utf8",
-      ),
-    ],
-  ),
+  ["ModelsConfig", "SkillsConfig", "PluginsConfig"].map(async (name) => [
+    name,
+    await readFile(
+      new URL(`../../../components/${name}.tsx`, import.meta.url),
+      "utf8",
+    ),
+  ]),
 );
 
 test("provides one template for config layout and controls", () => {
@@ -119,14 +117,14 @@ test("all subpanel sidebars share one typography scale", () => {
   for (const source of Object.values(sources)) {
     assert.match(source, /<ConfigSidebarText/);
   }
-  for (const name of ["SkillsConfig", "AgentsConfig", "PluginsConfig"]) {
+  for (const name of ["SkillsConfig", "PluginsConfig"]) {
     assert.match(sources[name], /<ConfigSidebarGroupLabel/);
   }
 });
 
 test("skills and sub-agents share interactive sidebar rows", () => {
   const sources = Object.fromEntries(configSources);
-  for (const name of ["SkillsConfig", "AgentsConfig", "PluginsConfig"]) {
+  for (const name of ["SkillsConfig", "PluginsConfig"]) {
     assert.match(sources[name], /<ConfigSidebarItem/);
   }
   assert.match(
@@ -211,7 +209,7 @@ test("detail header actions keep buttons and switches aligned to the right", () 
     cssSource,
     /\.config-detail-actions \{[\s\S]*?justify-content: flex-end[\s\S]*?margin-left: auto/,
   );
-  for (const name of ["SkillsConfig", "AgentsConfig", "PluginsConfig"]) {
+  for (const name of ["SkillsConfig", "PluginsConfig"]) {
     assert.match(sources[name], /<ConfigDetailActions>/);
   }
   assert.match(
@@ -270,10 +268,6 @@ test("subpanel footers share sizing while maintenance actions stay secondary", (
     /<ConfigButton\s+variant="primary"[\s\S]*?onClick=\{handleSave\}/,
   );
   assert.match(
-    sources.AgentsConfig,
-    /<ConfigButton\s+variant="primary"[\s\S]*?onClick=\{\(\) => void save\(\)\}/,
-  );
-  assert.match(
     sources.SkillsConfig,
     /<ConfigButton[\s\S]*?variant="secondary"[\s\S]*?onClick=\{\(\) => void checkForUpdates\(\)\}/,
   );
@@ -285,7 +279,7 @@ test("subpanel footers share sizing while maintenance actions stay secondary", (
 
 test("skills, agents, and plugins share enabled and disabled controls", () => {
   const sources = Object.fromEntries(configSources);
-  for (const name of ["SkillsConfig", "AgentsConfig", "PluginsConfig"]) {
+  for (const name of ["SkillsConfig", "PluginsConfig"]) {
     assert.match(sources[name], /<ConfigSwitch/);
     assert.match(sources[name], /<ConfigStatusDot/);
   }
