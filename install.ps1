@@ -132,11 +132,9 @@ $Token = $InstallDir
 if ($UserPath -and $UserPath.Split(";") -contains $Token) {
     Write-Host "$InstallDir is already on the user PATH."
 } else {
-    [System.Environment]::SetEnvironmentVariable(
-        "Path",
-        if ($UserPath) { "$InstallDir;$UserPath" } else { $InstallDir },
-        "User"
-    )
+    # 方法实参位置不能直接嵌 if 表达式，先算出新值再传入
+    $NewPath = if ($UserPath) { "$InstallDir;$UserPath" } else { $InstallDir }
+    [System.Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
     Write-Host "Added $InstallDir to your user PATH. Open a NEW terminal to use 'pi-web-x'."
 }
 
