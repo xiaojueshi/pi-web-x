@@ -15,6 +15,11 @@ const targets = [
 /** 构建全部受支持平台的自包含 pi-web-x 二进制。 */
 async function buildAll(): Promise<void> {
   await import("./build-css.ts");
+  // 先收集目录级资产（theme/export-html 等）并生成内嵌 manifest +
+  // 发布物 tar.gz（见 scripts/build-assets.ts）——manifest 会被编译进
+  // 每个二进制，供启动时的自动自举（src/bootstrap-assets.ts）校验使用。
+  const { buildAssetsAndManifest } = await import("./build-assets.ts");
+  buildAssetsAndManifest();
   await mkdir("dist", { recursive: true });
   const results = await Promise.all(
     targets.map(async (target) => {
