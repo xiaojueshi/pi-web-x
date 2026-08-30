@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -27,7 +27,11 @@ async function git(cwd, args) {
 }
 
 test("main and linked worktrees share one canonical project root", async () => {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "pi-web-x-worktree-"));
+  // Windows 的 os.tmpdir() 可能含 8.3 短名（如 RUNNER~1），git 记录的
+  // worktree 路径会用长名；立即 realpath 规范化，保证 samePath 可比较。
+  const tempRoot = await realpath(
+    await mkdtemp(path.join(os.tmpdir(), "pi-web-x-worktree-")),
+  );
   tcompatCleanups.push(() => rm(tempRoot, { recursive: true, force: true }));
 
   const repo = path.join(tempRoot, "repo");

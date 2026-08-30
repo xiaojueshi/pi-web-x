@@ -3,6 +3,7 @@
  */
 
 import { test, expect } from "bun:test";
+import { join } from "node:path";
 import {
   DEFAULT_HOSTNAME,
   DEFAULT_PORT,
@@ -207,10 +208,11 @@ test("serviceHelpText 覆盖核心内容", () => {
 });
 
 test("路径函数符合平台约定", () => {
+  // 期望值用 node:path.join 构造，避免硬编码 / 与 Windows \ 不一致。
   expect(systemdUserUnitPath(HOME)).toBe(
-    `${HOME}/.config/systemd/user/${SERVICE_NAME}.service`,
+    join(HOME, ".config", "systemd", "user", `${SERVICE_NAME}.service`),
   );
   expect(launchdPlistPath(HOME)).toBe(
-    `${HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist`,
+    join(HOME, "Library", "LaunchAgents", `${LAUNCHD_LABEL}.plist`),
   );
 });

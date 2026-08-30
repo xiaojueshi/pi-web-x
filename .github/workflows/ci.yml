@@ -37,9 +37,10 @@ jobs:
         if: runner.os == 'Windows'
         run: .\dist\pi-web-x-windows-x64.exe --help
 
-      # musl 二进制在 alpine 容器中冒烟（宿主机无 musl loader）。
+      # musl 二进制在 alpine 容器中冒烟（宿主机无 musl loader）；
+      # bun 编译的二进制动态链接 libstdc++，镜像需先安装对应运行库。
       - name: musl 产物冒烟（Alpine 容器）
         if: runner.os == 'Linux'
         run: |
           docker run --rm -v "$PWD/dist:/dist" alpine:3 \
-            sh -c '/dist/pi-web-x-linux-x64-musl --help'
+            sh -c 'apk add --no-cache libstdc++ && /dist/pi-web-x-linux-x64-musl --help'

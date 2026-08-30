@@ -258,7 +258,8 @@ test("direct bash updates the platform PATH key", async () => {
       },
       expected: {
         Path: "project-metadata",
-        PATH: `${agentBinDir}${delimiter}/usr/bin`,
+        // platform="linux" 时实现固定使用 “:” 分隔，与运行平台无关。
+        PATH: `${agentBinDir}:/usr/bin`,
       },
     },
     {

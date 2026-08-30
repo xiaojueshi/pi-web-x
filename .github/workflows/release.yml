@@ -45,7 +45,7 @@ jobs:
         run: |
           ./dist/pi-web-x-linux-x64 --help
           docker run --rm -v "$PWD/dist:/dist" alpine:3 \
-            sh -c '/dist/pi-web-x-linux-x64-musl --help'
+            sh -c 'apk add --no-cache libstdc++ && /dist/pi-web-x-linux-x64-musl --help'
 
       - name: 生成 SHA256SUMS
         run: |
