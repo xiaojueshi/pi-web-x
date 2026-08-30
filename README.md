@@ -24,6 +24,7 @@ irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
 
 - 自动探测 OS / 架构 / libc（glibc vs musl），选择对应的 GitHub Release 二进制
 - 默认安装**最新版本**（也可 `sh install.sh --version v0.8.11` 固定版本）
+- 交互终端下显示实时进度条与下载大小预估，分步输出每一步的完成状态；下载失败会给出明确提示与重试建议
 - 下载后校验 `SHA256SUMS`，哈希不符即中止
 - 安装到 `~/.local/bin`（`--dir` 可覆盖），自动 `chmod +x`；Windows 同时注册用户 PATH
 - 已安装同版本时跳过（幂等），`--force` 强制重装

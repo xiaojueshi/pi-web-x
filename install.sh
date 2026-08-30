@@ -124,18 +124,55 @@ fi
 
 # ---------------------------------------------------------------------------
 # 下载与校验工具
+#
+# 进度条策略：interactive 终端用 curl --progress-bar / wget --show-progress
+# 实时显示；非交互（CI 日志等）退化为静默下载。下载前先 HEAD 拿文件大小，
+# 打印人类可读的预估，避免“静默卡住”的观感。
 # ---------------------------------------------------------------------------
 
+# 是否交互式终端（进度条会输出到 stderr，所以只看 stderr 是否 TTY）
+IS_TTY=""
+[ -t 2 ] && IS_TTY="1"
+
 if command -v curl >/dev/null 2>&1; then
-  fetch() { curl -fsSL --retry 3 "$1" -o "$2"; }
-  fetch_headers() { curl -fsSI --retry 3 "$1"; }
+  if [ -n "$IS_TTY" ]; then
+    # -f 失败即退出码，-S 出错时显示原因，-L 跟随重定向
+    fetch() { curl -fSL --retry 3 --progress-bar \
+      --connect-timeout 15 --max-time 900 "$1" -o "$2"; }
+  else
+    fetch() { curl -fsSL --retry 3 \
+      --connect-timeout 15 --max-time 900 "$1" -o "$2"; }
+  fi
+  # -I -L：HEAD 需跟随 302（GitHub 资产先重定向到 CDN）才能拿到真实大小
+  fetch_headers() { curl -fsSIL --connect-timeout 15 "$1"; }
 elif command -v wget >/dev/null 2>&1; then
-  fetch() { wget -q -O "$2" "$1"; }
+  if [ -n "$IS_TTY" ]; then
+    # -q --show-progress：静默日志但保留进度条
+    fetch() { wget -q --show-progress --timeout=15 "$1" -O "$2"; }
+  else
+    fetch() { wget -q -O "$2" "$1"; }
+  fi
   fetch_headers() { wget -S -O /dev/null "$1" 2>&1; }
 else
   echo "Neither curl nor wget found. Install one of them and retry." >&2
   exit 1
 fi
+
+# 返回 URL 对应资源的大小（字节）；拿不到时为空
+fetch_size() {
+  fetch_headers "$1" 2>/dev/null | tr -d '\r' | \
+    sed -n 's/^[Cc]ontent-[Ll]ength: *//p' | tail -1
+}
+
+# 人类可读大小（1024 进制）
+human_size() {
+  awk -v bytes="$1" 'BEGIN {
+    if (bytes >= 1073741824) printf "%.1f GB", bytes / 1073741824;
+    else if (bytes >= 1048576) printf "%.1f MB", bytes / 1048576;
+    else if (bytes >= 1024) printf "%.1f KB", bytes / 1024;
+    else printf "%d B", bytes;
+  }'
+}
 
 if command -v sha256sum >/dev/null 2>&1; then
   hash_file() { sha256sum "$1" | awk '{print $1}'; }
@@ -196,9 +233,24 @@ else
   DOWNLOAD_BASE="${BASE_URL}/releases/latest/download"
 fi
 
-echo "Downloading ${DOWNLOAD_BASE}/${ASSET}…"
-fetch "${DOWNLOAD_BASE}/${ASSET}" "$TMP_DIR/pi-web-x"
-fetch "${DOWNLOAD_BASE}/SHA256SUMS" "$TMP_DIR/SHA256SUMS"
+ASSET_URL="${DOWNLOAD_BASE}/${ASSET}"
+
+# 先 HEAD 拿预期大小；终端可显示进度条，非交互保持静默。
+ASSET_SIZE="$(fetch_size "$ASSET_URL" || true)"
+if [ -n "$ASSET_SIZE" ]; then
+  printf 'Downloading %s (%s)…\n' "$ASSET" "$(human_size "$ASSET_SIZE")"
+else
+  echo "Downloading ${ASSET}…"
+fi
+
+fetch "$ASSET_URL" "$TMP_DIR/pi-web-x" \
+  || { echo "Download failed: ${ASSET}" >&2; echo "Check your network or proxy, then re-run the installer." >&2; exit 1; }
+echo "Binary downloaded."
+
+echo "Downloading SHA256SUMS…"
+fetch "${DOWNLOAD_BASE}/SHA256SUMS" "$TMP_DIR/SHA256SUMS" \
+  || { echo "Download failed: SHA256SUMS" >&2; echo "Check your network or proxy, then re-run the installer." >&2; exit 1; }
+echo "SHA256SUMS downloaded."
 
 # 校验：SHA256SUMS 中查找对应资产行，比对实际哈希
 EXPECTED="$(grep " ${ASSET}$" "$TMP_DIR/SHA256SUMS" | awk '{print $1}' || true)"
