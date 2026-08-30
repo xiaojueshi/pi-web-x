@@ -72,27 +72,90 @@ test("sanitizes host variables using platform casing rules", () => {
   );
 });
 
-test("agent bash removes host variables while preserving SDK and user environment", async () => {
-  const original = {
-    PORT: process.env.PORT,
-    NODE_ENV: process.env.NODE_ENV,
-    NEXT_RUNTIME: process.env.NEXT_RUNTIME,
-    NEXT_PRIVATE_WORKER: process.env.NEXT_PRIVATE_WORKER,
-    PI_USER_SETTING: process.env.PI_USER_SETTING,
-  };
-  Object.assign(process.env, {
-    PORT: "30141",
-    NODE_ENV: "production",
-    NEXT_RUNTIME: "nodejs",
-    NEXT_PRIVATE_WORKER: "1",
-    PI_USER_SETTING: "preserved",
-  });
+// 本测试真实 spawn 子进程（node -e）。Windows CI 高负载下子进程
+// 启动可能超过 bun 默认 5s 超时，显式放宽避免 flaky；
+// 实测正常路径 < 2s，30s 仅作安全余量。
+test(
+  "agent bash removes host variables while preserving SDK and user environment",
+  async () => {
+    const original = {
+      PORT: process.env.PORT,
+      NODE_ENV: process.env.NODE_ENV,
+      NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+      NEXT_PRIVATE_WORKER: process.env.NEXT_PRIVATE_WORKER,
+      PI_USER_SETTING: process.env.PI_USER_SETTING,
+    };
+    Object.assign(process.env, {
+      PORT: "30141",
+      NODE_ENV: "production",
+      NEXT_RUNTIME: "nodejs",
+      NEXT_PRIVATE_WORKER: "1",
+      PI_USER_SETTING: "preserved",
+    });
 
-  try {
+    try {
+      const extension = createProjectCommandBashExtension({
+        cwd: process.cwd(),
+        settings: {
+          getShellCommandPrefix: () => undefined,
+          getShellPath: () => undefined,
+        },
+      });
+      let registeredTool;
+      await extension.factory({
+        registerTool(tool) {
+          registeredTool = tool;
+        },
+      });
+
+      const result = await registeredTool.execute(
+        "issue-484",
+        {
+          command: `node -e 'console.log(JSON.stringify({PORT:process.env.PORT,NODE_ENV:process.env.NODE_ENV,NEXT_RUNTIME:process.env.NEXT_RUNTIME,NEXT_PRIVATE_WORKER:process.env.NEXT_PRIVATE_WORKER,PI_USER_SETTING:process.env.PI_USER_SETTING,PI_SESSION_ID:process.env.PI_SESSION_ID,PATH:process.env.PATH}))'`,
+        },
+        undefined,
+        undefined,
+        {
+          model: undefined,
+          thinkingLevel: "off",
+          sessionManager: {
+            getSessionId: () => "session-484",
+            getSessionFile: () => undefined,
+          },
+        },
+      );
+      const childEnvironment = JSON.parse(result.content[0].text);
+
+      assert.equal(childEnvironment.PORT, undefined);
+      assert.equal(childEnvironment.NODE_ENV, undefined);
+      assert.equal(childEnvironment.NEXT_RUNTIME, undefined);
+      assert.equal(childEnvironment.NEXT_PRIVATE_WORKER, undefined);
+      assert.equal(childEnvironment.PI_USER_SETTING, "preserved");
+      assert.equal(childEnvironment.PI_SESSION_ID, "session-484");
+      assert.ok(
+        childEnvironment.PATH.split(delimiter).includes(
+          join(getAgentDir(), "bin"),
+        ),
+      );
+    } finally {
+      for (const [name, value] of Object.entries(original)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+  },
+  30_000,
+);
+
+// 同上：真实 spawn shell 并多次执行，放宽超时避免 Windows 高负载 flaky。
+test(
+  "agent bash reads current shell settings for every execution",
+  async () => {
+    let commandPrefix = "export PI_WEB_X_PREFIX=first";
     const extension = createProjectCommandBashExtension({
       cwd: process.cwd(),
       settings: {
-        getShellCommandPrefix: () => undefined,
+        getShellCommandPrefix: () => commandPrefix,
         getShellPath: () => undefined,
       },
     });
@@ -102,72 +165,21 @@ test("agent bash removes host variables while preserving SDK and user environmen
         registeredTool = tool;
       },
     });
+    const execute = () =>
+      registeredTool.execute(
+        "settings-reload",
+        { command: 'printf %s "$PI_WEB_X_PREFIX"' },
+        undefined,
+        undefined,
+        undefined,
+      );
 
-    const result = await registeredTool.execute(
-      "issue-484",
-      {
-        command: `node -e 'console.log(JSON.stringify({PORT:process.env.PORT,NODE_ENV:process.env.NODE_ENV,NEXT_RUNTIME:process.env.NEXT_RUNTIME,NEXT_PRIVATE_WORKER:process.env.NEXT_PRIVATE_WORKER,PI_USER_SETTING:process.env.PI_USER_SETTING,PI_SESSION_ID:process.env.PI_SESSION_ID,PATH:process.env.PATH}))'`,
-      },
-      undefined,
-      undefined,
-      {
-        model: undefined,
-        thinkingLevel: "off",
-        sessionManager: {
-          getSessionId: () => "session-484",
-          getSessionFile: () => undefined,
-        },
-      },
-    );
-    const childEnvironment = JSON.parse(result.content[0].text);
-
-    assert.equal(childEnvironment.PORT, undefined);
-    assert.equal(childEnvironment.NODE_ENV, undefined);
-    assert.equal(childEnvironment.NEXT_RUNTIME, undefined);
-    assert.equal(childEnvironment.NEXT_PRIVATE_WORKER, undefined);
-    assert.equal(childEnvironment.PI_USER_SETTING, "preserved");
-    assert.equal(childEnvironment.PI_SESSION_ID, "session-484");
-    assert.ok(
-      childEnvironment.PATH.split(delimiter).includes(
-        join(getAgentDir(), "bin"),
-      ),
-    );
-  } finally {
-    for (const [name, value] of Object.entries(original)) {
-      if (value === undefined) delete process.env[name];
-      else process.env[name] = value;
-    }
-  }
-});
-
-test("agent bash reads current shell settings for every execution", async () => {
-  let commandPrefix = "export PI_WEB_X_PREFIX=first";
-  const extension = createProjectCommandBashExtension({
-    cwd: process.cwd(),
-    settings: {
-      getShellCommandPrefix: () => commandPrefix,
-      getShellPath: () => undefined,
-    },
-  });
-  let registeredTool;
-  await extension.factory({
-    registerTool(tool) {
-      registeredTool = tool;
-    },
-  });
-  const execute = () =>
-    registeredTool.execute(
-      "settings-reload",
-      { command: 'printf %s "$PI_WEB_X_PREFIX"' },
-      undefined,
-      undefined,
-      undefined,
-    );
-
-  assert.equal((await execute()).content[0].text, "first");
-  commandPrefix = "export PI_WEB_X_PREFIX=second";
-  assert.equal((await execute()).content[0].text, "second");
-});
+    assert.equal((await execute()).content[0].text, "first");
+    commandPrefix = "export PI_WEB_X_PREFIX=second";
+    assert.equal((await execute()).content[0].text, "second");
+  },
+  30_000,
+);
 
 test("direct bash removes host variables and allows explicit project values", async () => {
   const agentBinDir = join(process.cwd(), ".test-agent", "bin");
