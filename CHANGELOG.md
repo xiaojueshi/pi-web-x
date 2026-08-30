@@ -4,6 +4,11 @@
 
 ## [未发布]
 
+### 新增
+
+- 一键安装脚本：`install.sh`（macOS/Linux，POSIX sh）与 `install.ps1`（Windows PowerShell），自动探测平台与 libc、下载对应最新二进制、SHA256SUMS 校验、安装到 `~/.local/bin` 并注册 PATH；幂等（同版本跳过）、支持 `--dir/--version/--force/--dry-run`。
+- CLI 新增 `--version`/`-v`（编译二进制与 npm wrapper 同步支持）。
+
 ## [0.8.11] - 2026-02-11
 
 首次开源发布。基于迁移自 `pi-web@0.8.11`（upstream commit `28bab3c`）的独立兼容实现，详见 [MIGRATION.md](./MIGRATION.md) 与 [docs/runtime-substitution-matrix.md](./docs/runtime-substitution-matrix.md)。

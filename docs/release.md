@@ -32,9 +32,31 @@ HOME="$(mktemp -d)" ./dist/pi-web-x-linux-x64 --port 30141 --no-open
 
 ## 版本检查与发布说明
 
-版本变更后，更新 `package.json`、`bun.lock`，重新构建所有制品。发布说明必须说明：
+版本变更后，更新 `package.json`、`bun.lock`，重新构建所有制品。若 `--version` 输出、CLI 参数、安装脚本或产物命名有变化，需在发布说明中同步说明。发布说明必须说明：
 
 - Bun 精确版本与目标平台；
 - 本次上游基线或安全修复；
 - `pi-web-x` 命名空间与旧 `pi-web:*` 不兼容；
 - 保留/替代的依赖变更（同步更新运行时替代矩阵）。
+
+## 一键安装脚本
+
+- `install.sh`（POSIX sh，macOS/Linux）：自动探测 OS/架构/libc，从 `releases/latest/download` 拉取对应二进制并校验 SHA256SUMS，安装到 `~/.local/bin`。
+- `install.ps1`（PowerShell，Windows）：同上能力，额外注册用户级 PATH。
+
+改动任一脚本后必须同步：
+
+1. 仓库 `README.md` 与发布说明中的安装命令；
+2. CI 的 `install-scripts` job（`sh -n` + `--help` 分支）与 Windows pwsh 语法检查（`Parser::ParseFile`）；
+3. `tests/unit/install-script.test.ts` 中 dry-run 探测断言与产物命名保持一致；
+4. 脚本内的 `REPO` / `BASE_URL` / `RAW_BASE` 常量。
+
+发布说明应给出两条命令：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.sh | sh
+```
+
+```powershell
+irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
+```
