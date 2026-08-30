@@ -2195,10 +2195,10 @@ export async function startRpcSession(
         sessionManager.getEntries() as unknown as SessionEntry[],
       )
     : null;
+  // SAFETY: 与上述 getEntries 断言同源——SDK 条目即 SessionEntry 结构。
   const persistedToolNames = subagentResources
     ? undefined
     : readSessionToolSelection(
-        // SAFETY: 与上述 getEntries 断言同源——SDK 条目即 SessionEntry 结构。
         sessionManager.getEntries() as unknown as SessionEntry[],
       );
   const selectedToolNames =

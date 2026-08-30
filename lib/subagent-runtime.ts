@@ -195,11 +195,11 @@ export function createSubagentController(
       }
 
       const agentDir = getAgentDir();
-      const parentModelRuntime =
-        // SAFETY: parent 为父会话的 SDK 实例，modelRuntime 是其类型层未
-        // 暴露但运行时始终存在的内部字段。
-        (parent.inner as unknown as { modelRuntime: ModelRuntime })
-          .modelRuntime;
+      // SAFETY: parent 为父会话的 SDK 实例，modelRuntime 是其类型层未
+      // 暴露但运行时始终存在的内部字段。
+      const parentModelRuntime = (
+        parent.inner as unknown as { modelRuntime: ModelRuntime }
+      ).modelRuntime;
       const settingsManager = SettingsManager.create(parent.cwd, agentDir);
       const inheritedParentContext = inheritContext
         ? `The following is the active conversation context from the parent session. Use it only as background for the delegated task:\n${parentContextText(parent)}`
