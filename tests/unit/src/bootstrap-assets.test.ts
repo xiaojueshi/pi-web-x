@@ -1,6 +1,12 @@
 import { beforeEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import {
   assetsDownloadUrl,
@@ -52,7 +58,10 @@ function makeRoot(): string {
 }
 
 beforeEach(() => {
-  rmSync(resolve(import.meta.dir, "../../.tmp"), { recursive: true, force: true });
+  rmSync(resolve(import.meta.dir, "../../.tmp"), {
+    recursive: true,
+    force: true,
+  });
 });
 
 test("测试环境（非编译二进制）isCompiledBinary 为 false", () => {
@@ -79,7 +88,8 @@ test("assetsDownloadUrl：默认按版本指向 GitHub，且支持镜像 URL 覆
   );
   expect(
     assetsDownloadUrl("0.9.0", {
-      PI_WEB_X_ASSETS_URL: "https://mirror.example/pi-web-x-assets-{version}.tar.gz",
+      PI_WEB_X_ASSETS_URL:
+        "https://mirror.example/pi-web-x-assets-{version}.tar.gz",
     }),
   ).toBe("https://mirror.example/pi-web-x-assets-0.9.0.tar.gz");
 });
@@ -176,9 +186,7 @@ test("manifest 内嵌清单与产物一致的冒烟断言", () => {
   // 至少包含主题与导出模板这两个关键资产（守护 build-assets 收集范围）
   expect(ASSET_MANIFEST.files["theme/dark.json"]).toBeTruthy();
   expect(ASSET_MANIFEST.files["theme/light.json"]).toBeTruthy();
-  expect(
-    ASSET_MANIFEST.files["export-html/template.html"],
-  ).toBeTruthy();
+  expect(ASSET_MANIFEST.files["export-html/template.html"]).toBeTruthy();
   // tarball 自身哈希必须存在
   expect(ASSET_MANIFEST.tarballSha256.length).toBe(64);
 });

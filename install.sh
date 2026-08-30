@@ -29,7 +29,7 @@ RAW_BASE="https://raw.githubusercontent.com/${REPO}/main"
 INSTALL_DIR="${PI_WEB_X_INSTALL_DIR:-$HOME/pi-web-x}"
 # 命令入口目录（PATH 内），仅存放指向真实二进制的符号链接
 BIN_DIR="${PI_WEB_X_BIN_DIR:-$HOME/.local/bin}"
-VERSION=""        # 空 = latest；可传 v0.x.y
+VERSION="" # 空 = latest；可传 v0.x.y
 FORCE=""
 
 usage() {
@@ -50,31 +50,31 @@ EOF
 DRY_RUN=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -d | --dir)
-      INSTALL_DIR="${2:?--dir requires an argument}"
-      shift 2
-      ;;
-    -v | --version)
-      VERSION="${2:?--version requires an argument}"
-      shift 2
-      ;;
-    -f | --force)
-      FORCE="1"
-      shift
-      ;;
-    -n | --dry-run)
-      DRY_RUN="1"
-      shift
-      ;;
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage >&2
-      exit 1
-      ;;
+  -d | --dir)
+    INSTALL_DIR="${2:?--dir requires an argument}"
+    shift 2
+    ;;
+  -v | --version)
+    VERSION="${2:?--version requires an argument}"
+    shift 2
+    ;;
+  -f | --force)
+    FORCE="1"
+    shift
+    ;;
+  -n | --dry-run)
+    DRY_RUN="1"
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    usage >&2
+    exit 1
+    ;;
   esac
 done
 
@@ -86,21 +86,21 @@ OS="$(uname -s 2>/dev/null || printf 'unknown')"
 ARCH="$(uname -m 2>/dev/null || printf 'unknown')"
 
 case "$OS" in
-  Darwin) PLATFORM_OS="darwin" ;;
-  Linux) PLATFORM_OS="linux" ;;
-  *)
-    echo "Unsupported OS: $OS (pi-web-x supports macOS and Linux via this script; Windows users run install.ps1 in PowerShell)." >&2
-    exit 1
-    ;;
+Darwin) PLATFORM_OS="darwin" ;;
+Linux) PLATFORM_OS="linux" ;;
+*)
+  echo "Unsupported OS: $OS (pi-web-x supports macOS and Linux via this script; Windows users run install.ps1 in PowerShell)." >&2
+  exit 1
+  ;;
 esac
 
 case "$ARCH" in
-  x86_64 | amd64) PLATFORM_ARCH="x64" ;;
-  aarch64 | arm64) PLATFORM_ARCH="arm64" ;;
-  *)
-    echo "Unsupported architecture: $ARCH (supported: x86_64, aarch64)." >&2
-    exit 1
-    ;;
+x86_64 | amd64) PLATFORM_ARCH="x64" ;;
+aarch64 | arm64) PLATFORM_ARCH="arm64" ;;
+*)
+  echo "Unsupported architecture: $ARCH (supported: x86_64, aarch64)." >&2
+  exit 1
+  ;;
 esac
 
 ASSET="pi-web-x-${PLATFORM_OS}-${PLATFORM_ARCH}"
@@ -164,7 +164,7 @@ fi
 
 # 返回 URL 对应资源的大小（字节）；拿不到时为空
 fetch_size() {
-  fetch_headers "$1" 2>/dev/null | tr -d '\r' | \
+  fetch_headers "$1" 2>/dev/null | tr -d '\r' |
     sed -n 's/^[Cc]ontent-[Ll]ength: *//p' | tail -1
 }
 
@@ -198,7 +198,7 @@ if [ -z "$RESOLVED_VERSION" ]; then
   # 这里只用于展示/对比已装版本；解析失败不阻断下载。
   REDIRECT="$(fetch_headers "${BASE_URL}/releases/latest" | tr -d '\r' | sed -n 's/^location: //Ip' || true)"
   case "$REDIRECT" in
-    *"/releases/tag/"*) RESOLVED_VERSION="${REDIRECT##*/releases/tag/}" ;;
+  *"/releases/tag/"*) RESOLVED_VERSION="${REDIRECT##*/releases/tag/}" ;;
   esac
 fi
 
@@ -248,13 +248,21 @@ else
   echo "Downloading ${ASSET}…"
 fi
 
-fetch "$ASSET_URL" "$TMP_DIR/pi-web-x" \
-  || { echo "Download failed: ${ASSET}" >&2; echo "Check your network or proxy, then re-run the installer." >&2; exit 1; }
+fetch "$ASSET_URL" "$TMP_DIR/pi-web-x" ||
+  {
+    echo "Download failed: ${ASSET}" >&2
+    echo "Check your network or proxy, then re-run the installer." >&2
+    exit 1
+  }
 echo "Binary downloaded."
 
 echo "Downloading SHA256SUMS…"
-fetch "${DOWNLOAD_BASE}/SHA256SUMS" "$TMP_DIR/SHA256SUMS" \
-  || { echo "Download failed: SHA256SUMS" >&2; echo "Check your network or proxy, then re-run the installer." >&2; exit 1; }
+fetch "${DOWNLOAD_BASE}/SHA256SUMS" "$TMP_DIR/SHA256SUMS" ||
+  {
+    echo "Download failed: SHA256SUMS" >&2
+    echo "Check your network or proxy, then re-run the installer." >&2
+    exit 1
+  }
 echo "SHA256SUMS downloaded."
 
 # 校验：SHA256SUMS 中查找对应资产行，比对实际哈希
@@ -306,14 +314,14 @@ ensure_bin_entry
 
 # PATH 提示（针对命令入口目录）
 case ":$PATH:" in
-  *":$BIN_DIR:"*) : ;; # 已在 PATH 中
-  *)
-    echo
-    echo "NOTE: ${BIN_DIR} is not on your PATH."
-    echo "Add it with:"
-    echo "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.$(basename "$SHELL")rc"
-    echo "  export PATH=\"${BIN_DIR}:\$PATH\""
-    ;;
+*":$BIN_DIR:"*) : ;; # 已在 PATH 中
+*)
+  echo
+  echo "NOTE: ${BIN_DIR} is not on your PATH."
+  echo "Add it with:"
+  echo "  echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.$(basename "$SHELL")rc"
+  echo "  export PATH=\"${BIN_DIR}:\$PATH\""
+  ;;
 esac
 
 echo

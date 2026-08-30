@@ -1,5 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { ASSET_MANIFEST } from "./generated/asset-manifest";
@@ -119,9 +125,10 @@ export function verifyAssetRoot(
 /** 读取状态文件（不存在时返回空对象）。 */
 function readMarker(root: string): { failedAt?: number; version?: string } {
   try {
-    return JSON.parse(
-      readFileSync(join(root, MARKER_NAME), "utf-8"),
-    ) as { failedAt?: number; version?: string };
+    return JSON.parse(readFileSync(join(root, MARKER_NAME), "utf-8")) as {
+      failedAt?: number;
+      version?: string;
+    };
   } catch {
     return {};
   }
@@ -153,7 +160,10 @@ function defaultExtract(tarballPath: string, dest: string): ExtractResult {
     });
     const stderr = proc.stderr?.toString() ?? "";
     if (proc.exitCode !== 0) {
-      return { ok: false, stderr: stderr.trim() || `tar exit ${String(proc.exitCode)}` };
+      return {
+        ok: false,
+        stderr: stderr.trim() || `tar exit ${String(proc.exitCode)}`,
+      };
     }
     return { ok: true, stderr: "" };
   } catch (error) {
@@ -222,7 +232,10 @@ export async function downloadAndInstallAssets(
     writeFileSync(tmpPath, buffer);
     const extracted = merged.extract!(tmpPath, root);
     if (!extracted.ok) {
-      return { ok: false, reason: `解压失败: ${extracted.stderr ?? "未知错误"}` };
+      return {
+        ok: false,
+        reason: `解压失败: ${extracted.stderr ?? "未知错误"}`,
+      };
     }
 
     if (!verifyAssetRoot(root)) {
@@ -287,15 +300,16 @@ export async function installAssetsFromTarball(
     mkdirSync(root, { recursive: true });
     const extracted = merged.extract!(localPath, root);
     if (!extracted.ok) {
-      return { ok: false, reason: `解压失败: ${extracted.stderr ?? "未知错误"}` };
+      return {
+        ok: false,
+        reason: `解压失败: ${extracted.stderr ?? "未知错误"}`,
+      };
     }
     if (!verifyAssetRoot(root)) {
       return { ok: false, reason: "解压后校验失败" };
     }
     writeMarker(root, { version: ASSET_MANIFEST.version, failedAt: undefined });
-    merged.log!(
-      `[pi-web-x] 内置资产已从 ${localPath} 安装并校验通过。`,
-    );
+    merged.log!(`[pi-web-x] 内置资产已从 ${localPath} 安装并校验通过。`);
     return { ok: true };
   } catch (error) {
     return {
@@ -320,8 +334,7 @@ export async function ensureAssets(
   if (!isBinary()) return "skipped";
 
   const merged = { ...defaultDeps(), ...deps };
-  const root =
-    deps.assetRoot ?? dirname(deps.execPath ?? process.execPath);
+  const root = deps.assetRoot ?? dirname(deps.execPath ?? process.execPath);
   const now = merged.now!;
   const error = merged.error!;
 
@@ -334,7 +347,9 @@ export async function ensureAssets(
       marker.failedAt !== undefined &&
       now() - marker.failedAt < cooldownMs
     ) {
-      const hours = Math.ceil((cooldownMs - (now() - marker.failedAt)) / 3_600_000);
+      const hours = Math.ceil(
+        (cooldownMs - (now() - marker.failedAt)) / 3_600_000,
+      );
       error(
         `[pi-web-x] 内置资产缺失且上次获取失败未满冷却期，${hours} 小时内不再自动重试。`,
       );

@@ -45,7 +45,8 @@ test("探测结果与本机平台一致（uname 交叉验证）", async () => {
 
   const os = sys.trim().toLowerCase();
   const arch = mach.trim().toLowerCase();
-  const expectedOs = os === "darwin" ? "darwin" : os === "linux" ? "linux" : null;
+  const expectedOs =
+    os === "darwin" ? "darwin" : os === "linux" ? "linux" : null;
   if (expectedOs === null) return; // 非本仓库支持的平台，跳过交叉验证
   const expectedArch =
     arch === "x86_64" || arch === "amd64"

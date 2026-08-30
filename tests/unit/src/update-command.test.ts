@@ -1,6 +1,12 @@
 import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import {
   getPlatformAssetName,
@@ -35,12 +41,8 @@ function collectOutput(): { messages: string[]; out: (m: string) => void } {
 
 test("getPlatformAssetName：darwin/windows 资产名正确", () => {
   expect(getPlatformAssetName("darwin", "x64")).toBe("pi-web-x-darwin-x64");
-  expect(getPlatformAssetName("darwin", "arm64")).toBe(
-    "pi-web-x-darwin-arm64",
-  );
-  expect(getPlatformAssetName("win32", "x64")).toBe(
-    "pi-web-x-windows-x64.exe",
-  );
+  expect(getPlatformAssetName("darwin", "arm64")).toBe("pi-web-x-darwin-arm64");
+  expect(getPlatformAssetName("win32", "x64")).toBe("pi-web-x-windows-x64.exe");
   expect(getPlatformAssetName("linux", "x64")).toBe("pi-web-x-linux-x64");
   expect(getPlatformAssetName("freebsd", "x64")).toBeNull();
   expect(getPlatformAssetName("linux", "ia32")).toBeNull();
@@ -75,10 +77,10 @@ test("runUpdateCommand：无新版本时 --check 返回 0 并提示已是最新"
   const { messages, out } = collectOutput();
   const fakeFetch = (async (url: string | URL | Request) => {
     expect(String(url)).toContain("releases/latest");
-    return new Response(
-      JSON.stringify({ tag_name: `v${APP_VERSION}` }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ tag_name: `v${APP_VERSION}` }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   }) as unknown as typeof fetch;
 
   const code = await runUpdateCommand(["--check"], {

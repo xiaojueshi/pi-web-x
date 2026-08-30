@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -34,8 +42,8 @@ const CODING_AGENT_PKG = "@earendil-works/pi-coding-agent";
  * 文件口径对齐官方 copy-binary-assets：theme 只收 json、assets 只收 png。
  */
 const ASSET_SOURCES: Record<string, { src: string; extensions?: string[] }> = {
-  "theme": { src: "modes/interactive/theme", extensions: [".json"] },
-  "assets": { src: "modes/interactive/assets", extensions: [".png"] },
+  theme: { src: "modes/interactive/theme", extensions: [".json"] },
+  assets: { src: "modes/interactive/assets", extensions: [".png"] },
   "export-html": { src: "core/export-html" },
 } as const;
 
@@ -108,12 +116,16 @@ export function buildAssetsAndManifest(): BuiltAssets {
 
   // 定位 pi-coding-agent 包根（pkg/dist/modes/interactive/theme 等）
   const agentRoot = findPackageRoot(
-    join(projectRoot, "node_modules", "@earendil-works", "pi-coding-agent", "dist"),
+    join(
+      projectRoot,
+      "node_modules",
+      "@earendil-works",
+      "pi-coding-agent",
+      "dist",
+    ),
   );
   if (!agentRoot) {
-    throw new Error(
-      `找不到 ${CODING_AGENT_PKG} 包根，请先执行 bun install。`,
-    );
+    throw new Error(`找不到 ${CODING_AGENT_PKG} 包根，请先执行 bun install。`);
   }
   const agentDist = join(agentRoot, "dist");
 
@@ -163,7 +175,12 @@ export function buildAssetsAndManifest(): BuiltAssets {
   const tarballSha256 = sha256(readFileSync(tarballPath));
 
   // 3. 写内嵌 manifest（编译进二进制，运行期校验用）
-  const manifestPath = join(projectRoot, "src", "generated", "asset-manifest.ts");
+  const manifestPath = join(
+    projectRoot,
+    "src",
+    "generated",
+    "asset-manifest.ts",
+  );
   mkdirSync(dirname(manifestPath), { recursive: true });
   const manifestBody = `// 由 scripts/build-assets.ts 自动生成，请勿手改。
 // 记录 pi-web-x-assets-<version> 发布物的文件哈希，供

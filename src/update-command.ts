@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdtempSync, renameSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -110,7 +117,8 @@ export function isMuslLinux(): boolean {
       stdout: "pipe",
       stderr: "pipe",
     });
-    const output = `${String(proc.stdout ?? "")} ${String(proc.stderr ?? "")}`.toLowerCase();
+    const output =
+      `${String(proc.stdout ?? "")} ${String(proc.stderr ?? "")}`.toLowerCase();
     return output.includes("musl");
   } catch {
     return false;
@@ -333,7 +341,9 @@ export async function runAssetsCommand(
   if (action === "install") {
     const pkgPath = args[1];
     if (!pkgPath) {
-      out("用法：pi-web-x assets install <资产包路径>\n可用 --help 查看完整帮助。");
+      out(
+        "用法：pi-web-x assets install <资产包路径>\n可用 --help 查看完整帮助。",
+      );
       return 1;
     }
     const result = await installAssetsFromTarball(pkgPath, root, deps);
