@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.9.3] - 2026-08-31
+
+### 修复
+
+- `update` 版本检查在 GitHub API 返回 HTTP 403（未认证限速，常见于共享出口 IP）时不再直接报错：主源失败会自动降级到 jsDelivr CDN 镜像（无 API 限速），仅当两个源都不可达时才提示设置 `PI_WEB_X_UPDATE_URL`。
+
 ## [0.9.2] - 2026-08-31
 
 ### 修复
