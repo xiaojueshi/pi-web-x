@@ -6,7 +6,7 @@
  * cookie 名按 pi-web-x 断裂命名规范更名，环境变量用 PI_WEB_X_* 前缀。
  */
 
-import { getSession } from "./pi-web-auth";
+import { getSession, touchSession } from "./pi-web-auth";
 
 /** 认证变更请求体大小上限（16 KB）。 */
 const MAX_BODY_BYTES = 16 * 1024;
@@ -155,6 +155,36 @@ export function sessionCookie(request: Request, token: string | null): string {
   const age = token ? "86400" : "0";
   const value = token ?? "";
   return `${PI_WEB_X_SESSION_COOKIE}=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${age}${secure}`;
+}
+
+/** 会话滑动续期后待附加到响应的 Set-Cookie 头（按请求隔离）。 */
+const sessionRefreshCookies = new WeakMap<Request, string>();
+
+/**
+ * 校验并滑动续期会话：有效时延长过期时间并记录待附加的 Set-Cookie。
+ *
+ * 页面保活端点 / 认证放行路径调用；会话无效时无副作用（返回 null）。
+ *
+ * @param request 当前 HTTP 请求
+ * @returns 续期成功时返回新的 Set-Cookie 头值，否则 null
+ */
+export function touchAuthenticatedSession(request: Request): string | null {
+  const token = getSessionToken(request);
+  if (!token || !touchSession(token)) return null;
+  const cookie = sessionCookie(request, token);
+  sessionRefreshCookies.set(request, cookie);
+  return cookie;
+}
+
+/**
+ * 取出请求关联的会话续期 Set-Cookie 头（消费一次，供响应出口附加）。
+ * @param request 当前 HTTP 请求
+ * @returns 待附加的 Set-Cookie 头值，无续期时为 null
+ */
+export function drainSessionRefreshCookie(request: Request): string | null {
+  const cookie = sessionRefreshCookies.get(request) ?? null;
+  sessionRefreshCookies.delete(request);
+  return cookie;
 }
 
 /**

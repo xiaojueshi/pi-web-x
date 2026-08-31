@@ -27,6 +27,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile, useIsNarrowMobile } from "@/hooks/useIsMobile";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
+import { startSessionKeepAlive } from "@/lib/session-keepalive";
 import { useAudio } from "@/hooks/useAudio";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
@@ -109,6 +110,10 @@ export function AppShell() {
   const isMobile = useIsMobile();
   const isNarrowMobile = useIsNarrowMobile();
   useViewportHeight();
+
+  // 认证墙通过后（AppShell 仅登录后渲染）启动会话保活：
+  // 页面保持打开期间定期滑动续期，避免 24h 固定过期掉线。
+  useEffect(() => startSessionKeepAlive(), []);
 
   // Once the user has granted notification permission, register a Web Push
   // subscription so the server can notify backgrounded PWAs (notably iOS,

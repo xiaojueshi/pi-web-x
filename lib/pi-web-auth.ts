@@ -596,6 +596,32 @@ export function getSession(token: string): SessionValidation {
 }
 
 /**
+ * 滑动续期会话：有效会话把过期时间重置为 now + SESSION_TTL。
+ *
+ * 页面保活 / 活跃请求调用，实现“页面开启期间会话不掉线”；
+ * 无效、已过期或密码代次不符的会话不续期（保持原失效语义）。
+ *
+ * @param token 原始会话 token
+ * @returns 会话是否有效并已完成续期
+ */
+export function touchSession(token: string): boolean {
+  if (!token) return false;
+  const tokenHash = hashToken(token);
+  const record = sessions.get(tokenHash);
+  if (
+    !record ||
+    record.expiresAt <= Date.now() ||
+    record.generation !== currentGeneration()
+  ) {
+    if (record) sessions.delete(record.hash);
+    return false;
+  }
+  record.expiresAt = Date.now() + SESSION_TTL;
+  rescheduleSessionInvalidation(tokenHash);
+  return true;
+}
+
+/**
  * 递增密码代次、持久化并作废全部会话。
  * @throws 配置读写失败时抛出；内存代次与会话在失败时保持不变
  */
@@ -691,6 +717,25 @@ export function subscribeSessionInvalidation(
     }
   };
   return unsubscribe;
+}
+
+/** 重排会话失效通知定时器（滑动续期后调用，避免提前触发过期通知）。 */
+function rescheduleSessionInvalidation(tokenHash: string): void {
+  const existing = sessionInvalidationTimeouts.get(tokenHash);
+  if (existing === undefined) return;
+  clearTimeout(existing);
+  const record = sessions.get(tokenHash);
+  if (!record) {
+    sessionInvalidationTimeouts.delete(tokenHash);
+    return;
+  }
+  sessionInvalidationTimeouts.set(
+    tokenHash,
+    setTimeout(
+      () => notifySessionInvalidation(tokenHash),
+      Math.max(0, record.expiresAt - Date.now()),
+    ),
+  );
 }
 
 /** 通知指定会话已失效，清理监听与超时。 */
@@ -888,4 +933,14 @@ export function getSetupTokenForTests(): string {
   }
   if (setupState.token === null) throw new Error("Setup token is unavailable");
   return setupState.token;
+}
+
+/**
+ * 仅测试用：返回会话的过期时间戳（用于断言滑动续期延长过期时间）。
+ * @param token 原始会话 token
+ * @returns 过期时间戳；会话不存在时返回 null
+ */
+export function getSessionExpiryForTests(token: string): number | null {
+  const record = sessions.get(hashToken(token));
+  return record ? record.expiresAt : null;
 }

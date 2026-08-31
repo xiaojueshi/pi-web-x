@@ -1,5 +1,8 @@
 import { getAuthState } from "@/lib/pi-web-auth";
-import { getAuthenticatedSession } from "@/lib/pi-web-auth-route";
+import {
+  getAuthenticatedSession,
+  touchAuthenticatedSession,
+} from "@/lib/pi-web-auth-route";
 
 /** 返回认证初始化状态与当前会话状态。
  * @param request 当前 HTTP 请求
@@ -7,6 +10,8 @@ import { getAuthenticatedSession } from "@/lib/pi-web-auth-route";
  */
 export async function GET(request: Request) {
   try {
+    // 有效会话在此顺带滑动续期（页面保活端点）
+    touchAuthenticatedSession(request);
     const state = await getAuthState();
     return Response.json({
       initialized: state.initialized,

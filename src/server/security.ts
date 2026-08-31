@@ -8,7 +8,10 @@ import {
   parseBasicCredentials,
 } from "@/lib/web-auth";
 import { getAuthState, verifyPassword } from "@/lib/pi-web-auth";
-import { getAuthenticatedSession } from "@/lib/pi-web-auth-route";
+import {
+  getAuthenticatedSession,
+  touchAuthenticatedSession,
+} from "@/lib/pi-web-auth-route";
 
 /** 公开放行的静态资源路径段（登录/设置页依赖的界面资产）。 */
 const PUBLIC_ASSET_SEGMENTS = [
@@ -193,7 +196,11 @@ export async function authorizeRequest(
 
   // 已初始化：校验会话 cookie
   const session = getAuthenticatedSession(request);
-  if (session.valid) return null;
+  if (session.valid) {
+    // 滑动续期：有效会话延长过期时间（页面保活依赖此行为）
+    touchAuthenticatedSession(request);
+    return null;
+  }
 
   // 会话无效：/login 页面自身放行（渲染登录表单），其余页面引导到 /login，API 返回 401
   if (pathname === "/login") return null;

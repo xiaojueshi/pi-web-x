@@ -6,6 +6,7 @@ import {
 } from "@/src/server/routes";
 import { authorizeRequest } from "@/src/server/security";
 import { servePublicAsset } from "@/src/server/public-assets";
+import { drainSessionRefreshCookie } from "@/lib/pi-web-auth-route";
 
 export interface ServerOptions {
   hostname: string;
@@ -26,6 +27,24 @@ async function fetchStaticAsset(
   url.hostname = "127.0.0.1";
   url.port = String(assetPort);
   return fetch(url, { method: request.method, headers: request.headers });
+}
+
+/**
+ * 为 API 响应附加会话滑动续期的 Set-Cookie 头（如有）。
+ * @param request 当前 HTTP 请求
+ * @param response 原始 API 响应
+ * @returns 附加续期头后的响应（未续期时原样返回）
+ */
+function withSessionRefresh(request: Request, response: Response): Response {
+  const refresh = drainSessionRefreshCookie(request);
+  if (!refresh) return response;
+  const headers = new Headers(response.headers);
+  headers.append("Set-Cookie", refresh);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 /** 启动 pi-web-x 的 Bun 原生 HTTP 服务。 */
@@ -81,9 +100,12 @@ export function startServer(
             headers: { Allow: allowed.join(", ") },
           });
         }
-        return (handler as RouteHandler)(createHttpRequest(request), {
-          params: Promise.resolve(route.params),
-        });
+        return withSessionRefresh(
+          request,
+          await (handler as RouteHandler)(createHttpRequest(request), {
+            params: Promise.resolve(route.params),
+          }),
+        );
       },
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test } from "bun:test";
+import { afterEach, beforeEach, setSystemTime, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -136,4 +136,77 @@ test("setup token 消费一次即失效", async () => {
   assert.equal(mod.consumeSetupToken("setup-token"), true);
   // 消费后再次消费失败；未初始化但 token 已无 → 初始化失败
   assert.equal(mod.consumeSetupToken("setup-token"), false);
+});
+
+test("会话滑动续期：有效会话延长过期时间，无效/错误/撤销会话不续期", async () => {
+  const mod = await loadAuth();
+  const token = mod.getSetupTokenForTests();
+  await mod.initializeAuth(token, "test-password-123");
+  const sessionToken = mod.createSession();
+  const before = mod.getSessionExpiryForTests(sessionToken);
+  assert.ok(before !== null);
+  const realNow = Date.now();
+  try {
+    // 快进到会话只剩 5 秒到期：此时仍有效，但 touch 后过期点应
+    // 被重置为「快进时刻 + 24h」，即远超原过期点（before + 23h）。
+    setSystemTime(new Date(before - 5000));
+    assert.equal(mod.getSession(sessionToken).valid, true);
+    assert.equal(mod.touchSession(sessionToken), true);
+    const after = mod.getSessionExpiryForTests(sessionToken);
+    assert.ok(after !== null && after > before + 23 * 60 * 60 * 1000);
+    // 续期后会话仍有效
+    assert.equal(mod.getSession(sessionToken).valid, true);
+  } finally {
+    setSystemTime(new Date(realNow));
+  }
+  // 无 token / 错误 token 不续期
+  assert.equal(mod.touchSession(""), false);
+  assert.equal(mod.touchSession("nonsense-token"), false);
+  // 撤销后不续期
+  mod.revokeSession(sessionToken);
+  assert.equal(mod.touchSession(sessionToken), false);
+});
+
+test("会话滑动续期路由助手：有效会话产出新 Set-Cookie，无效会话返回 null", async () => {
+  const auth = await loadAuth();
+  const token = auth.getSetupTokenForTests();
+  await auth.initializeAuth(token, "test-password-123");
+  const route = await import("../../../lib/pi-web-auth-route.ts");
+  const sessionToken = auth.createSession();
+  // 无 cookie → null
+  assert.equal(
+    route.touchAuthenticatedSession(
+      new Request("http://127.0.0.1:25432/api/auth/status"),
+    ),
+    null,
+  );
+  // 有效会话 → 续期 + 新的 Set-Cookie（Max-Age=86400，无 https 时不带 Secure）
+  const withSession = route.touchAuthenticatedSession(
+    new Request("http://127.0.0.1:25432/api/auth/status", {
+      headers: { cookie: `pi_web_x_session=${sessionToken}` },
+    }),
+  );
+  assert.ok(withSession !== null);
+  assert.ok(withSession.startsWith("pi_web_x_session="));
+  assert.ok(withSession.includes("Max-Age=86400"));
+  assert.ok(!withSession.includes("; Secure"));
+  // https（x-forwarded-proto）→ 带 Secure
+  const httpsCookie = route.touchAuthenticatedSession(
+    new Request("https://pi.xiaojueshi.top/api/auth/status", {
+      headers: {
+        cookie: `pi_web_x_session=${sessionToken}`,
+        "x-forwarded-proto": "https",
+      },
+    }),
+  );
+  assert.ok(httpsCookie !== null && httpsCookie.includes("; Secure"));
+  // 错误 token → null
+  assert.equal(
+    route.touchAuthenticatedSession(
+      new Request("http://127.0.0.1:25432/api/auth/status", {
+        headers: { cookie: "pi_web_x_session=nonsense" },
+      }),
+    ),
+    null,
+  );
 });
