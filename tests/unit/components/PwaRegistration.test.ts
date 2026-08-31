@@ -29,6 +29,20 @@ test("keeps a newly installed worker waiting until the user applies its update",
   assert.match(registrationSource, /navigator\.serviceWorker\.addEventListener\("controllerchange"/);
 });
 
+test("frames the update notice as a finished upgrade needing only a refresh", () => {
+  // 描述带当前版本号插值，按钮表达“刷新”而非“下载/安装更新”
+  assert.match(
+    registrationSource,
+    /t\("pwa\.updateReadyDescription", \{ version: appVersion \}\)/,
+  );
+  assert.match(englishMessagesSource, /refres[h] to use it/);
+  assert.doesNotMatch(
+    englishMessagesSource,
+    /A new version has downloaded\. Apply it/,
+  );
+  assert.match(englishMessagesSource, /Refresh now/);
+});
+
 test("offers notifications after a task without requesting browser permission automatically", () => {
   assert.match(appShellSource, /offerPwaNotifications\(\);/);
   assert.doesNotMatch(appShellSource, /void Notification\.requestPermission\(\)/);

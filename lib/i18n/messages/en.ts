@@ -650,9 +650,9 @@ export const enLocale: LocalePlugin = {
     "pwa.notNow": "Not now",
     "pwa.enableNotifications": "Enable notifications",
     "pwa.enabling": "Enabling…",
-    "pwa.updateReadyTitle": "Update ready",
-    "pwa.updateReadyDescription": "A new version has downloaded. Apply it when you are ready to refresh this page.",
-    "pwa.applyUpdate": "Apply update",
-    "pwa.updating": "Updating…",
+    "pwa.updateReadyTitle": "Interface ready",
+    "pwa.updateReadyDescription": "The upgrade is complete. The latest interface (v{version}) is ready — refresh to use it.",
+    "pwa.applyUpdate": "Refresh now",
+    "pwa.updating": "Refreshing…",
   },
 };

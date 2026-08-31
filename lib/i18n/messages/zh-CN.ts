@@ -634,9 +634,9 @@ export const zhCNLocale: LocalePlugin = {
     "pwa.notNow": "暂不",
     "pwa.enableNotifications": "开启通知",
     "pwa.enabling": "正在开启…",
-    "pwa.updateReadyTitle": "更新已就绪",
-    "pwa.updateReadyDescription": "新版本已下载完成。请在适合刷新此页面时应用更新。",
-    "pwa.applyUpdate": "应用更新",
-    "pwa.updating": "正在更新…",
+    "pwa.updateReadyTitle": "界面已就绪",
+    "pwa.updateReadyDescription": "升级已完成，最新版界面（v{version}）已就绪。刷新后即可使用。",
+    "pwa.applyUpdate": "立即刷新",
+    "pwa.updating": "正在刷新…",
   },
 };

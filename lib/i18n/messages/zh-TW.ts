@@ -633,9 +633,9 @@ export const zhTWLocale: LocalePlugin = {
     "pwa.notNow": "暫不",
     "pwa.enableNotifications": "開啟通知",
     "pwa.enabling": "正在開啟…",
-    "pwa.updateReadyTitle": "更新已就緒",
-    "pwa.updateReadyDescription": "新版本已下載完成。請在適合重新整理此頁面時套用更新。",
-    "pwa.applyUpdate": "套用更新",
-    "pwa.updating": "正在更新…",
+    "pwa.updateReadyTitle": "介面已就緒",
+    "pwa.updateReadyDescription": "升級已完成，最新版介面（v{version}）已就緒。重新整理後即可使用。",
+    "pwa.applyUpdate": "立即重新整理",
+    "pwa.updating": "正在重新整理…",
   },
 };

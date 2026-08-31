@@ -30,6 +30,8 @@ function getConnectionStatus(): PwaConnectionStatus | null {
  */
 export function PwaRegistration() {
   const { locale, t } = useI18n();
+  // 当前应用版本（用于 SW 脚本 URL 与升级完成提示的版本号展示）。
+  const appVersion = document.documentElement.dataset.appVersion ?? "dev";
   const [updateReady, setUpdateReady] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   const [notificationOffer, setNotificationOffer] = useState(false);
@@ -78,7 +80,6 @@ export function PwaRegistration() {
     };
 
     const register = () => {
-      const appVersion = document.documentElement.dataset.appVersion ?? "dev";
       const scriptUrl = `/sw.js?v=${encodeURIComponent(appVersion)}`;
       void navigator.serviceWorker
         .register(scriptUrl, { scope: "/", updateViaCache: "none" })
@@ -262,7 +263,7 @@ export function PwaRegistration() {
             </button>
           </div>
           <p className="pwa-notice-description pwa-notice-description-action">
-            {t("pwa.updateReadyDescription")}
+            {t("pwa.updateReadyDescription", { version: appVersion })}
           </p>
           <button
             type="button"
