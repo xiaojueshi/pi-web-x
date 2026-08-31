@@ -210,3 +210,42 @@ test("会话滑动续期路由助手：有效会话产出新 Set-Cookie，无效
     null,
   );
 });
+
+test("会话持久化：登录落盘、模拟重启后恢复、登出后不再恢复", async () => {
+  const mod = await loadAuth();
+  const token = mod.getSetupTokenForTests();
+  await mod.initializeAuth(token, "test-password-123");
+  const sessionToken = mod.createSession();
+  await mod.flushSessionPersistenceForTests();
+  // 模拟进程重启：清空内存会话 → 失效；从磁盘恢复 → 重新有效
+  mod.clearSessionsForTests();
+  assert.equal(mod.getSession(sessionToken).valid, false);
+  mod.restoreSessionsForTests();
+  assert.equal(mod.getSession(sessionToken).valid, true);
+  // 登出后落盘删除：清空并恢复后依然无效（不会“复活”）
+  mod.revokeSession(sessionToken);
+  await mod.flushSessionPersistenceForTests();
+  mod.clearSessionsForTests();
+  mod.restoreSessionsForTests();
+  assert.equal(mod.getSession(sessionToken).valid, false);
+});
+
+test("会话持久化：改密/全量作废后落盘，重启后旧会话不恢复", async () => {
+  const mod = await loadAuth();
+  const token = mod.getSetupTokenForTests();
+  await mod.initializeAuth(token, "test-password-123");
+  const sessionToken = await mod.authenticateAndCreateSession(
+    "test-password-123",
+  );
+  assert.ok(sessionToken !== null);
+  await mod.flushSessionPersistenceForTests();
+  await mod.changePassword("test-password-123", "new-password-456");
+  await mod.flushSessionPersistenceForTests();
+  mod.clearSessionsForTests();
+  mod.restoreSessionsForTests();
+  // 改密全量作废已落盘：重启后旧会话不恢复、新密码会话可再登录
+  assert.equal(mod.getSession(sessionToken).valid, false);
+  const newSession = await mod.authenticateAndCreateSession("new-password-456");
+  assert.ok(newSession !== null);
+  assert.equal(mod.getSession(newSession).valid, true);
+});

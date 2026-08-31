@@ -158,6 +158,127 @@ const sessions = (globalThis.__piWebAuthSessions ??= new Map<
   string,
   SessionRecord
 >());
+
+/* ---------- 会话持久化：重启/升级后恢复登录态（仅存哈希） ---------- */
+
+/** 会话存储文件名（与认证配置同目录）。 */
+const SESSION_STORE_FILE = "pi-web-sessions.json";
+/** touch 续期的落盘节流：避免每个请求都写盘。 */
+const PERSIST_THROTTLE_MS = 30 * 1000;
+
+/** 上次落盘时间（模块级，节流用）。 */
+let lastSessionPersistAt = 0;
+/** 串行化落盘链（快照按调度顺序写入，避免乱序覆盖）。 */
+let sessionPersistChain: Promise<void> = Promise.resolve();
+
+/** 会话存储文件路径：`{认证目录}/pi-web-sessions.json`。 */
+function sessionStorePath(): string {
+  return join(dirname(configPath()), SESSION_STORE_FILE);
+}
+
+/**
+ * 从磁盘读取密码代次（不触发内存同步副作用）。
+ *
+ * 持久化收集/恢复路径不能用 currentGeneration()：它会提前置
+ * generationInitialized 并改变 bumpGeneration 的步进时序（见测试回归）。
+ * 配置缺失/损坏时退回内存代次，保证 collect 与 load 行为一致。
+ */
+function persistedGeneration(): number {
+  try {
+    if (configPathExists() && hasRegularConfigFile()) {
+      const parsed: unknown = JSON.parse(readFileSync(configPath(), "utf8"));
+      validateConfig(parsed);
+      return parsed.generation;
+    }
+  } catch {
+    // 配置缺失/损坏：退回到内存代次
+  }
+  return runtime.authGeneration;
+}
+
+/** 采集当前内存中有效会话快照（过滤过期与代次不符）。 */
+function collectValidSessions(): SessionRecord[] {
+  const now = Date.now();
+  const generation = persistedGeneration();
+  const records: SessionRecord[] = [];
+  for (const record of sessions.values()) {
+    if (record.expiresAt > now && record.generation === generation) {
+      records.push(record);
+    }
+  }
+  return records;
+}
+
+/** 原子落盘（临时文件 + rename），按调度顺序串行写入。 */
+function persistSessions(force = false): void {
+  const now = Date.now();
+  if (!force && now - lastSessionPersistAt < PERSIST_THROTTLE_MS) return;
+  lastSessionPersistAt = now;
+  const snapshot = JSON.stringify({
+    version: 1,
+    sessions: collectValidSessions(),
+  });
+  sessionPersistChain = sessionPersistChain
+    .then(async () => {
+      const path = sessionStorePath();
+      await mkdir(dirname(path), { recursive: true });
+      const temporaryPath = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+      await writeFile(temporaryPath, snapshot, { mode: 0o600 });
+      await chmod(temporaryPath, 0o600);
+      await rename(temporaryPath, path);
+    })
+    .catch((error: unknown) => {
+      // ENOENT（目录被删除等瞬态）静默：下次写盘会重试；其余错误记录
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      console.error(
+        `[pi-web-x] Failed to persist web sessions: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
+}
+
+/** 从磁盘恢复有效会话（启动时调用；损坏/缺失时静默忽略，fail closed）。 */
+function loadSessionsFromStore(): void {
+  try {
+    const parsed: unknown = JSON.parse(
+      readFileSync(sessionStorePath(), "utf8"),
+    );
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed) ||
+      (parsed as Record<string, unknown>).version !== 1
+    ) {
+      return;
+    }
+    const stored = (parsed as { sessions?: unknown }).sessions;
+    if (!Array.isArray(stored)) return;
+    const now = Date.now();
+    const generation = persistedGeneration();
+    for (const item of stored) {
+      const record = item as Partial<SessionRecord>;
+      if (
+        typeof record.hash !== "string" ||
+        typeof record.createdAt !== "number" ||
+        typeof record.expiresAt !== "number" ||
+        typeof record.generation !== "number" ||
+        record.expiresAt <= now ||
+        record.generation !== generation
+      ) {
+        continue;
+      }
+      sessions.set(record.hash, record as SessionRecord);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.error(
+        `[pi-web-x] Failed to load web sessions: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+}
+
+// 模块加载即恢复持久化会话（进程重启后登录态不丢失）
+loadSessionsFromStore();
 const runtime: AuthRuntimeState = (globalThis.__piWebAuthRuntime ??= {
   sessionInvalidationListeners: new Map(),
   sessionInvalidationTimeouts: new Map(),
@@ -574,6 +695,8 @@ function storeSession(
     expiresAt: now + SESSION_TTL,
     generation: stateGeneration,
   });
+  // 登录立即落盘：会话须跨进程重启存续
+  persistSessions(true);
   return token;
 }
 
@@ -618,6 +741,8 @@ export function touchSession(token: string): boolean {
   }
   record.expiresAt = Date.now() + SESSION_TTL;
   rescheduleSessionInvalidation(tokenHash);
+  // 续期落盘（节流）：重启后仍保持滑动后的过期时间
+  persistSessions();
   return true;
 }
 
@@ -672,6 +797,8 @@ export function revokeSession(token: string): void {
   const tokenHash = hashToken(token);
   sessions.delete(tokenHash);
   notifySessionInvalidation(tokenHash);
+  // 登出立即落盘：避免重启后会话“复活”
+  persistSessions(true);
 }
 
 /**
@@ -748,8 +875,9 @@ function notifySessionInvalidation(tokenHash: string): void {
   for (const listener of listeners) listener();
 }
 
-/** 通知全部会话失效。 */
+/** 通知全部会话失效（调用方已清空内存会话；顺带把清空后的状态落盘）。 */
 function notifyAllSessionInvalidations(): void {
+  persistSessions(true);
   for (const tokenHash of sessionInvalidationListeners.keys()) {
     notifySessionInvalidation(tokenHash);
   }
@@ -903,6 +1031,10 @@ function bumpGeneration(): void {
  * @throws 删除测试配置失败时抛出
  */
 export async function resetAuthStateForTests(): Promise<void> {
+  // 等待遗留落盘任务完成并截断链，避免跨测试写盘污染（目录随后被删除）
+  await sessionPersistChain;
+  sessionPersistChain = Promise.resolve();
+  lastSessionPersistAt = 0;
   sessions.clear();
   notifyAllSessionInvalidations();
   loginFailures.clear();
@@ -917,6 +1049,32 @@ export async function resetAuthStateForTests(): Promise<void> {
   await unlink(configPath()).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "ENOENT") throw error;
   });
+  await unlink(sessionStorePath()).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== "ENOENT") throw error;
+  });
+}
+
+/**
+ * 仅测试用：等待会话持久化链排空（断言落盘已生效）。
+ * @returns 落盘链完成后的 Promise
+ */
+export function flushSessionPersistenceForTests(): Promise<void> {
+  return sessionPersistChain;
+}
+
+/**
+ * 仅测试用：清空内存会话（模拟进程重启后的干净状态，不删落盘文件）。
+ */
+export function clearSessionsForTests(): void {
+  sessions.clear();
+}
+
+/**
+ * 仅测试用：从磁盘恢复有效会话（模拟进程启动时的加载）。
+ */
+export function restoreSessionsForTests(): void {
+  sessions.clear();
+  loadSessionsFromStore();
 }
 
 /**
