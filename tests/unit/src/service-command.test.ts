@@ -5,6 +5,7 @@
  */
 
 import { test, expect } from "bun:test";
+import { join } from "node:path";
 import type {
   CommandRunner,
   FileOps,
@@ -145,7 +146,7 @@ test("update 后 systemd 迁移：保留快照、修复路径并重启验证", (
   const files = new Map<string, string>();
   const oldExec = "/home/tester/pi-web-x/pi-web-x";
   const newExec = "/home/tester/.pi-web-x/pi-web-x";
-  const oldEnv = "/home/tester/.config/pi-web-x/env";
+  const oldEnv = join(HOME, ".config", "pi-web-x", "env");
   const unitPath = systemdUserUnitPath(HOME);
   const newEnv = systemdEnvFilePath(HOME);
   files.set(

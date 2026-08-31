@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.9.2] - 2026-08-31
+
+### 修复
+
+- 修正 systemd 服务迁移测试的路径构造，使模拟的 env 路径跟随运行平台的 `node:path` 语义，恢复 Windows CI 验证。
+
 ## [0.9.1] - 2026-08-31
 
 ### 新增
@@ -92,6 +98,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.9.2]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.2
 [0.9.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.1
 [0.9.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.0
 [0.8.12]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.8.12
