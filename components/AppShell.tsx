@@ -41,6 +41,7 @@ import {
   showBrowserNotification,
 } from "@/lib/browser-notifications";
 import { setupPushSubscription } from "@/lib/push-client";
+import { offerPwaNotifications } from "./PwaRegistration";
 import { getInitialNavigation } from "@/lib/initial-navigation";
 import {
   clearLastOpen,
@@ -959,12 +960,8 @@ export function AppShell() {
         fire();
         void setupPushSubscription(locale);
       } else if (Notification.permission === "default") {
-        void Notification.requestPermission().then((p) => {
-          if (p === "granted") {
-            fire();
-            void setupPushSubscription(locale);
-          }
-        });
+        // 权限请求必须由用户操作触发；任务结束只提供非侵入式入口。
+        offerPwaNotifications();
       }
     },
     [handleSelectSession, locale],

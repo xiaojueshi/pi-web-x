@@ -43,7 +43,9 @@ function SecuritySettings({
   };
 
   return (
-    <div className="settings-security">
+    <div className="settings-general settings-security">
+      <h2 className="settings-general-title">{t("settings.security")}</h2>
+
       <section className="settings-general-section">
         <h3 className="settings-general-heading">{t("auth.changePassword")}</h3>
         <p className="settings-general-description">

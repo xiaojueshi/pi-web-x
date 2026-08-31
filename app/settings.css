@@ -1282,10 +1282,3 @@
 .auth-form-submit.is-danger {
   background: color-mix(in srgb, #dc2626 80%, var(--accent));
 }
-
-.settings-security {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 520px;
-}

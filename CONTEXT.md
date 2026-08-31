@@ -43,3 +43,17 @@ _Avoid_: ~/pi-web-x (legacy), install dir
 **Basic Auth Fallback**:
 The `PI_WEB_X_PASSWORD` HTTP Basic authentication path for programmatic clients (CLI, curl, tests), kept alongside the browser-facing Web Access Authentication.
 _Avoid_: password auth, legacy auth
+
+## Mobile Experience
+
+**Mobile Companion**:
+The touch-first Pi Web X experience for monitoring and continuing coding-agent work from a phone; it centers the conversation rather than recreating a desktop IDE.
+_Avoid_: mobile IDE, mobile-only product
+
+**PWA Companion**:
+The installable Pi Web X browser application that accompanies a running pi-web-x service, with best-effort offline guidance and background task notifications.
+_Avoid_: native app, offline agent
+
+**Connection Safety Notice**:
+A persistent, fact-based explanation of the current connection's security capabilities and limitations, especially when HTTPS, installation, or Push is unavailable.
+_Avoid_: security guarantee, public-network detector

@@ -173,6 +173,23 @@ test("uses the child-session robot glyph for the sub-agents tab", () => {
   );
 });
 
+test("uses the shared General layout for security actions", () => {
+  assert.match(
+    panelSource,
+    /<div className="settings-general settings-security">[\s\S]*?<h2 className="settings-general-title">\{t\("settings\.security"\)\}<\/h2>/,
+  );
+  assert.match(
+    panelSource,
+    /<section className="settings-general-section">[\s\S]*?t\("auth\.changePassword"\)/,
+  );
+  assert.match(
+    panelSource,
+    /<section className="settings-general-section">[\s\S]*?t\("auth\.logout"\)/,
+  );
+  assert.doesNotMatch(panelSource, /settings-security-card/);
+  assert.doesNotMatch(cssSource, /\.settings-security-card/);
+});
+
 test("uses the compact controls glyph for General", () => {
   assert.match(
     panelSource,

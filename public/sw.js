@@ -1,6 +1,11 @@
 const CACHE_PREFIX = "pi-web-x";
-const CACHE_VERSION =
-  new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE_VERSION = (() => {
+  try {
+    return new URL(self.location.href).searchParams.get("v") || "dev";
+  } catch {
+    return "dev";
+  }
+})();
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
@@ -15,9 +20,13 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting()),
+      .then((cache) => cache.addAll(PRECACHE_URLS)),
   );
+});
+
+// 新版本必须由页面在用户确认后显式激活，避免任务进行中途替换资源。
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "PI_WEB_X_SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -42,7 +51,12 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  const url = new URL(request.url);
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
   // Session data and live agent traffic must always come from the local server.
@@ -86,11 +100,12 @@ self.addEventListener("push", (event) => {
       .then((clients) => {
         if (clients.some((client) => client.visibilityState === "visible"))
           return;
-        return self.registration.showNotification(title, {
+        const notificationOptions = {
           body,
           data: { url: typeof url === "string" && url ? url : "/" },
-          ...(typeof tag === "string" && tag ? { tag } : {}),
-        });
+        };
+        if (typeof tag === "string" && tag) notificationOptions.tag = tag;
+        return self.registration.showNotification(title, notificationOptions);
       }),
   );
 });
