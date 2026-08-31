@@ -2,6 +2,26 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.9.0] - 2026-08-31
+
+### 新增
+
+- Web 访问认证：首次启动输出一次性设置令牌，浏览器完成密码初始化后使用内存会话登录；设置中的“安全”分区支持改密并使所有设备重新登录，以及退出当前设备。
+- 移动 PWA Companion：Service Worker 更新改为用户确认后生效；在安全上下文中可由用户主动开启任务完成通知；对不满足 HTTPS、安全上下文或认证条件的连接说明功能限制。草稿仅在当前浏览会话中保留，离线时不会执行 Agent、缓存会话历史或排队写入。
+- 安装根目录迁移：macOS/Linux 默认使用 `~/.pi-web-x`，旧的 `~/pi-web-x` 安装会自动迁移；命令入口仍位于 `~/.local/bin`。
+
+### 变更
+
+- 安全页复用设置“常规”页面的布局与排版；设置样式统一经全局 CSS 构建管道打包，避免独立样式资源遗漏。
+
+### 修复
+
+- 更新命令的测试固定注入 Linux 平台，避免 macOS/Windows CI 因宿主平台差异失败。
+
+### 安全
+
+- 默认 loopback、Host/Origin 校验与 Host Runtime Environment / Project Command Environment 隔离不变。`pi-web-x` 继续不读取或迁移旧 `pi-web:*` 浏览器标识。
+
 ## [0.8.12] - 2026-08-30
 
 ### 新增
@@ -57,4 +77,6 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.9.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.0
+[0.8.12]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.8.12
 [0.8.11]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.8.11

@@ -23,11 +23,11 @@ irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
 脚本行为：
 
 - 自动探测 OS / 架构 / libc（glibc vs musl），选择对应的 GitHub Release 二进制
-- 默认安装**最新版本**（也可 `sh install.sh --version v0.8.11` 固定版本）
+- 默认安装**最新版本**（也可 `sh install.sh --version v0.9.0` 固定版本）
 - 交互终端下显示实时进度条与下载大小预估，分步输出每一步的完成状态；下载失败会给出明确提示与重试建议
 - 下载后校验 `SHA256SUMS`，哈希不符即中止
-- 安装到 `~/pi-web-x`（真实安装根，二进制与内置资产同目录；`--dir` 可覆盖），
-  并在 `~/.local/bin` 建立命令入口符号链接；Windows 将安装目录注册进用户 PATH
+- macOS/Linux 安装到 `~/.pi-web-x`（真实安装根，二进制与内置资产同目录；`--dir` 可覆盖），
+  并在 `~/.local/bin` 建立命令入口符号链接；Windows 默认安装到 `%USERPROFILE%\pi-web-x` 并注册进用户 PATH。macOS/Linux 的旧 `~/pi-web-x` 安装会自动迁移
 - 已安装同版本时跳过（幂等），`--force` 强制重装
 - 首次启动自动获取内置资产（主题等目录级资产）；内网离线可用
   `pi-web-x assets install <包路径>` 手动安装；`pi-web-x update` 一键自更新
@@ -44,6 +44,22 @@ irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
 ```
 
 二进制自身不需要 Node.js 或 Bun。git、npm/npx 仅在使用 worktree、插件或 skills 安装功能时按需需要。
+
+### 浏览器访问认证
+
+首次启动且尚未初始化认证时，服务会在**启动日志**输出一次性设置令牌。打开浏览器页面后输入该令牌并设置密码，即可启用浏览器访问认证。设置令牌只在当前服务进程中有效，不能通过 HTTP 接口读取；请勿将其写入终端录屏、日志收集或聊天记录。
+
+初始化后，浏览器使用 HttpOnly 会话 Cookie 登录。可在“设置 → 安全”中修改密码（会使所有设备重新登录）或退出当前设备。认证配置保存在 `~/.pi-web-x/auth/`；它与 Pi 通用数据目录 `~/.pi/agent` 分离。
+
+`PI_WEB_X_PASSWORD` 保留为 Basic Auth 回退，用于脚本化客户端或反向代理场景；它不迁移、不读取旧 `PI_WEB_*` 变量。
+
+### PWA Companion
+
+支持的浏览器可将页面安装为 PWA，用于在手机上查看和继续已运行的 Agent 会话。Agent 仍只在运行中的 `pi-web-x` 服务上执行：PWA 不会离线执行 Agent、缓存会话历史或排队写操作。
+
+- Service Worker 有更新时，界面会提供“更新”操作；确认前不会替换当前资源，避免打断未发送输入或进行中的任务。
+- 完成任务后可由用户主动允许系统通知；不授权或浏览器不支持时，应用保持页面内提示。
+- `localhost` 可使用浏览器的安全上下文能力；通过 LAN 或反向代理访问时，应配置 HTTPS 以及 `PI_WEB_X_PASSWORD` 或浏览器访问认证。界面会说明当前连接下 PWA、通知等能力的限制，但不判断网络是否公开。
 
 ### 启动选项
 

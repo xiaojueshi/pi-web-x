@@ -6,6 +6,8 @@
 
 ```bash
 bun install --frozen-lockfile
+git diff --check
+bun run lint
 bun test
 bun run test:bun
 bun run typecheck
@@ -32,17 +34,27 @@ HOME="$(mktemp -d)" ./dist/pi-web-x-linux-x64 --port 30141 --no-open
 
 ## 版本检查与发布说明
 
-版本变更后，更新 `package.json`、`bun.lock`，重新构建所有制品。若 `--version` 输出、CLI 参数、安装脚本或产物命名有变化，需在发布说明中同步说明。发布说明必须说明：
+版本变更后，更新 `package.json`、`CHANGELOG.md` 以及受版本影响的生成文件（当前为 `src/generated/asset-manifest.ts`）；如 `bun.lock` 的顶层元数据发生变化也一并提交。重新构建所有制品，确认 `pi-web-x --version` 输出与 tag 相同。若 CLI 参数、安装脚本或产物命名有变化，需在发布说明中同步说明。发布说明必须说明：
 
 - Bun 精确版本与目标平台；
 - 本次上游基线或安全修复；
 - `pi-web-x` 命名空间与旧 `pi-web:*` 不兼容；
 - 保留/替代的依赖变更（同步更新运行时替代矩阵）。
 
+当前 GitHub Actions 在推送 `v*` tag 后构建八平台制品、生成 `SHA256SUMS` 并创建 Draft Release。发布前先推送主分支，再推送带注释的 tag：
+
+```bash
+git push origin main
+git tag -a vX.Y.Z -m "发布 vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+Draft Release 的说明应以对应版本的 `CHANGELOG.md` 为基础，并保存一份可审阅的源文档到 `docs/release-notes/vX.Y.Z.md`；该文档须补齐上列发布说明要求。核对八个二进制、`pi-web-x-assets-<版本>.tar.gz` 和 `SHA256SUMS` 全部上传后，才可从 Draft 发布。
+
 ## 一键安装脚本
 
-- `install.sh`（POSIX sh，macOS/Linux）：自动探测 OS/架构/libc，从 `releases/latest/download` 拉取对应二进制并校验 SHA256SUMS，安装到 `~/.local/bin`。
-- `install.ps1`（PowerShell，Windows）：同上能力，额外注册用户级 PATH。
+- `install.sh`（POSIX sh，macOS/Linux）：自动探测 OS/架构/libc，从 `releases/latest/download` 拉取对应二进制并校验 SHA256SUMS，安装到 `~/.pi-web-x`，并在 `~/.local/bin` 创建命令入口。
+- `install.ps1`（PowerShell，Windows）：同上能力，默认安装到 `%USERPROFILE%\pi-web-x` 并注册用户级 PATH。
 
 改动任一脚本后必须同步：
 

@@ -10,7 +10,7 @@
     安装目录（默认 $HOME\pi-web-x：真实二进制与内置资产同目录）。
 
 .PARAMETER Version
-    指定版本（如 v0.8.11）；缺省时跟随 GitHub latest 重定向。
+    指定版本（如 v0.9.0）；缺省时跟随 GitHub latest 重定向。
 
 .PARAMETER Force
     已安装同版本时强制重装。

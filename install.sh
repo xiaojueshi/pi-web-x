@@ -10,7 +10,7 @@
 #   1. 自动探测 OS / 架构 / libc（glibc vs musl），对应 GitHub Release 资产
 #   2. 默认下载最新版本（releases/latest 重定向，无需 API token）
 #   3. 下载 SHA256SUMS 并校验二进制完整性
-#   4. chmod +x 后安装到 ~/pi-web-x（可 -D 覆盖），并在 ~/.local/bin 建立
+#   4. chmod +x 后安装到 ~/.pi-web-x（可 -D 覆盖），并在 ~/.local/bin 建立
 #      命令入口符号链接（真实二进制与内置资产同目录，供启动时自举）
 #   5. 已安装且为最新版本时跳过（幂等），--force 强制重装
 #
@@ -40,7 +40,7 @@ Install the latest pi-web-x binary for this platform.
 
 Options:
   -d, --dir <dir>      Install directory (default: \$HOME/.pi-web-x)
-  -v, --version <ver>  Install a specific version, e.g. v0.8.11 (default: latest)
+  -v, --version <ver>  Install a specific version, e.g. v0.9.0 (default: latest)
   -f, --force          Reinstall even if the same version is already installed
   -n, --dry-run        Probe the platform and print the asset name without downloading
   -h, --help           Show this help
@@ -193,7 +193,7 @@ fi
 
 RESOLVED_VERSION="$VERSION"
 if [ -z "$RESOLVED_VERSION" ]; then
-  # 重定向目标的 release 页 URL 形如 .../releases/tag/v0.8.11 → 后续下载
+  # 重定向目标的 release 页 URL 形如 .../releases/tag/vX.Y.Z → 后续下载
   # 仍走 releases/latest/download/<asset>（GitHub 自动跟随最新版本），
   # 这里只用于展示/对比已装版本；解析失败不阻断下载。
   REDIRECT="$(fetch_headers "${BASE_URL}/releases/latest" | tr -d '\r' | sed -n 's/^location: //Ip' || true)"
