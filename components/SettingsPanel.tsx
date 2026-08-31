@@ -12,7 +12,62 @@ import {
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
+import { PasswordChangeForm } from "./PasswordChangeForm";
 import { ConfigSwitch } from "./SettingsUi";
+
+/** 设置中心 Security 分区：访问密码修改与登出。 */
+function SecuritySettings({
+  onLogout,
+  onPasswordChanged,
+}: {
+  /** 登出回调。 */
+  onLogout?: () => void;
+  /** 改密成功后的回调。 */
+  onPasswordChanged?: () => void;
+}) {
+  const { t } = useI18n();
+  const [logoutBusy, setLogoutBusy] = useState(false);
+
+  const handleLogout = async () => {
+    setLogoutBusy(true);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      onLogout?.();
+    } finally {
+      setLogoutBusy(false);
+    }
+  };
+
+  return (
+    <div className="settings-security">
+      <section className="settings-general-section">
+        <h3 className="settings-general-heading">{t("auth.changePassword")}</h3>
+        <p className="settings-general-description">
+          {t("auth.changePasswordDescription")}
+        </p>
+        <PasswordChangeForm onSuccess={() => onPasswordChanged?.()} />
+      </section>
+      <section className="settings-general-section">
+        <h3 className="settings-general-heading">{t("auth.logout")}</h3>
+        <p className="settings-general-description">
+          {t("auth.logoutDescription")}
+        </p>
+        <button
+          type="button"
+          className="auth-form-submit is-danger"
+          disabled={logoutBusy}
+          onClick={() => void handleLogout()}
+        >
+          {logoutBusy ? t("auth.processing") : t("auth.logout")}
+        </button>
+      </section>
+    </div>
+  );
+}
 
 interface Props {
   cwd: string | null;
@@ -20,6 +75,8 @@ interface Props {
   initialSection: SettingsSection;
   onClose: () => void;
   onSessionReloaded: () => void;
+  /** 登出回调：由外层触发认证状态重查并回到登录墙。 */
+  onLogout?: () => void;
 }
 
 export function SettingsSectionIcon({
@@ -72,6 +129,14 @@ export function SettingsSectionIcon({
       <svg {...common} className="settings-section-icon is-agent">
         <rect x="5" y="7" width="14" height="11" rx="2" />
         <path d="M9 11h.01M15 11h.01M9 15h6M12 7V4M10 4h4" />
+      </svg>
+    );
+  if (section === "security")
+    return (
+      <svg {...common}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+        <path d="M12 8v4" />
+        <path d="M12 16h.01" />
       </svg>
     );
   return (
@@ -297,6 +362,7 @@ export function SettingsPanel({
   initialSection,
   onClose,
   onSessionReloaded,
+  onLogout,
 }: Props) {
   const { t } = useI18n();
   const [section, setSection] = useState<SettingsSection>(initialSection);
@@ -312,6 +378,7 @@ export function SettingsPanel({
     { id: "models", label: t("common.models"), requiresProject: false },
     { id: "skills", label: t("common.skills"), requiresProject: true },
     { id: "plugins", label: t("common.plugins"), requiresProject: true },
+    { id: "security", label: t("settings.security"), requiresProject: false },
   ];
 
   useEffect(() => setLastSettingsSection(initialSection), [initialSection]);
@@ -439,6 +506,13 @@ export function SettingsPanel({
                 onReloaded={onSessionReloaded}
               />,
             )}
+          {sectionHost(
+            "security",
+            <SecuritySettings
+              onLogout={onLogout}
+              onPasswordChanged={onLogout}
+            />,
+          )}
         </main>
       </div>
     </div>

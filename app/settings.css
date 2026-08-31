@@ -1172,3 +1172,120 @@
     }
   }
 }
+
+/* ── Web 访问认证（AuthGate / 改密表单）────────────────────────── */
+.auth-wall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.auth-card {
+  width: 360px;
+  max-width: 100%;
+  padding: 32px 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.auth-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.auth-subtitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.auth-description {
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.auth-hint {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.auth-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: var(--accent);
+}
+
+.auth-form-error {
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #dc2626 40%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, #dc2626 8%, var(--bg));
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auth-form-submit {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-form-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.auth-form-submit.is-danger {
+  background: color-mix(in srgb, #dc2626 80%, var(--accent));
+}
+
+.settings-security {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 520px;
+}

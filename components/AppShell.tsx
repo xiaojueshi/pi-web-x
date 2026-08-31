@@ -16,6 +16,7 @@ import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { openFileTab, saveFileViewerState } from "./file-tab-state";
 import { SettingsPanel, SettingsSectionIcon } from "./SettingsPanel";
+import { AuthGate } from "./AuthGate";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator, hasSessionBranches } from "./BranchNavigator";
 import { SystemPromptPanel } from "./SystemPromptPanel";
@@ -175,6 +176,12 @@ export function AppShell() {
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [settingsSection, setSettingsSection] =
     useState<SettingsSection | null>(null);
+  // 认证会话失效（登出/改密）时递增，强制 AuthGate 重查状态
+  const [authSessionKey, setAuthSessionKey] = useState(0);
+  const handleSessionChanged = useCallback(() => {
+    setAuthSessionKey((key) => key + 1);
+    setSettingsSection(null);
+  }, []);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [projectTrust, setProjectTrust] = useState<ProjectTrustStatus | null>(
     null,
@@ -2460,7 +2467,7 @@ export function AppShell() {
   };
 
   return (
-    <>
+    <AuthGate key={authSessionKey} onSessionChanged={handleSessionChanged}>
       <style>{`
       @keyframes session-info-pop {
         0% {
@@ -3763,6 +3770,7 @@ export function AppShell() {
             setModelsRefreshKey((key) => key + 1);
           }}
           onSessionReloaded={() => setSessionKey((key) => key + 1)}
+          onLogout={handleSessionChanged}
         />
       )}
       {projectTrustDialogOpen && projectTrustCwd && (
@@ -3776,6 +3784,6 @@ export function AppShell() {
           onConfirm={() => void handleTrustProject()}
         />
       )}
-    </>
+    </AuthGate>
   );
 }
