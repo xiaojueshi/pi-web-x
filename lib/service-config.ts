@@ -41,9 +41,13 @@ export function systemdUserUnitPath(home = homedir()): string {
   return join(home, ".config", "systemd", "user", `${SERVICE_NAME}.service`);
 }
 
-/** systemd 用户级服务的配置快照（EnvironmentFile）路径。 */
+/** systemd 用户级服务的配置快照（EnvironmentFile）路径。
+ *
+ * ADR 0006：User Data Root 统一到 ~/.pi-web-x/，快照位于 ~/.pi-web-x/env；
+ * 旧路径 ~/.config/pi-web-x/env 由服务安装逻辑负责迁移。
+ */
 export function systemdEnvFilePath(home = homedir()): string {
-  return join(home, ".config", "pi-web-x", "env");
+  return join(home, ".pi-web-x", "env");
 }
 
 /** macOS LaunchAgent plist 路径。 */

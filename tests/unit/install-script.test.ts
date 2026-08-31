@@ -66,8 +66,8 @@ test("--help 与未知参数行为正确", async () => {
   });
   assert.match(help.stdout, /Usage: sh install\.sh/);
   assert.match(help.stdout, /--dry-run/);
-  // 新布局：默认真实安装根为 $HOME/pi-web-x（不再直接装进 ~/.local/bin）
-  assert.match(help.stdout, /default: \$HOME\/pi-web-x/);
+  // 新布局（ADR 0006）：默认真实安装根为 $HOME/.pi-web-x
+  assert.match(help.stdout, /default: \$HOME\/\.pi-web-x/);
 
   await assert.rejects(
     execFileAsync("sh", [SCRIPT.pathname, "--bogus-flag"], {

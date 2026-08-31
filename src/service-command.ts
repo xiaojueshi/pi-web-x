@@ -15,7 +15,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
 import {
@@ -344,6 +344,14 @@ export function installSystemdService(
       `  config: ${envPath}\n` +
       `  logs:   journalctl --user -u ${SERVICE_NAME}\n`,
   );
+  // ADR 0006：旧 env 快照路径 ~/.config/pi-web-x/env 已在本次安装中被新路径取代；
+  // 旧文件保留（含此前手动写入的密码），提示用户自行清理或迁移。
+  if (deps.files.exists(join(home, ".config", "pi-web-x", "env"))) {
+    deps.io.stderr(
+      "Note: legacy env snapshot at ~/.config/pi-web-x/env was superseded by " +
+        `${envPath}; the old file is kept — remove it manually if no longer needed.\n`,
+    );
+  }
   return 0;
 }
 

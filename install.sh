@@ -24,9 +24,9 @@ REPO="xiaojueshi/pi-web-x"
 BASE_URL="https://github.com/${REPO}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO}/main"
 
-# 默认安装目录；可用 --dir 覆盖，尊重用户自定义
-# 默认安装目录（真实安装根：二进制与内置资产同目录）；可用 --dir 覆盖
-INSTALL_DIR="${PI_WEB_X_INSTALL_DIR:-$HOME/pi-web-x}"
+# 默认安装目录（真实安装根：二进制与内置资产同目录）；可用 --dir 覆盖。
+# 默认使用点前缀目录（ADR 0006）；旧的无点 ~/pi-web-x 会在安装时自动迁移。
+INSTALL_DIR="${PI_WEB_X_INSTALL_DIR:-$HOME/.pi-web-x}"
 # 命令入口目录（PATH 内），仅存放指向真实二进制的符号链接
 BIN_DIR="${PI_WEB_X_BIN_DIR:-$HOME/.local/bin}"
 VERSION="" # 空 = latest；可传 v0.x.y
@@ -39,7 +39,7 @@ Usage: sh install.sh [options]
 Install the latest pi-web-x binary for this platform.
 
 Options:
-  -d, --dir <dir>      Install directory (default: \$HOME/pi-web-x)
+  -d, --dir <dir>      Install directory (default: \$HOME/.pi-web-x)
   -v, --version <ver>  Install a specific version, e.g. v0.8.11 (default: latest)
   -f, --force          Reinstall even if the same version is already installed
   -n, --dry-run        Probe the platform and print the asset name without downloading
@@ -285,6 +285,24 @@ mkdir -p "$INSTALL_DIR"
 chmod +x "$TMP_DIR/pi-web-x"
 mv "$TMP_DIR/pi-web-x" "$INSTALL_DIR/pi-web-x"
 echo "Installed pi-web-x ${TARGET_VERSION_LABEL} to ${INSTALL_DIR}/pi-web-x"
+
+# ---------------------------------------------------------------------------
+# 旧安装根迁移（ADR 0006）：默认目录从 ~/pi-web-x 改为 ~/.pi-web-x。
+# 仅当用户未用 --dir 覆盖（INSTALL_DIR 仍是默认值）且旧目录存在时执行：
+# 整目录搬移（二进制 + 内置资产 + export-html），成功后不保留旧目录。
+# ---------------------------------------------------------------------------
+LEGACY_INSTALL_DIR="$HOME/pi-web-x"
+if [ "$INSTALL_DIR" = "$HOME/.pi-web-x" ] && [ -d "$LEGACY_INSTALL_DIR" ] && [ ! -e "$INSTALL_DIR/pi-web-x" ]; then
+  echo "Migrating legacy install directory: ${LEGACY_INSTALL_DIR} → ${INSTALL_DIR}"
+  if [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
+    echo "Warning: target ${INSTALL_DIR} is not empty; skipping automatic migration." >&2
+    echo "Move ${LEGACY_INSTALL_DIR} manually if needed." >&2
+  else
+    mkdir -p "$HOME"
+    mv "$LEGACY_INSTALL_DIR" "$INSTALL_DIR"
+    echo "Migrated existing data to ${INSTALL_DIR}."
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # 命令入口：$BIN_DIR/pi-web-x 符号链接 → 真实二进制

@@ -3,11 +3,15 @@ import {
   chmodSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdtempSync,
+  mkdirSync,
+  readdirSync,
   renameSync,
   rmSync,
+  symlinkSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { tmpdir } from "node:os";
 import {
   fetchLatestVersionFromSource,
@@ -233,6 +237,75 @@ export function replaceCurrentBinary(
 }
 
 /**
+ * 迁移旧安装根（ADR 0006）：二进制从 ~/pi-web-x 迁到 ~/.pi-web-x。
+ *
+ * 仅在当前二进制位于旧根（默认布局）且新根为空时执行整目录搬移，
+ * 并重建 ~/.local/bin 符号链接。搬移成功后返回新 execPath；
+ * 无迁移或用户自定义 --dir 时返回原 execPath。
+ *
+ * 运行中的进程不动自身：本函数只负责「目录位移 + 链接重建」，
+ * 实际二进制替换（写文件）由调用方在返回的新路径上进行。
+ *
+ * @param execPath 当前可执行文件路径
+ * @param out 输出函数
+ * @returns 迁移后的可执行文件路径（未迁移时不变）
+ */
+export function migrateLegacyInstallRoot(
+  execPath: string,
+  out: (message: string) => void,
+): string {
+  const home = process.env.HOME ?? process.env.USERPROFILE;
+  if (!home) return execPath;
+  const legacyRoot = join(home, "pi-web-x");
+  const newRoot = join(home, ".pi-web-x");
+  const isLegacyExec = execPath.startsWith(legacyRoot + sep);
+  if (!isLegacyExec) return execPath;
+  if (existsSync(newRoot) && readdirSync(newRoot).length > 0) {
+    out(
+      `提示：检测到旧安装根 ${legacyRoot} 与已有新根 ${newRoot}，跳过自动迁移。`,
+    );
+    return execPath;
+  }
+  if (!existsSync(legacyRoot)) return execPath;
+
+  out(`迁移安装根：${legacyRoot} → ${newRoot}`);
+  mkdirSync(dirname(newRoot), { recursive: true });
+  renameSync(legacyRoot, newRoot);
+  out(`迁移完成：数据已移至 ${newRoot}。`);
+
+  // 重建 ~/.local/bin 符号链接（若之前存在指向旧根 span 内二进制的链接）。
+  // 注意：迁移先 rename，链接此时已是悬空状态，existsSync 会误判为不存在，
+  // 因此用 lstatSync（对符号链接本身判存）而不是 existsSync。
+  const binDir = join(home, ".local", "bin");
+  const binEntry = join(binDir, "pi-web-x");
+  let hadBinEntry = false;
+  try {
+    hadBinEntry = lstatSync(binEntry).isSymbolicLink();
+  } catch {
+    // 不存在或无法 stat：无需重建
+  }
+  if (hadBinEntry) {
+    rmSync(binEntry, { force: true });
+    try {
+      mkdirSync(binDir, { recursive: true });
+      symlinkSync(execPath.replace(legacyRoot, newRoot), binEntry);
+    } catch {
+      out(
+        `提示：无法重建命令入口 ${binEntry}，请手动执行：ln -s ${execPath.replace(legacyRoot, newRoot)} ${binEntry}`,
+      );
+    }
+  }
+
+  // 提示 systemd/launchd 服务需重新安装（env 路径已变更）
+  out(
+    "提示：若已注册系统服务，其配置快照指向旧 env 路径，请重新执行：" +
+      "pi-web-x service install --force（或手动编辑服务配置）。",
+  );
+
+  return execPath.replace(legacyRoot, newRoot);
+}
+
+/**
  * 执行 `pi-web-x update` 子命令。
  *
  * @param args 子命令参数
@@ -298,10 +371,19 @@ export async function runUpdateCommand(
       assetName,
       deps,
     );
+    // ADR 0006：二进制位于旧 ~/pi-web-x 时先迁移到 ~/.pi-web-x 再替换。
+    // migrateLegacyInstallRoot 会整体搬移目录并重建符号链接，
+    // 返回迁移后的可执行文件路径；未迁移时原样返回。
+    const migratedExec = migrateLegacyInstallRoot(
+      resolveDeps(deps).execPath,
+      out,
+    );
     const backupPath = replaceCurrentBinary(
       newBinary,
       latest.latestVersion,
-      deps,
+      migratedExec === resolveDeps(deps).execPath
+        ? deps
+        : { ...deps, execPath: migratedExec },
     );
     out(
       `更新完成：${APP_VERSION} → ${latest.latestVersion}\n` +
