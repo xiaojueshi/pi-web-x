@@ -2,6 +2,21 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [Unreleased]
+
+### 修复
+
+- 安装脚本在制品缺少 `SHA256SUMS` 条目时改为 fail closed，并在写入新二进制前迁移旧的 macOS/Linux 安装根。
+- Playwright 为编译二进制准备隔离认证状态并创建浏览器 session，恢复受保护 API、PWA 与离线回退 E2E。
+
+### 工程化
+
+- 在 TypeScript 配置与 `src/runtime.d.ts` 中显式声明 Bun runtime 和 Bun-compatible `node:*` 类型边界。
+
+### 文档
+
+- 重组公开文档目录，补全多语言 README、用户/开发/维护者指南、支持、安全和社区文档，并保留历史公开路径的兼容页。
+
 ## [0.9.3] - 2026-08-31
 
 ### 修复
@@ -68,7 +83,7 @@
 
 ## [0.8.11] - 2026-02-11
 
-首次开源发布。基于迁移自 `pi-web@0.8.11`（upstream commit `28bab3c`）的独立兼容实现，详见 [MIGRATION.md](./MIGRATION.md) 与 [docs/runtime-substitution-matrix.md](./docs/runtime-substitution-matrix.md)。
+首次开源发布。基于迁移自 `pi-web@0.8.11`（upstream commit `28bab3c`）的独立兼容实现，详见[迁移历史](./docs/history/bun-migration.md)与[运行时替代矩阵](./docs/maintainers/runtime-substitution-matrix.md)。
 
 ### 新增
 
@@ -104,6 +119,8 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[Unreleased]: https://github.com/xiaojueshi/pi-web-x/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.3
 [0.9.2]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.2
 [0.9.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.1
 [0.9.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.0

@@ -10,6 +10,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const SCRIPT = new URL("../../install.sh", import.meta.url);
+const POWERSHELL_SCRIPT = new URL("../../install.ps1", import.meta.url);
 
 const IS_POSIX = process.platform !== "win32";
 
@@ -77,5 +78,38 @@ test("--help 与未知参数行为正确", async () => {
       assert.match(error.stderr, /Unknown option: --bogus-flag/);
       return true;
     },
+  );
+});
+
+test("安装脚本在 checksum 条目缺失时 fail closed", async () => {
+  const [posixSource, powershellSource] = await Promise.all([
+    Bun.file(SCRIPT).text(),
+    Bun.file(POWERSHELL_SCRIPT).text(),
+  ]);
+
+  assert.match(
+    posixSource,
+    /Checksum entry missing[\s\S]*refusing an unverified install[\s\S]*exit 1/,
+  );
+  assert.match(
+    powershellSource,
+    /throw "Checksum entry missing for \$Asset; refusing an unverified install\."/,
+  );
+  assert.doesNotMatch(posixSource, /skipping checksum verification/i);
+  assert.doesNotMatch(powershellSource, /skipping checksum verification/i);
+});
+
+test("旧安装根迁移发生在新二进制写入之前", async () => {
+  const source = await Bun.file(SCRIPT).text();
+  const migration = source.indexOf("Migrating legacy install directory");
+  const install = source.indexOf(
+    'mv "$TMP_DIR/pi-web-x" "$INSTALL_DIR/pi-web-x"',
+  );
+
+  assert.notEqual(migration, -1);
+  assert.notEqual(install, -1);
+  assert.ok(
+    migration < install,
+    "legacy migration must run before binary install",
   );
 });

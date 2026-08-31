@@ -6,6 +6,10 @@
       "esnext"
     ],
     "allowJs": true,
+    "types": [
+      "bun",
+      "node"
+    ],
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -32,7 +36,8 @@
     "components/**/*.tsx",
     "hooks/**/*.ts",
     "hooks/**/*.tsx",
-    "lib/**/*.ts"
+    "lib/**/*.ts",
+    "scripts/**/*.ts"
   ],
   "exclude": [
     "node_modules"

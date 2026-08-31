@@ -113,7 +113,7 @@ $Expected = if ($ExpectedLine) { ($ExpectedLine -split "\s+")[0].ToLower() } els
 
 $Actual = (Get-FileHash -Path $ExePath -Algorithm SHA256).Hash.ToLower()
 if ($null -eq $Expected) {
-    Write-Warning "$Asset not listed in SHA256SUMS; skipping checksum verification."
+    throw "Checksum entry missing for $Asset; refusing an unverified install."
 } elseif ($Expected -ne $Actual) {
     throw "Checksum mismatch for $Asset. Expected $Expected, got $Actual. Aborting."
 } else {

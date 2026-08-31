@@ -269,7 +269,8 @@ echo "SHA256SUMS downloaded."
 EXPECTED="$(grep " ${ASSET}$" "$TMP_DIR/SHA256SUMS" | awk '{print $1}' || true)"
 ACTUAL="$(hash_file "$TMP_DIR/pi-web-x")"
 if [ -z "$EXPECTED" ]; then
-  echo "WARNING: ${ASSET} not listed in SHA256SUMS; skipping checksum verification." >&2
+  echo "Checksum entry missing for ${ASSET}; refusing an unverified install." >&2
+  exit 1
 elif [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "Checksum mismatch for ${ASSET}." >&2
   echo "  expected: ${EXPECTED}" >&2
@@ -280,29 +281,31 @@ else
   echo "Checksum verified (${ACTUAL})"
 fi
 
-# 赋权并落盘（真实安装根，内置资产与二进制同目录）
-mkdir -p "$INSTALL_DIR"
-chmod +x "$TMP_DIR/pi-web-x"
-mv "$TMP_DIR/pi-web-x" "$INSTALL_DIR/pi-web-x"
-echo "Installed pi-web-x ${TARGET_VERSION_LABEL} to ${INSTALL_DIR}/pi-web-x"
-
 # ---------------------------------------------------------------------------
 # 旧安装根迁移（ADR 0006）：默认目录从 ~/pi-web-x 改为 ~/.pi-web-x。
-# 仅当用户未用 --dir 覆盖（INSTALL_DIR 仍是默认值）且旧目录存在时执行：
-# 整目录搬移（二进制 + 内置资产 + export-html），成功后不保留旧目录。
+# 必须在写入新二进制之前执行，否则目标文件会让迁移条件永远不成立。
+# 仅当用户未用 --dir 覆盖且目标目录不存在或为空时整目录搬移。
 # ---------------------------------------------------------------------------
 LEGACY_INSTALL_DIR="$HOME/pi-web-x"
-if [ "$INSTALL_DIR" = "$HOME/.pi-web-x" ] && [ -d "$LEGACY_INSTALL_DIR" ] && [ ! -e "$INSTALL_DIR/pi-web-x" ]; then
+if [ "$INSTALL_DIR" = "$HOME/.pi-web-x" ] && [ -d "$LEGACY_INSTALL_DIR" ]; then
   echo "Migrating legacy install directory: ${LEGACY_INSTALL_DIR} → ${INSTALL_DIR}"
   if [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
     echo "Warning: target ${INSTALL_DIR} is not empty; skipping automatic migration." >&2
     echo "Move ${LEGACY_INSTALL_DIR} manually if needed." >&2
   else
-    mkdir -p "$HOME"
+    if [ -d "$INSTALL_DIR" ]; then
+      rmdir "$INSTALL_DIR"
+    fi
     mv "$LEGACY_INSTALL_DIR" "$INSTALL_DIR"
     echo "Migrated existing data to ${INSTALL_DIR}."
   fi
 fi
+
+# 赋权并落盘（真实安装根，内置资产与二进制同目录）
+mkdir -p "$INSTALL_DIR"
+chmod +x "$TMP_DIR/pi-web-x"
+mv "$TMP_DIR/pi-web-x" "$INSTALL_DIR/pi-web-x"
+echo "Installed pi-web-x ${TARGET_VERSION_LABEL} to ${INSTALL_DIR}/pi-web-x"
 
 # ---------------------------------------------------------------------------
 # 命令入口：$BIN_DIR/pi-web-x 符号链接 → 真实二进制

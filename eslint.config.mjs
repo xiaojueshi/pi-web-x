@@ -10,6 +10,7 @@ const ignores = [
   "coverage/**",
   "test-results/**",
   "playwright-report/**",
+  "tests/.tmp/**",
   "**/*.tsbuildinfo",
 ];
 

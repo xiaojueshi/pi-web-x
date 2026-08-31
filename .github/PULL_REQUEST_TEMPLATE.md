@@ -15,6 +15,7 @@
 - [ ] `bun test` 通过
 - [ ] `bun run typecheck` 通过
 - [ ] `bun run build` 通过
+- [ ] 文档相对链接通过 `bun test tests/unit/docs-links.test.ts`（涉及文档时）
 - 若涉及编译产物验证：说明在哪个平台/版本上验证过
 
 ## 兼容与安全检查 (Compatibility & security)
@@ -27,4 +28,5 @@
 ## 关联 (Related)
 
 - 关联 issue：#xxx
-- 依赖替代：是否需要在 `docs/runtime-substitution-matrix.md` 同步更新？
+- 依赖替代：是否需要在 `docs/maintainers/runtime-substitution-matrix.md` 同步更新？
+- 上游临时实现：是否需要更新 `docs/maintainers/upstream-workarounds.md`？

@@ -80,7 +80,9 @@
     "entry": [
       "src/cli.ts",
       "src/client/main.tsx",
-      "bin/pi-web-x.js"
+      "bin/pi-web-x.js",
+      "playwright.config.ts",
+      "tests/e2e/prepare-auth.ts"
     ],
     "ignoreDependencies": [
       "katex",
@@ -96,7 +98,8 @@
       "@types/react",
       "@types/react-dom",
       "@types/react-syntax-highlighter",
-      "@types/js-yaml"
+      "@types/js-yaml",
+      "@tailwindcss/cli"
     ]
   }
 }

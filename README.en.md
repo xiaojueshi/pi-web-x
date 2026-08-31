@@ -1,16 +1,7 @@
-# Pi Web X (English)
+# Pi Web X English documentation moved
 
-> English translation is in progress. Please refer to the [Chinese README](./README.md) for the
-> full documentation, and to [docs/i18n.md](./docs/i18n.md) for translation conventions.
->
-> Contributions to this file are welcome — open a PR.
+The complete English README is now the canonical [`README.md`](./README.md).
 
-Pi Web X is a Bun-native local web UI for the [pi coding agent](https://github.com/earendil-works/pi).
-It ships as a single-file native binary and reads pi's common local session, model, auth and
-extension data.
+[English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · [Русский](./README.ru.md)
 
-- License: MIT (upstream `pi-web` copyright preserved, see [LICENSE](./LICENSE) and
-  [MIGRATION.md](./MIGRATION.md))
-- Releases: download binaries from [GitHub Releases](https://github.com/xiaojueshi/pi-web-x/releases)
-  — no Node.js or Bun required.
-- Security: see [SECURITY.md](./SECURITY.md). Defaults to loopback-only listening.
+This compatibility page preserves the former `README.en.md` URL. Development and user documentation is indexed at [`docs/README.md`](./docs/README.md).
