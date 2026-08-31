@@ -1,4 +1,5 @@
 import { startServer } from "@/src/server";
+import { registerBunRuntimeModules } from "@/src/bun-runtime-modules";
 import { announceSetupToken } from "@/lib/pi-web-auth";
 import { runServiceCommand } from "@/src/service-command";
 import { formatPortInUseHint, isPiWebXRunning } from "@/lib/port-conflict";
@@ -175,6 +176,7 @@ async function startServerWithFriendlyErrors(
 
 /** 启动 CLI 服务，并在需要时打开默认浏览器。 */
 export async function main(): Promise<void> {
+  registerBunRuntimeModules();
   let options:
     | LaunchOptions
     | { help: true }

@@ -116,4 +116,4 @@ bun run build:all
 
 ## 许可证与来源
 
-MIT。保留上游 pi-web 的版权与许可证；详细迁移和依赖替代状态见 [`MIGRATION.md`](./MIGRATION.md) 与 [`docs/runtime-substitution-matrix.md`](./docs/runtime-substitution-matrix.md)。
+MIT。保留上游 pi-web 的版权与许可证；详细迁移和依赖替代状态见 [`MIGRATION.md`](./MIGRATION.md) 与 [`docs/runtime-substitution-matrix.md`](./docs/runtime-substitution-matrix.md)。等待上游处理的项目临时实现统一登记在 [`docs/upstream-workarounds.md`](./docs/upstream-workarounds.md)。
