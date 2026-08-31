@@ -23,3 +23,23 @@ _Avoid_: server, daemon, web service
 **Service Command**:
 The `pi-web-x service` command family that installs and uninstalls a System Service, snapshotting the web server's launch configuration at install time.
 _Avoid_: daemonize flag, install flag
+
+**Web Access Authentication**:
+The password-based identity system that gates browser access to Pi Web X — first-run setup, login, logout, password change, and session revocation.
+_Avoid_: login, auth, permission, access control
+
+**Setup Token**:
+A one-time 32-byte random token printed to server stderr on first startup; presenting it at the Setup page initializes the Web Access Authentication password.
+_Avoid_: setup code, init token, invite code
+
+**Web Session**:
+An in-memory authenticated session created after a correct login, referenced only by a random HttpOnly cookie; invalidated by expiry or password change.
+_Avoid_: token, login state, JWT
+
+**User Data Root**:
+The dot-prefixed `~/.pi-web-x/` directory that holds Pi Web X's own files — install root, authentication config, and service snapshots.
+_Avoid_: ~/pi-web-x (legacy), install dir
+
+**Basic Auth Fallback**:
+The `PI_WEB_X_PASSWORD` HTTP Basic authentication path for programmatic clients (CLI, curl, tests), kept alongside the browser-facing Web Access Authentication.
+_Avoid_: password auth, legacy auth
