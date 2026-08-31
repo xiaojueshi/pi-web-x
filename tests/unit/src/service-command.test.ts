@@ -5,9 +5,15 @@
  */
 
 import { test, expect } from "bun:test";
-import type { CommandRunner, FileOps, Io } from "../../../src/service-command";
+import type {
+  CommandRunner,
+  FileOps,
+  Io,
+  ServiceMaintenanceFileOps,
+} from "../../../src/service-command";
 import {
   decideOverwrite,
+  refreshRegisteredServiceAfterUpdate,
   resolveExecutableArgs,
   runServiceCommand,
 } from "../../../src/service-command";
@@ -133,6 +139,98 @@ test("resolveExecutableArgs：编译二进制单元素，解释器固化脚本�
   expect(interpreterArgs[1]).toMatch(/cli\.ts$/);
   expect(warned.length).toBe(1);
   expect(warned[0]).toContain("interpreter");
+});
+
+test("update 后 systemd 迁移：保留快照、修复路径并重启验证", () => {
+  const files = new Map<string, string>();
+  const oldExec = "/home/tester/pi-web-x/pi-web-x";
+  const newExec = "/home/tester/.pi-web-x/pi-web-x";
+  const oldEnv = "/home/tester/.config/pi-web-x/env";
+  const unitPath = systemdUserUnitPath(HOME);
+  const newEnv = systemdEnvFilePath(HOME);
+  files.set(
+    unitPath,
+    `ExecStart=\"${oldExec}\" --no-open\nEnvironmentFile=-${oldEnv}\n`,
+  );
+  files.set(oldEnv, "PORT=8080\nPI_WEB_X_HOSTNAME=0.0.0.0\nPI_WEB_X_PASSWORD=secret\n");
+  const maintenanceFiles: ServiceMaintenanceFileOps = {
+    exists: (path) => files.has(path),
+    readFile: (path) => files.get(path) ?? "",
+    writeFile: (path, content) => files.set(path, content),
+    copyPrivateFile: (source, destination) => {
+      files.set(destination, files.get(source) ?? "");
+    },
+  };
+  const { runner, calls } = recordingRunner({
+    systemctl: (args) =>
+      args[1] === "is-active"
+        ? { status: 0, stdout: "active\n", stderr: "" }
+        : { status: 0, stdout: "", stderr: "" },
+  });
+
+  const result = refreshRegisteredServiceAfterUpdate(oldExec, newExec, {
+    files: maintenanceFiles,
+    runner,
+    kind: "systemd",
+    home: HOME,
+  });
+
+  expect(result).toEqual({ registered: true, kind: "systemd" });
+  expect(files.get(unitPath)).toContain(newExec);
+  expect(files.get(unitPath)).toContain(newEnv);
+  expect(files.get(unitPath)).not.toContain(oldExec);
+  expect(files.get(newEnv)).toBe(files.get(oldEnv));
+  expect(calls.map((call) => call.args[1])).toEqual([
+    "daemon-reload",
+    "restart",
+    "is-active",
+  ]);
+});
+
+test("update 后无 systemd 服务：不执行服务管理命令", () => {
+  const { runner, calls } = recordingRunner();
+  const result = refreshRegisteredServiceAfterUpdate("/old/pi-web-x", "/new/pi-web-x", {
+    files: {
+      exists: () => false,
+      readFile: () => "",
+      writeFile: () => undefined,
+      copyPrivateFile: () => undefined,
+    },
+    runner,
+    kind: "systemd",
+    home: HOME,
+  });
+  expect(result).toEqual({ registered: false, kind: "systemd" });
+  expect(calls).toEqual([]);
+});
+
+test("update 后 launchd 迁移：重载定义并验证", () => {
+  const files = new Map<string, string>();
+  const oldExec = "/Users/tester/pi-web-x/pi-web-x";
+  const newExec = "/Users/tester/.pi-web-x/pi-web-x";
+  const plistPath = launchdPlistPath("/Users/tester");
+  files.set(plistPath, `<array><string>${oldExec}</string></array>`);
+  const { runner, calls } = recordingRunner();
+  const result = refreshRegisteredServiceAfterUpdate(oldExec, newExec, {
+    files: {
+      exists: (path) => files.has(path),
+      readFile: (path) => files.get(path) ?? "",
+      writeFile: (path, content) => files.set(path, content),
+      copyPrivateFile: () => undefined,
+    },
+    runner,
+    kind: "launchd",
+    home: "/Users/tester",
+    uid: "501",
+  });
+  expect(result).toEqual({ registered: true, kind: "launchd" });
+  expect(files.get(plistPath)).toContain(newExec);
+  expect(calls.map((call) => call.args[0])).toEqual([
+    "bootout",
+    "bootstrap",
+    "kickstart",
+    "print",
+  ]);
 });
 
 test("help 输出到 stdout 且退出码 0", async () => {

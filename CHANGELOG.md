@@ -2,6 +2,21 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.9.1] - 2026-08-31
+
+### 新增
+
+- `pi-web-x update` 在二进制替换成功后自动检测并恢复已注册的用户级系统服务：Linux systemd 重启并检查 active 状态，macOS launchd 重启并检查已加载状态，Windows 计划任务在二进制可替换时重新运行。
+- 旧安装根迁移 `~/pi-web-x` → `~/.pi-web-x` 时，自动修复 systemd/launchd 服务中固化的二进制路径；systemd 的旧配置快照会安全复制到 `~/.pi-web-x/env`，保留端口、监听地址和 Basic Auth 密码。
+
+### 变更
+
+- `@earendil-works/pi-agent-core`、`pi-ai`、`pi-coding-agent` 与 `pi-tui` 统一升级至 `0.84.4`。
+
+### 修复
+
+- 服务恢复失败时，更新命令以非零状态报告错误，但保留已验证的新二进制和旧版本备份，便于在修复服务环境后重试。
+
 ## [0.9.0] - 2026-08-31
 
 ### 新增
@@ -77,6 +92,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.9.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.1
 [0.9.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.0
 [0.8.12]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.8.12
 [0.8.11]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.8.11

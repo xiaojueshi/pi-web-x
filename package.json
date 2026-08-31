@@ -1,6 +1,6 @@
 {
   "name": "pi-web-x",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Bun-native web UI for the pi coding agent",
   "homepage": "https://github.com/xiaojueshi/pi-web-x#readme",
   "repository": {
@@ -36,10 +36,10 @@
     "test:e2e": "bun run build && bunx playwright test"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "0.84.3",
-    "@earendil-works/pi-ai": "0.84.3",
-    "@earendil-works/pi-coding-agent": "0.84.3",
-    "@earendil-works/pi-tui": "0.84.3",
+    "@earendil-works/pi-agent-core": "0.84.4",
+    "@earendil-works/pi-ai": "0.84.4",
+    "@earendil-works/pi-coding-agent": "0.84.4",
+    "@earendil-works/pi-tui": "0.84.4",
     "ansi_up": "^6.0.6",
     "js-yaml": "^5.2.3",
     "proper-lockfile": "4.1.2",

@@ -9,8 +9,10 @@
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -209,6 +211,206 @@ export function isServiceRegistered(
     return deps.runner.run("schtasks", buildWindowsQueryArgs()).status === 0;
   }
   return false;
+}
+
+/** 自动维护已注册服务时所需的最小文件操作集合。 */
+export interface ServiceMaintenanceFileOps {
+  /** 判断文件是否存在。 */
+  exists(path: string): boolean;
+  /** 读取 UTF-8 文本文件。 */
+  readFile(path: string): string;
+  /** 写入 UTF-8 文本文件。 */
+  writeFile(path: string, content: string): void;
+  /** 复制配置文件，并保留仅所有者可读写的权限。 */
+  copyPrivateFile(source: string, destination: string): void;
+}
+
+/** 已注册服务自动维护的依赖项，供单测注入。 */
+export interface ServiceRefreshDeps {
+  /** 文件操作；缺省使用真实文件系统。 */
+  files?: ServiceMaintenanceFileOps;
+  /** 服务管理器命令调用；缺省使用真实进程。 */
+  runner?: CommandRunner;
+  /** 用户主目录；缺省使用当前用户主目录。 */
+  home?: string;
+  /** 平台服务类型；缺省自动探测。 */
+  kind?: "systemd" | "launchd" | "windows" | "unsupported";
+  /** 当前用户 UID，仅 launchd 使用。 */
+  uid?: string;
+}
+
+/** 已注册服务自动维护的结果。 */
+export interface ServiceRefreshResult {
+  /** 是否检测到已注册服务。 */
+  registered: boolean;
+  /** 服务管理器种类。 */
+  kind: "systemd" | "launchd" | "windows" | "unsupported";
+}
+
+const serviceMaintenanceFileOps: ServiceMaintenanceFileOps = {
+  exists: existsSync,
+  readFile(path) {
+    return readFileSync(path, "utf8");
+  },
+  writeFile: writeFileSync,
+  copyPrivateFile(source, destination) {
+    mkdirSync(dirname(destination), { recursive: true });
+    copyFileSync(source, destination);
+    chmodSync(destination, 0o600);
+  },
+};
+
+/** 将 XML 文本节点内容转义，供 launchd plist 路径替换使用。 */
+function escapeXmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** 执行服务管理器命令，失败时抛出带 stderr 的错误。 */
+function runServiceMaintenanceCommand(
+  runner: CommandRunner,
+  command: string,
+  args: string[],
+  action: string,
+): void {
+  const result = runner.run(command, args);
+  if (result.status !== 0) {
+    throw new Error(
+      `${action}失败：${result.stderr.trim() || result.stdout.trim() || `退出码 ${result.status}`}`,
+    );
+  }
+}
+
+/**
+ * 在二进制更新后修复并重启已注册的用户级服务。
+ *
+ * 原地更新只重启原服务；安装根迁移时会同时更新 systemd/launchd 中固化的
+ * 可执行路径。systemd 的旧配置快照会复制到新位置，保留端口、主机与密码。
+ * Windows 的运行中 exe 无法原地替换，因此只在二进制已成功替换后重启任务。
+ *
+ * @param previousExecPath 更新前的二进制绝对路径
+ * @param currentExecPath 更新后的二进制绝对路径
+ * @param deps 可选的文件、命令和平台依赖
+ * @returns 服务注册状态与平台类型
+ * @throws 服务定义无法安全迁移，或重启/健康检查失败时抛出错误
+ */
+export function refreshRegisteredServiceAfterUpdate(
+  previousExecPath: string,
+  currentExecPath: string,
+  deps: ServiceRefreshDeps = {},
+): ServiceRefreshResult {
+  const files = deps.files ?? serviceMaintenanceFileOps;
+  const runner = deps.runner ?? processCommandRunner;
+  const home = deps.home ?? homedir();
+  const kind = deps.kind ?? platformServiceKind();
+  const migrated = previousExecPath !== currentExecPath;
+
+  if (kind === "unsupported") return { registered: false, kind };
+  if (kind === "systemd") {
+    const unitPath = systemdUserUnitPath(home);
+    if (!files.exists(unitPath)) return { registered: false, kind };
+    if (migrated) {
+      const oldEnvPath = join(home, ".config", "pi-web-x", "env");
+      const newEnvPath = systemdEnvFilePath(home);
+      if (files.exists(oldEnvPath) && !files.exists(newEnvPath)) {
+        files.copyPrivateFile(oldEnvPath, newEnvPath);
+      }
+      const unit = files.readFile(unitPath);
+      if (!unit.includes(previousExecPath)) {
+        throw new Error(`无法在 systemd unit 中找到旧二进制路径：${previousExecPath}`);
+      }
+      files.writeFile(
+        unitPath,
+        unit
+          .replaceAll(previousExecPath, currentExecPath)
+          .replaceAll(oldEnvPath, newEnvPath),
+      );
+      runServiceMaintenanceCommand(
+        runner,
+        "systemctl",
+        ["--user", "daemon-reload"],
+        "重载 systemd 用户单元",
+      );
+    }
+    runServiceMaintenanceCommand(
+      runner,
+      "systemctl",
+      ["--user", "restart", SERVICE_NAME],
+      "重启 systemd 服务",
+    );
+    const status = runner.run("systemctl", [
+      "--user",
+      "is-active",
+      SERVICE_NAME,
+    ]);
+    if (!/^active\b/.test(status.stdout)) {
+      throw new Error(
+        `systemd 服务重启后未保持 active：${status.stdout.trim() || status.stderr.trim() || "未知状态"}`,
+      );
+    }
+    return { registered: true, kind };
+  }
+
+  if (kind === "launchd") {
+    const plistPath = launchdPlistPath(home);
+    if (!files.exists(plistPath)) return { registered: false, kind };
+    const uid = deps.uid ?? String(process.getuid?.() ?? 0);
+    const domain = `gui/${uid}`;
+    if (migrated) {
+      const oldEntry = `<string>${escapeXmlText(previousExecPath)}</string>`;
+      const newEntry = `<string>${escapeXmlText(currentExecPath)}</string>`;
+      const plist = files.readFile(plistPath);
+      if (!plist.includes(oldEntry)) {
+        throw new Error(`无法在 LaunchAgent 中找到旧二进制路径：${previousExecPath}`);
+      }
+      files.writeFile(plistPath, plist.replace(oldEntry, newEntry));
+      // 已加载的 job 不会自动读取修改后的 plist，需先卸载再加载。
+      runner.run("launchctl", ["bootout", `${domain}/${LAUNCHD_LABEL}`]);
+      runServiceMaintenanceCommand(
+        runner,
+        "launchctl",
+        ["bootstrap", domain, plistPath],
+        "重新加载 LaunchAgent",
+      );
+    }
+    runServiceMaintenanceCommand(
+      runner,
+      "launchctl",
+      ["kickstart", "-k", `${domain}/${LAUNCHD_LABEL}`],
+      "重启 LaunchAgent",
+    );
+    runServiceMaintenanceCommand(
+      runner,
+      "launchctl",
+      ["print", `${domain}/${LAUNCHD_LABEL}`],
+      "检查 LaunchAgent 状态",
+    );
+    return { registered: true, kind };
+  }
+
+  if (!isServiceRegistered("windows", {
+    files: {
+      exists: files.exists,
+      mkdir: () => undefined,
+      writeFile: () => undefined,
+      rm: () => undefined,
+    },
+    runner,
+    home,
+  })) {
+    return { registered: false, kind };
+  }
+  // /End 在任务暂未运行时会失败；此时仍可直接 /Run，因此忽略该退出码。
+  runner.run("schtasks", ["/End", "/TN", SERVICE_NAME]);
+  runServiceMaintenanceCommand(
+    runner,
+    "schtasks",
+    buildWindowsRunArgs(),
+    "启动 Windows 计划任务",
+  );
+  return { registered: true, kind };
 }
 
 /**

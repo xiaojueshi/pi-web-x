@@ -144,6 +144,87 @@ test("runUpdateCommand：完整更新流——下载→校验→备份→替换"
   );
 });
 
+test("runUpdateCommand：二进制替换成功后自动恢复已注册服务", async () => {
+  const root = makeExecRoot();
+  const execPath = join(root, "pi-web-x");
+  writeFileSync(execPath, "old");
+  const newBytes = "new";
+  const assetName = "pi-web-x-linux-x64";
+  const hash = createHash("sha256").update(newBytes).digest("hex");
+  const fakeFetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.endsWith("/latest")) {
+      return new Response(JSON.stringify({ tag_name: "v9.9.9" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (url.endsWith("/SHA256SUMS")) {
+      return new Response(`${hash}  ${assetName}\n`, { status: 200 });
+    }
+    return new Response(newBytes, { status: 200 });
+  }) as unknown as typeof fetch;
+  const calls: Array<[string, string]> = [];
+  const { messages, out } = collectOutput();
+
+  const code = await runUpdateCommand([], {
+    execPath,
+    out,
+    isBinary: () => true,
+    platform: "linux",
+    arch: "x64",
+    fetchFn: fakeFetch,
+    refreshService: (previous, current) => {
+      calls.push([previous, current]);
+      return { registered: true, kind: "systemd" };
+    },
+  });
+
+  expect(code).toBe(0);
+  expect(calls).toEqual([[execPath, execPath]]);
+  expect(messages.join("\n")).toContain("已自动修复并重启 systemd 用户服务");
+});
+
+test("runUpdateCommand：服务恢复失败时保留已更新二进制并返回 1", async () => {
+  const root = makeExecRoot();
+  const execPath = join(root, "pi-web-x");
+  writeFileSync(execPath, "old");
+  const newBytes = "new";
+  const assetName = "pi-web-x-linux-x64";
+  const hash = createHash("sha256").update(newBytes).digest("hex");
+  const fakeFetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.endsWith("/latest")) {
+      return new Response(JSON.stringify({ tag_name: "v9.9.9" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (url.endsWith("/SHA256SUMS")) {
+      return new Response(`${hash}  ${assetName}\n`, { status: 200 });
+    }
+    return new Response(newBytes, { status: 200 });
+  }) as unknown as typeof fetch;
+  const { messages, out } = collectOutput();
+
+  const code = await runUpdateCommand([], {
+    execPath,
+    out,
+    isBinary: () => true,
+    platform: "linux",
+    arch: "x64",
+    fetchFn: fakeFetch,
+    refreshService: () => {
+      throw new Error("端口仍被占用");
+    },
+  });
+
+  expect(code).toBe(1);
+  expect(readFileSync(execPath, "utf8")).toBe(newBytes);
+  expect(messages.join("\n")).toContain("二进制已更新");
+  expect(messages.join("\n")).toContain("端口仍被占用");
+});
+
 test("runUpdateCommand：SHA256SUMS 缺失条目时中止", async () => {
   const root = makeExecRoot();
   const execPath = join(root, "pi-web-x");

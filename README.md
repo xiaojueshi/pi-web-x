@@ -30,7 +30,7 @@ irm https://raw.githubusercontent.com/xiaojueshi/pi-web-x/main/install.ps1 | iex
   并在 `~/.local/bin` 建立命令入口符号链接；Windows 默认安装到 `%USERPROFILE%\pi-web-x` 并注册进用户 PATH。macOS/Linux 的旧 `~/pi-web-x` 安装会自动迁移
 - 已安装同版本时跳过（幂等），`--force` 强制重装
 - 首次启动自动获取内置资产（主题等目录级资产）；内网离线可用
-  `pi-web-x assets install <包路径>` 手动安装；`pi-web-x update` 一键自更新
+  `pi-web-x assets install <包路径>` 手动安装；`pi-web-x update` 一键自更新。若已注册系统服务，更新后会自动重启；旧安装根迁移时还会修复服务中的二进制路径。服务恢复失败会以非零码报告，但已验证的新二进制会保留，可检查日志后重试更新。
 
 > 安全提示：脚本经 HTTPS 从本仓库拉取，二进制哈希与 Release 内 `SHA256SUMS` 交叉校验。不信任管道安装时，可先下载 `install.sh` 审阅后再执行，或直接下载二进制 `sha256sum -c SHA256SUMS` 手动安装。
 
@@ -98,7 +98,7 @@ pi-web-x service --help
 | Windows | Task Scheduler 任务 `pi-web-x`（ONLOGON） | 日志重定向到 `%USERPROFILE%\.pi-web-x\service.log`；无崩溃重启 |
 | 无 systemd 的 Linux | 不支持 | 报错并给出手动指引 |
 
-安装时以**调用用户**的身份运行，保证 `~/.pi/agent` 数据归属正确；配置快照落盘后可直接编辑（Linux 为 `~/.config/pi-web-x/env`，0600 权限）。Windows 上若快照了 `PI_WEB_X_PASSWORD`，密码会以明文出现在任务定义中，安装时会警告。已存在服务时安装会交互确认，可用 `--force` 跳过、`--no-input` 禁止提示。
+安装时以**调用用户**的身份运行，保证 `~/.pi/agent` 数据归属正确；配置快照落盘后可直接编辑（Linux 为 `~/.pi-web-x/env`，0600 权限）。Windows 上若快照了 `PI_WEB_X_PASSWORD`，密码会以明文出现在任务定义中，安装时会警告。已存在服务时安装会交互确认，可用 `--force` 跳过、`--no-input` 禁止提示。
 
 ## 开发
 

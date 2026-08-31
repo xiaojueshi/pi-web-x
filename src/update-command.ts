@@ -14,6 +14,10 @@ import {
 import { dirname, join, sep } from "node:path";
 import { tmpdir } from "node:os";
 import {
+  refreshRegisteredServiceAfterUpdate,
+  type ServiceRefreshResult,
+} from "./service-command";
+import {
   fetchLatestVersionFromSource,
   isNewerStableVersion,
 } from "../lib/app-update";
@@ -50,6 +54,11 @@ export interface UpdateCommandDeps {
   arch?: string;
   /** 输出函数；默认 stderr。 */
   out?: (message: string) => void;
+  /** 更新完成后维护已注册服务的函数；测试可注入。 */
+  refreshService?: (
+    previousExecPath: string,
+    currentExecPath: string,
+  ) => ServiceRefreshResult;
 }
 
 interface ResolvedDeps {
@@ -296,12 +305,6 @@ export function migrateLegacyInstallRoot(
     }
   }
 
-  // 提示 systemd/launchd 服务需重新安装（env 路径已变更）
-  out(
-    "提示：若已注册系统服务，其配置快照指向旧 env 路径，请重新执行：" +
-      "pi-web-x service install --force（或手动编辑服务配置）。",
-  );
-
   return execPath.replace(legacyRoot, newRoot);
 }
 
@@ -371,27 +374,40 @@ export async function runUpdateCommand(
       assetName,
       deps,
     );
+    const previousExec = resolved.execPath;
     // ADR 0006：二进制位于旧 ~/pi-web-x 时先迁移到 ~/.pi-web-x 再替换。
     // migrateLegacyInstallRoot 会整体搬移目录并重建符号链接，
     // 返回迁移后的可执行文件路径；未迁移时原样返回。
-    const migratedExec = migrateLegacyInstallRoot(
-      resolveDeps(deps).execPath,
-      out,
-    );
+    const migratedExec = migrateLegacyInstallRoot(previousExec, out);
     const backupPath = replaceCurrentBinary(
       newBinary,
       latest.latestVersion,
-      migratedExec === resolveDeps(deps).execPath
-        ? deps
-        : { ...deps, execPath: migratedExec },
+      migratedExec === previousExec ? deps : { ...deps, execPath: migratedExec },
     );
-    out(
-      `更新完成：${APP_VERSION} → ${latest.latestVersion}\n` +
-        `旧版本备份在 ${backupPath}\n` +
-        "资产将随下次启动自动同步（若注册了系统服务，请重启服务使新版本生效：\n" +
-        "  systemctl --user restart pi-web-x  /  launchctl kickstart -k gui/$UID/com.pi-web-x.service)",
-    );
-    return 0;
+
+    try {
+      const service = (deps.refreshService ?? refreshRegisteredServiceAfterUpdate)(
+        previousExec,
+        migratedExec,
+      );
+      out(
+        `更新完成：${APP_VERSION} → ${latest.latestVersion}\n` +
+          `旧版本备份在 ${backupPath}\n` +
+          (service.registered
+            ? `已自动修复并重启 ${service.kind} 用户服务。\n`
+            : "未检测到已注册的系统服务，无需重启。\n") +
+          "资产将随下次启动自动同步。",
+      );
+      return 0;
+    } catch (serviceError) {
+      out(
+        `二进制已更新至 ${latest.latestVersion}，但自动恢复系统服务失败：` +
+          `${serviceError instanceof Error ? serviceError.message : String(serviceError)}。\n` +
+          `旧版本备份在 ${backupPath}\n` +
+          "请检查服务日志并手动重启服务；无需重新下载二进制。",
+      );
+      return 1;
+    }
   } catch (error) {
     out(
       `更新失败：${error instanceof Error ? error.message : String(error)}。\n` +

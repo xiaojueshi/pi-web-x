@@ -2,8 +2,8 @@
 // 记录 pi-web-x-assets-<version> 发布物的文件哈希，供
 // src/bootstrap-assets.ts 在启动时校验/自举目录级资产。
 export const ASSET_MANIFEST = {
-  version: "0.9.0",
-  tarballSha256: "36a5310025757438eddb773f808b35dc12f978f08b8774013da8046073afc22f",
+  version: "0.9.1",
+  tarballSha256: "7d0fbad59c8b96ab50903bef134521dc9f7dd6e7a2ded7ab4cb3403fc97f6757",
   files: {
   "theme/dark.json": "113bc1fd556727b165804c18b5d377c14d421b3fdff3909a63736f421d0a3b00",
   "theme/light.json": "893f0d7e8513dbd5e5112982fd6eb65ceb03ae18ed04854ac57803b9c8908fa0",
