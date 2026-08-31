@@ -4,10 +4,7 @@ import { runServiceCommand } from "@/src/service-command";
 import { formatPortInUseHint, isPiWebXRunning } from "@/lib/port-conflict";
 import { APP_VERSION } from "@/src/version";
 import { ensureAssets } from "@/src/bootstrap-assets";
-import {
-  runAssetsCommand,
-  runUpdateCommand,
-} from "@/src/update-command";
+import { runAssetsCommand, runUpdateCommand } from "@/src/update-command";
 
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
@@ -65,7 +62,7 @@ Environment:
   PI_WEB_X_PASSWORD          Enable HTTP Basic Auth (username is always "pi")
   PI_WEB_X_ALLOWED_HOSTS     Extra exact proxy/custom hostnames, comma-separated
   PI_WEB_X_ASSETS_URL        Mirror URL for the built-in assets tarball
-  PI_WEB_X_UPDATE_URL        Mirror URL for update checks (default: GitHub API)
+  PI_WEB_X_UPDATE_URL        Mirror URL for update checks (default: GitHub API; falls back to jsDelivr)
   PI_WEB_X_RELEASE_BASE      Mirror base for release downloads (default: GitHub)
   PI_WEB_X_SKIP_VERSION_CHECK   Set to 1 to disable the app-update endpoint
 `;
