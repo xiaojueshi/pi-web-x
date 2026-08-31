@@ -17,7 +17,12 @@ async function fetchStaticAsset(
   request: Request,
   assetPort: number,
 ): Promise<Response> {
-  const url = new URL(request.url);
+  let url: URL;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return new Response("Bad Request", { status: 400 });
+  }
   url.hostname = "127.0.0.1";
   url.port = String(assetPort);
   return fetch(url, { method: request.method, headers: request.headers });
@@ -30,7 +35,13 @@ export function startServer(
   const assetServer = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
-    routes: { "/": index },
+    routes: {
+      "/": index,
+      // SPA 认证页面（/setup /login）由前端 AuthGate 按认证状态渲染；
+      // 这里返回同一份 index.html，避免未初始化/未登录访问时 404。
+      "/setup": index,
+      "/login": index,
+    },
   });
 
   if (assetServer.port === undefined)
@@ -42,7 +53,7 @@ export function startServer(
       hostname: options.hostname,
       port: options.port,
       fetch: async (request): Promise<Response> => {
-        const denied = authorizeRequest(request);
+        const denied = await authorizeRequest(request);
         if (denied) return denied;
         let url: URL;
         try {

@@ -1,10 +1,10 @@
 import { startServer } from "@/src/server";
+import { announceSetupToken } from "@/lib/pi-web-auth";
 import { runServiceCommand } from "@/src/service-command";
 import { formatPortInUseHint, isPiWebXRunning } from "@/lib/port-conflict";
 import { APP_VERSION } from "@/src/version";
 import { ensureAssets } from "@/src/bootstrap-assets";
 import {
-  getUpdateCommandHelp,
   runAssetsCommand,
   runUpdateCommand,
 } from "@/src/update-command";
@@ -224,6 +224,9 @@ export async function main(): Promise<void> {
   // 编译二进制：启动前校验/自举内置资产（主题等目录级资产）；
   // dev 模式自动跳过。失败仅降级提示，不阻塞服务启动。
   await ensureAssets();
+
+  // 首次运行：打印一次性 setup token（Web 访问认证初始化用）
+  announceSetupToken();
 
   const server = await startServerWithFriendlyErrors(options);
   if (server === null) {
