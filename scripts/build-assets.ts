@@ -182,13 +182,21 @@ export function buildAssetsAndManifest(): BuiltAssets {
     "asset-manifest.ts",
   );
   mkdirSync(dirname(manifestPath), { recursive: true });
+  // files 按仓库格式拆行输出（与格式化工具一致），避免每次构建后
+  // 生成文件与已提交版本反复漂移。
+  const filesBody = Object.entries(files)
+    .map(
+      ([key, value]) =>
+        `    ${JSON.stringify(key)}:\n      ${JSON.stringify(value)},`,
+    )
+    .join("\n");
   const manifestBody = `// 由 scripts/build-assets.ts 自动生成，请勿手改。
 // 记录 pi-web-x-assets-<version> 发布物的文件哈希，供
 // src/bootstrap-assets.ts 在启动时校验/自举目录级资产。
 export const ASSET_MANIFEST = {
   version: ${JSON.stringify(version)},
-  tarballSha256: ${JSON.stringify(tarballSha256)},
-  files: ${JSON.stringify(files, null, 2)} as Record<string, string>,
+  tarballSha256:\n    ${JSON.stringify(tarballSha256)},
+  files: {\n${filesBody}\n  } as Record<string, string>,
 } as const;
 `;
   writeFileSync(manifestPath, manifestBody);
