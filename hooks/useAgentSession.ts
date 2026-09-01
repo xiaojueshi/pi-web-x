@@ -41,6 +41,7 @@ import type { SessionStatsInfo } from "@/lib/pi-types";
 import { mergeSessionStats, type SessionFileStats } from "@/lib/session-stats";
 import { userMessageKey } from "@/lib/prompt-recovery";
 import { AgentEventConnection } from "@/lib/agent-event-connection";
+import { checkSessionAuthentication } from "@/lib/session-keepalive";
 import { getToolExecutionProgress } from "@/lib/tool-execution-progress";
 import {
   CHAT_SCROLL_REATTACH_TOLERANCE,
@@ -513,6 +514,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           (sessionPropIdRef.current === sid && sessionRunningRef.current)),
       readinessTimeoutMs: EVENT_STREAM_READY_TIMEOUT_MS,
       reconnectDelayMs: EVENT_STREAM_RECONNECT_DELAY_MS,
+      onDisconnected: () => {
+        // SSE 无法暴露 HTTP 401；断线时补查认证状态，失效则由 AuthGate
+        // 切换到登录界面。这里只关闭观察通道，不会中止后台 Agent。
+        void checkSessionAuthentication();
+      },
       onUnexpectedError: (error) => {
         console.error("Failed to maintain the agent event stream:", error);
       },

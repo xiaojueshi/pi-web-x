@@ -132,10 +132,7 @@ type SessionInvalidationListener = () => void;
 
 /** 认证运行时状态（挂在 globalThis 上，跨 Bun 热重载存续）。 */
 interface AuthRuntimeState {
-  sessionInvalidationListeners: Map<
-    string,
-    Set<SessionInvalidationListener>
-  >;
+  sessionInvalidationListeners: Map<string, Set<SessionInvalidationListener>>;
   sessionInvalidationTimeouts: Map<string, ReturnType<typeof setTimeout>>;
   loginFailures: Map<string, { count: number; firstFailureAt: number }>;
   globalLoginFailures: { count: number; firstFailureAt: number } | null;
@@ -209,31 +206,41 @@ function collectValidSessions(): SessionRecord[] {
   return records;
 }
 
-/** 原子落盘（临时文件 + rename），按调度顺序串行写入。 */
-function persistSessions(force = false): void {
+/**
+ * 原子落盘（临时文件 + rename），按调度顺序串行写入。
+ *
+ * 返回本次写入 Promise：登录/登出等认证边界必须等待它完成后再响应；
+ * 后台续期可忽略返回值，队列自身仍会记录错误并恢复，避免一次失败阻塞后续写入。
+ *
+ * @param force 是否跳过续期写盘节流
+ * @returns 本次持久化完成 Promise；写入失败时拒绝
+ */
+function persistSessions(force = false): Promise<void> {
   const now = Date.now();
-  if (!force && now - lastSessionPersistAt < PERSIST_THROTTLE_MS) return;
+  if (!force && now - lastSessionPersistAt < PERSIST_THROTTLE_MS) {
+    return Promise.resolve();
+  }
   lastSessionPersistAt = now;
   const snapshot = JSON.stringify({
     version: 1,
     sessions: collectValidSessions(),
   });
-  sessionPersistChain = sessionPersistChain
-    .then(async () => {
-      const path = sessionStorePath();
-      await mkdir(dirname(path), { recursive: true });
-      const temporaryPath = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
-      await writeFile(temporaryPath, snapshot, { mode: 0o600 });
-      await chmod(temporaryPath, 0o600);
-      await rename(temporaryPath, path);
-    })
-    .catch((error: unknown) => {
-      // ENOENT（目录被删除等瞬态）静默：下次写盘会重试；其余错误记录
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-      console.error(
-        `[pi-web-x] Failed to persist web sessions: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    });
+  const operation = sessionPersistChain.then(async () => {
+    const path = sessionStorePath();
+    await mkdir(dirname(path), { recursive: true });
+    const temporaryPath = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+    await writeFile(temporaryPath, snapshot, { mode: 0o600 });
+    await chmod(temporaryPath, 0o600);
+    await rename(temporaryPath, path);
+  });
+  sessionPersistChain = operation.catch((error: unknown) => {
+    // 目录被并发删除属于可恢复瞬态；下次写入会重新创建。
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    console.error(
+      `[pi-web-x] Failed to persist web sessions: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  });
+  return operation;
 }
 
 /** 从磁盘恢复有效会话（启动时调用；损坏/缺失时静默忽略，fail closed）。 */
@@ -354,7 +361,8 @@ function validateConfig(value: unknown): asserts value is StoredAuthConfig {
   const keys = Object.keys(config).sort().join(",");
   const legacy = keys === "generation,passwordHash,salt,updatedAt";
   const versioned =
-    keys === "algorithm,algorithmVersion,generation,passwordHash,salt,scrypt,updatedAt";
+    keys ===
+    "algorithm,algorithmVersion,generation,passwordHash,salt,scrypt,updatedAt";
   if (
     (!legacy && !versioned) ||
     (versioned &&
@@ -465,9 +473,7 @@ export function announceSetupToken(): void {
   if (configPathExists()) {
     try {
       if (!hasRegularConfigFile()) {
-        throw new Error(
-          "Authentication config path is not a regular file",
-        );
+        throw new Error("Authentication config path is not a regular file");
       }
       validateConfig(JSON.parse(readFileSync(configPath(), "utf8")));
     } catch {
@@ -513,12 +519,18 @@ export async function initializeAuth(
     () => initializeAuthNow(token, password),
     () => initializeAuthNow(token, password),
   );
-  runtime.authMutationQueue = operation.then(() => undefined, () => undefined);
+  runtime.authMutationQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  );
   return operation;
 }
 
 /** initializeAuth 的实际执行体（串行化，防并发覆盖）。 */
-async function initializeAuthNow(token: string, password: string): Promise<void> {
+async function initializeAuthNow(
+  token: string,
+  password: string,
+): Promise<void> {
   if (runtime.initializationInProgress) {
     throw new Error("Authentication setup is already in progress");
   }
@@ -533,12 +545,7 @@ async function initializeAuthNow(token: string, password: string): Promise<void>
     if (!consumeSetupToken(token)) throw new Error("Invalid setup token");
     tokenConsumed = true;
     const salt = randomBytes(16);
-    const derived = (await scrypt(
-      password,
-      salt,
-      64,
-      SCRYPT_CONFIG,
-    )) as Buffer;
+    const derived = (await scrypt(password, salt, 64, SCRYPT_CONFIG)) as Buffer;
     // 昂贵的哈希后复查，阻止并发请求覆盖配置
     if (await readConfigForInitialization()) {
       throw new Error("Authentication is already initialized");
@@ -602,12 +609,26 @@ async function verifyPasswordNow(password: string): Promise<boolean> {
 export async function authenticateAndCreateSession(
   password: string,
 ): Promise<string | null> {
-  const operation = runtime.authMutationQueue.then(async () => {
-    const config = await readConfig();
-    if (!config || !(await verifyPasswordNow(password))) return null;
-    return createSessionForGeneration(config.generation);
-  }, async () => null);
-  runtime.authMutationQueue = operation.then(() => undefined, () => undefined);
+  const operation = runtime.authMutationQueue.then(
+    async () => {
+      const config = await readConfig();
+      if (!config || !(await verifyPasswordNow(password))) return null;
+      const token = createSessionForGeneration(config.generation, false);
+      try {
+        // 登录响应前确保会话已落盘，避免紧随其后的重启让新 Cookie 立即失效。
+        await persistSessions(true);
+        return token;
+      } catch (error) {
+        sessions.delete(hashToken(token));
+        throw error;
+      }
+    },
+    async () => null,
+  );
+  runtime.authMutationQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  );
   return operation;
 }
 
@@ -625,7 +646,10 @@ export async function changePassword(
     () => changePasswordNow(currentPassword, newPassword),
     () => changePasswordNow(currentPassword, newPassword),
   );
-  runtime.authMutationQueue = operation.then(() => undefined, () => undefined);
+  runtime.authMutationQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  );
   return operation;
 }
 
@@ -648,7 +672,12 @@ async function changePasswordNow(
     throw new Error("Current password is incorrect");
   }
   const salt = randomBytes(16);
-  const derived = (await scrypt(newPassword, salt, 64, SCRYPT_CONFIG)) as Buffer;
+  const derived = (await scrypt(
+    newPassword,
+    salt,
+    64,
+    SCRYPT_CONFIG,
+  )) as Buffer;
   await writeConfig({
     ...config,
     algorithm: "scrypt",
@@ -676,17 +705,33 @@ export function createSession(): string {
   return storeSession(token, now, stateGeneration);
 }
 
-/** 按指定密码代次创建会话。 */
-function createSessionForGeneration(stateGeneration: number): string {
+/**
+ * 按指定密码代次创建会话。
+ * @param stateGeneration 会话绑定的密码代次
+ * @param persist 是否立即异步落盘；登录路径会自行等待持久化完成
+ * @returns 原始会话 token
+ */
+function createSessionForGeneration(
+  stateGeneration: number,
+  persist = true,
+): string {
   const token = randomBytes(32).toString("hex");
-  return storeSession(token, Date.now(), stateGeneration);
+  return storeSession(token, Date.now(), stateGeneration, persist);
 }
 
-/** 存储会话（仅存 token 哈希）并返回原始 token。 */
+/**
+ * 存储会话（仅存 token 哈希）并返回原始 token。
+ * @param token 原始会话 token
+ * @param now 创建时间
+ * @param stateGeneration 会话绑定的密码代次
+ * @param persist 是否立即异步落盘
+ * @returns 原始会话 token
+ */
 function storeSession(
   token: string,
   now: number,
   stateGeneration: number,
+  persist = true,
 ): string {
   const tokenHash = hashToken(token);
   sessions.set(tokenHash, {
@@ -695,8 +740,10 @@ function storeSession(
     expiresAt: now + SESSION_TTL,
     generation: stateGeneration,
   });
-  // 登录立即落盘：会话须跨进程重启存续
-  persistSessions(true);
+  if (persist) {
+    // 测试/内部同步创建接口保持原签名；认证登录路径会显式等待写入完成。
+    void persistSessions(true);
+  }
   return token;
 }
 
@@ -742,7 +789,7 @@ export function touchSession(token: string): boolean {
   record.expiresAt = Date.now() + SESSION_TTL;
   rescheduleSessionInvalidation(tokenHash);
   // 续期落盘（节流）：重启后仍保持滑动后的过期时间
-  persistSessions();
+  void persistSessions();
   return true;
 }
 
@@ -755,7 +802,10 @@ export async function revokeAllSessions(): Promise<void> {
     revokeAllSessionsNow,
     revokeAllSessionsNow,
   );
-  runtime.authMutationQueue = operation.then(() => undefined, () => undefined);
+  runtime.authMutationQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  );
   return operation;
 }
 
@@ -790,15 +840,17 @@ async function revokeAllSessionsNow(): Promise<void> {
 }
 
 /**
- * 作废指定会话。
+ * 作废指定会话，并在返回前持久化删除结果。
  * @param token 原始会话 token
+ * @returns 持久化完成 Promise
+ * @throws 会话存储写入失败时抛出
  */
-export function revokeSession(token: string): void {
+export async function revokeSession(token: string): Promise<void> {
   const tokenHash = hashToken(token);
   sessions.delete(tokenHash);
   notifySessionInvalidation(tokenHash);
-  // 登出立即落盘：避免重启后会话“复活”
-  persistSessions(true);
+  // 登出响应前落盘，避免服务紧接着重启时旧会话“复活”。
+  await persistSessions(true);
 }
 
 /**
@@ -875,9 +927,12 @@ function notifySessionInvalidation(tokenHash: string): void {
   for (const listener of listeners) listener();
 }
 
-/** 通知全部会话失效（调用方已清空内存会话；顺带把清空后的状态落盘）。 */
-function notifyAllSessionInvalidations(): void {
-  persistSessions(true);
+/**
+ * 通知全部会话失效。
+ * @param persist 是否顺带把清空后的状态落盘；测试重置时应关闭
+ */
+function notifyAllSessionInvalidations(persist = true): void {
+  if (persist) void persistSessions(true);
   for (const tokenHash of sessionInvalidationListeners.keys()) {
     notifySessionInvalidation(tokenHash);
   }
@@ -941,9 +996,7 @@ export function checkLoginRateLimit(key: string): RateLimitDecision {
   }
   return {
     allowed: true,
-    delayMs: activeFailure
-      ? Math.min(activeFailure.count * 100, 500)
-      : 0,
+    delayMs: activeFailure ? Math.min(activeFailure.count * 100, 500) : 0,
   };
 }
 
@@ -1036,7 +1089,7 @@ export async function resetAuthStateForTests(): Promise<void> {
   sessionPersistChain = Promise.resolve();
   lastSessionPersistAt = 0;
   sessions.clear();
-  notifyAllSessionInvalidations();
+  notifyAllSessionInvalidations(false);
   loginFailures.clear();
   runtime.globalLoginFailures = null;
   runtime.activeLoginAttempts = 0;

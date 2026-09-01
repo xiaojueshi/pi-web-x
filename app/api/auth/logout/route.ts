@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     await readAuthJson(request);
     const token = getSessionToken(request);
-    if (token) revokeSession(token);
+    if (token) await revokeSession(token);
     const response = Response.json({ success: true });
     response.headers.set("Set-Cookie", sessionCookie(request, null));
     return response;

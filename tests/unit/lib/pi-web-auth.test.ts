@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, setSystemTime, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -12,7 +12,9 @@ let authDir: string;
 let authConfigPath: string;
 
 /** 重新加载模块并重置认证状态（token 固定为 "setup-token"）。 */
-async function loadAuth(): Promise<typeof import("../../../lib/pi-web-auth.ts")> {
+async function loadAuth(): Promise<
+  typeof import("../../../lib/pi-web-auth.ts")
+> {
   const mod = await import("../../../lib/pi-web-auth.ts");
   await mod.resetAuthStateForTests();
   return mod;
@@ -69,7 +71,7 @@ test("会话：创建有效、错误 token 无效、过期后无效", async () =
   assert.equal(mod.getSession(sessionToken).valid, true);
   assert.equal(mod.getSession("nonsense-token").valid, false);
   // 撤销单个会话
-  mod.revokeSession(sessionToken);
+  await mod.revokeSession(sessionToken);
   assert.equal(mod.getSession(sessionToken).valid, false);
 });
 
@@ -77,9 +79,15 @@ test("登录成功后会话可用，错误密码返回 null", async () => {
   const mod = await loadAuth();
   const token = mod.getSetupTokenForTests();
   await mod.initializeAuth(token, "test-password-123");
-  const sessionToken = await mod.authenticateAndCreateSession("test-password-123");
+  const sessionToken =
+    await mod.authenticateAndCreateSession("test-password-123");
   assert.ok(sessionToken !== null);
   assert.equal(mod.getSession(sessionToken).valid, true);
+  assert.equal(
+    existsSync(join(authDir, "auth", "pi-web-sessions.json")),
+    true,
+    "登录返回前应已完成会话持久化",
+  );
   const badSession = await mod.authenticateAndCreateSession("wrong-password");
   assert.equal(badSession, null);
 });
@@ -88,7 +96,8 @@ test("改密：旧会话作废、新密码生效、旧密码失效", async () =>
   const mod = await loadAuth();
   const token = mod.getSetupTokenForTests();
   await mod.initializeAuth(token, "test-password-123");
-  const sessionToken = await mod.authenticateAndCreateSession("test-password-123");
+  const sessionToken =
+    await mod.authenticateAndCreateSession("test-password-123");
   assert.ok(sessionToken !== null);
   await mod.changePassword("test-password-123", "new-password-456");
   // 旧会话被全量作废
@@ -163,7 +172,7 @@ test("会话滑动续期：有效会话延长过期时间，无效/错误/撤销
   assert.equal(mod.touchSession(""), false);
   assert.equal(mod.touchSession("nonsense-token"), false);
   // 撤销后不续期
-  mod.revokeSession(sessionToken);
+  await mod.revokeSession(sessionToken);
   assert.equal(mod.touchSession(sessionToken), false);
 });
 
@@ -223,7 +232,7 @@ test("会话持久化：登录落盘、模拟重启后恢复、登出后不再�
   mod.restoreSessionsForTests();
   assert.equal(mod.getSession(sessionToken).valid, true);
   // 登出后落盘删除：清空并恢复后依然无效（不会“复活”）
-  mod.revokeSession(sessionToken);
+  await mod.revokeSession(sessionToken);
   await mod.flushSessionPersistenceForTests();
   mod.clearSessionsForTests();
   mod.restoreSessionsForTests();
@@ -234,9 +243,8 @@ test("会话持久化：改密/全量作废后落盘，重启后旧会话不恢�
   const mod = await loadAuth();
   const token = mod.getSetupTokenForTests();
   await mod.initializeAuth(token, "test-password-123");
-  const sessionToken = await mod.authenticateAndCreateSession(
-    "test-password-123",
-  );
+  const sessionToken =
+    await mod.authenticateAndCreateSession("test-password-123");
   assert.ok(sessionToken !== null);
   await mod.flushSessionPersistenceForTests();
   await mod.changePassword("test-password-123", "new-password-456");

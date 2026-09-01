@@ -46,6 +46,7 @@ export interface AgentEventConnectionOptions {
   shouldMaintain(sessionId: string): boolean;
   readinessTimeoutMs: number;
   reconnectDelayMs: number;
+  onDisconnected?(error: AgentEventConnectionError): void;
   onUnexpectedError?(error: unknown): void;
 }
 
@@ -185,8 +186,12 @@ export class AgentEventConnection {
   private fail(connection: Connection, error: AgentEventConnectionError): void {
     if (this.current !== connection) return;
     this.discard(connection, error);
-    if (error.status === "startup_error") this.stopRetrying();
-    else this.scheduleRetry(connection.sessionId);
+    if (error.status === "startup_error") {
+      this.stopRetrying();
+    } else {
+      this.options.onDisconnected?.(error);
+      this.scheduleRetry(connection.sessionId);
+    }
   }
 
   private discard(

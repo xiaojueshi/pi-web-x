@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 
 const { AgentEventConnection } = await import(
-  "../../../lib/agent-event-connection.ts",
+  "../../../lib/agent-event-connection.ts"
 );
 
 const CONNECTING = 0;
@@ -37,6 +37,7 @@ function createHarness({
 } = {}) {
   const sources = [];
   const events = [];
+  const disconnectedErrors = [];
   const unexpectedErrors = [];
   let activeSession = "session-a";
   let demand = false;
@@ -53,6 +54,9 @@ function createHarness({
     shouldMaintain: (sessionId) => demand && sessionId === activeSession,
     readinessTimeoutMs,
     reconnectDelayMs,
+    onDisconnected(error) {
+      disconnectedErrors.push(error);
+    },
     onUnexpectedError(error) {
       unexpectedErrors.push(error);
     },
@@ -61,6 +65,7 @@ function createHarness({
     connection,
     sources,
     events,
+    disconnectedErrors,
     unexpectedErrors,
     setActiveSession(sessionId) {
       activeSession = sessionId;
@@ -155,11 +160,14 @@ test("replaces a previously connected CONNECTING source only once", async () => 
 });
 
 test("passive maintenance retries a transient failure once", async () => {
-  const { connection, sources, setDemand } = createHarness();
+  const { connection, sources, disconnectedErrors, setDemand } =
+    createHarness();
   setDemand(true);
   connection.maintain("session-a");
   sources[0].error();
   await wait(10);
+  assert.equal(disconnectedErrors.length, 1);
+  assert.equal(disconnectedErrors[0].status, "closed");
   assert.equal(sources.length, 2);
 
   sources[1].open();

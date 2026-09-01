@@ -1,20 +1,13 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useI18n } from "@/hooks/useI18n";
+import {
+  SESSION_AUTH_STATUS_EVENT,
+  type SessionAuthStatus,
+} from "@/lib/session-keepalive";
 
-/** `/api/auth/status` 返回的认证状态。 */
-interface AuthStatus {
-  /** 认证是否已完成首次设置。 */
-  initialized: boolean;
-  /** 当前会话是否已认证。 */
-  authenticated: boolean;
-}
+type AuthStatus = SessionAuthStatus;
 
 /** AuthGate 的三种界面状态。 */
 type AuthView = "loading" | "setup" | "login" | "app";
@@ -60,6 +53,24 @@ export function AuthGate({ children, onSessionChanged }: AuthGateProps) {
 
   /** 重新检查认证状态（登出/登录成功后调用）。 */
   const refresh = useCallback(() => setCheckToken((token) => token + 1), []);
+
+  useEffect(() => {
+    const onAuthStatus = (event: Event) => {
+      const detail = (event as CustomEvent<SessionAuthStatus>).detail;
+      if (
+        typeof detail?.initialized !== "boolean" ||
+        typeof detail.authenticated !== "boolean"
+      ) {
+        return;
+      }
+      setError(null);
+      setStatus(detail);
+      onSessionChanged?.();
+    };
+    window.addEventListener(SESSION_AUTH_STATUS_EVENT, onAuthStatus);
+    return () =>
+      window.removeEventListener(SESSION_AUTH_STATUS_EVENT, onAuthStatus);
+  }, [onSessionChanged]);
 
   useEffect(() => {
     let cancelled = false;
@@ -213,10 +224,10 @@ export function AuthGate({ children, onSessionChanged }: AuthGateProps) {
             {busy ? t("auth.processing") : t("auth.submit")}
           </button>
         </form>
-        {isSetup && (
-          <p className="auth-hint">{t("auth.setupHint")}</p>
+        {isSetup && <p className="auth-hint">{t("auth.setupHint")}</p>}
+        {!status && !isSetup && (
+          <p className="auth-hint">{t("auth.loading")}</p>
         )}
-        {!status && !isSetup && <p className="auth-hint">{t("auth.loading")}</p>}
       </div>
     </div>
   );

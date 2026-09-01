@@ -31,12 +31,21 @@ async function fetchStaticAsset(
 
 /**
  * 为 API 响应附加会话滑动续期的 Set-Cookie 头（如有）。
- * @param request 当前 HTTP 请求
+ * @param request Bun 接收的原始 HTTP 请求
  * @param response 原始 API 响应
+ * @param routeRequest 传给 route 的兼容请求；Proxy 包装后与原始请求身份不同
  * @returns 附加续期头后的响应（未续期时原样返回）
  */
-function withSessionRefresh(request: Request, response: Response): Response {
-  const refresh = drainSessionRefreshCookie(request);
+function withSessionRefresh(
+  request: Request,
+  response: Response,
+  routeRequest: Request = request,
+): Response {
+  let refresh: string | null = null;
+  for (const candidate of [request, routeRequest]) {
+    const cookie = drainSessionRefreshCookie(candidate);
+    if (!refresh && cookie) refresh = cookie;
+  }
   if (!refresh) return response;
   const headers = new Headers(response.headers);
   headers.append("Set-Cookie", refresh);
@@ -68,7 +77,7 @@ export function startServer(
   const assetPort = assetServer.port;
 
   try {
-    return Bun.serve({
+    const server = Bun.serve({
       hostname: options.hostname,
       port: options.port,
       fetch: async (request): Promise<Response> => {
@@ -100,14 +109,21 @@ export function startServer(
             headers: { Allow: allowed.join(", ") },
           });
         }
-        return withSessionRefresh(
-          request,
-          await (handler as RouteHandler)(createHttpRequest(request), {
-            params: Promise.resolve(route.params),
-          }),
-        );
+        const routeRequest = createHttpRequest(request);
+        const response = await (handler as RouteHandler)(routeRequest, {
+          params: Promise.resolve(route.params),
+        });
+        return withSessionRefresh(request, response, routeRequest);
       },
     });
+    const stopMainServer = server.stop.bind(server);
+    server.stop = async (closeActiveConnections?: boolean): Promise<void> => {
+      await Promise.all([
+        stopMainServer(closeActiveConnections),
+        assetServer.stop(closeActiveConnections),
+      ]);
+    };
+    return server;
   } catch (error) {
     // 主服务绑定失败（如端口被占用）时回收静态资源服务，
     // 避免其保持事件循环活跃导致进程无法退出
