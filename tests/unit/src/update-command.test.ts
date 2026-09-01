@@ -129,6 +129,8 @@ test("runUpdateCommand：完整更新流——下载→校验→备份→替换"
     platform: "linux",
     arch: "x64",
     fetchFn: fakeFetch,
+    // 单测不得探测或重启宿主机上真实注册的用户服务。
+    refreshService: () => ({ registered: false, kind: "systemd" }),
   });
 
   expect(code).toBe(0);
