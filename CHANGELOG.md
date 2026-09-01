@@ -126,7 +126,6 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
-[Unreleased]: https://github.com/xiaojueshi/pi-web-x/compare/v0.9.4...HEAD
 [0.9.4]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.4
 [0.9.3]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.3
 [0.9.2]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.2
