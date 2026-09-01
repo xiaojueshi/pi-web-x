@@ -2,15 +2,22 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
-## [Unreleased]
+## [0.9.4] - 2026-09-01
 
 ### 修复
 
+- Web 会话滑动续期 `Set-Cookie` 丢失：路由层经 Proxy Request 调用续期逻辑、而续期中间件用原始 Request 读取刷新 Cookie，身份不一致导致浏览器永远收不到续期响应头，页面保持打开也会在 24 小时后按旧时限删除 Cookie。现在统一关联身份，页面保活能真正延长会话过期时间。
+- 会话持久化完成语义：登录/登出响应前等待关键 Session 写盘，写盘失败会明确报错，不再静默成功；服务重启后登录态按已落盘的会话恢复。
+- 认证失效不再中断后台任务：会话失效（登出/改密/24 小时过期）只切换前端登录界面，不停止正在运行的 Agent；SSE 观察通道断线时自动补查认证状态，瞬时断网不再误判为登出。
+- 单元测试误重启真实服务：完整更新流转测原先未注入 `refreshService`，回退到真实的 `refreshRegisteredServiceAfterUpdate()`，会探测 `~/.config/systemd/user/` 并执行 `systemctl --user restart`，导致测试运行期间服务被反复重启。已注入假实现，测试不再触碰真实服务管理命令。
 - 安装脚本在制品缺少 `SHA256SUMS` 条目时改为 fail closed，并在写入新二进制前迁移旧的 macOS/Linux 安装根。
 - Playwright 为编译二进制准备隔离认证状态并创建浏览器 session，恢复受保护 API、PWA 与离线回退 E2E。
 
 ### 工程化
 
+- 新增真实 Bun 服务器回归测试：登录取得 Cookie → 请求 `/api/auth/status` → 断言返回滑动续期 `Set-Cookie`，覆盖 Proxy Request 身份修复。
+- 新增保活/认证检查单元测试：会话失效时通知登录墙、网络错误不误判登出、有效会话不触发登出。
+- `startServer()` 停止时同步关闭内部静态资产服务，避免进程残留与端口占用。
 - 在 TypeScript 配置与 `src/runtime.d.ts` 中显式声明 Bun runtime 和 Bun-compatible `node:*` 类型边界。
 
 ### 文档
