@@ -804,3 +804,36 @@ test("keeps a detached viewport in place when streaming completes", () => {
     /addEventListener\("scroll", handleScrollPositionChange/,
   );
 });
+
+test("重复投递的 extension_ui_request 不会重置提问卡片状态", () => {
+  // SSE 重连时 rpc-manager 会重放未答复的提问（pendingUiRequests），
+  // 客户端必须按 id 去重：替换 dialog 对象会让 ExtensionPromptCard 的
+  // 重置副作用清掉用户已选选项/正在输入的内容。
+  const dialogCaseSource = source.slice(
+    source.indexOf('case "select":\n        case "confirm":\n        case "input":\n        case "editor": {'),
+    source.indexOf("case \"notify\": {"),
+  );
+
+  assert.match(
+    source,
+    /const extensionDialogIdRef = useRef<string \| null>\(null\)/,
+  );
+  assert.match(
+    dialogCaseSource,
+    /const isNewDialog = extensionDialogIdRef\.current !== request\.id/,
+  );
+  assert.match(
+    dialogCaseSource,
+    /setExtensionDialog\(\(current\) =>\s*current\?\.id === request\.id \? current : request,\s*\)/,
+  );
+  // 只在真正的新请求出现时滚动，重放投递不触发
+  assert.match(
+    dialogCaseSource,
+    /if \(isNewDialog\)[\s\S]*?requestAnimationFrame/, 
+  );
+  // 答复后清除 id 记录，下一次提问视为新请求
+  assert.match(
+    source,
+    /extensionDialogIdRef\.current = null;\s*setExtensionDialog\(\(current\) =>\s*current\?\.id === request\.id \? null : current,/,
+  );
+});

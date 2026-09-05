@@ -439,6 +439,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     useState<SessionStatsInfo | null>(null);
   const [extensionDialog, setExtensionDialog] =
     useState<ExtensionUiDialogRequest | null>(null);
+  // 当前提问请求 id：用于识别 SSE 重连时服务端重放的重复 extension_ui_request
+  const extensionDialogIdRef = useRef<string | null>(null);
   const [extensionCustomUi, setExtensionCustomUi] =
     useState<ExtensionUiCustomRequest | null>(null);
   const [extensionStatuses, setExtensionStatuses] = useState<
@@ -978,6 +980,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         | { cancelled: true },
     ) => {
       const sid = sessionIdRef.current;
+      extensionDialogIdRef.current = null;
       setExtensionDialog((current) =>
         current?.id === request.id ? null : current,
       );
@@ -1036,11 +1039,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         case "select":
         case "confirm":
         case "input":
-        case "editor":
-          setExtensionDialog(request);
-          // 提问卡片内联在消息流底部，出现时滚动到可见位置（小屏移动端必需）
-          requestAnimationFrame(() => scrollToBottom("auto"));
+        case "editor": {
+          // SSE 重连时服务端会把未答复的 extension_ui_request 重放给新监听器
+          // （rpc-manager onEvent 遍历 pendingUiRequests）。同 id 的重复投递
+          // 不能替换当前 dialog：对象引用变化会触发 ExtensionPromptCard 的
+          // 重置副作用，导致用户已选选项/正在输入的内容丢失（尤其带输入框时
+          // 键盘焦点也会丢）。
+          const isNewDialog = extensionDialogIdRef.current !== request.id;
+          extensionDialogIdRef.current = request.id;
+          setExtensionDialog((current) =>
+            current?.id === request.id ? current : request,
+          );
+          if (isNewDialog)
+            // 提问卡片内联在消息流底部，出现时滚动到可见位置（小屏移动端必需）
+            requestAnimationFrame(() => scrollToBottom("auto"));
           break;
+        }
         case "notify": {
           addNotice({
             id: request.id,
