@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.10.1] - 2026-09-05
+
+### 修复
+
+- 自更新检查不再依赖 GitHub API 作主源：未认证 `api.github.com` 配额仅 60 次/小时且按出口 IP 计，共享出口（VPS/VPN/CGNAT）下常被同 IP 请求耗尽而返回 403，随后静默降级到索引有延迟的 jsDelivr（发版后数小时内仍返回旧版本），导致"发版后 `update` 仍提示已是最新版本"。主源改为 `releases/latest/download/` 302 重定向解析（走 github.com 静态下载域，无 API、无配额），jsDelivr 与 GitHub API 依次作为备源；降级发生时输出明确提示，用户可感知版本信息来自哪个源。
+
 ## [0.10.0] - 2026-09-05
 
 ### 新增
@@ -146,6 +152,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.10.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.1
 [0.10.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.0
 [0.9.4]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.4
 [0.9.3]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.3
