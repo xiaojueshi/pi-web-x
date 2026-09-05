@@ -9,10 +9,16 @@ import { Theme } from "@earendil-works/pi-coding-agent";
  */
 export class PlainTextTheme extends Theme {
   constructor() {
+    // 0.85.0 起 Theme 构造函数会计算 fallback 色（scrollbarTrack ?? muted、
+    // scrollbarThumb ?? text），缺键会在 fgAnsi(undefined) 处抛错，
+    // 因此除空串占位外还需补齐 muted/text 两个被引用的基础键。
     super(
-      { thinkingXhigh: "", searchMatchText: "" } as ConstructorParameters<
-        typeof Theme
-      >[0],
+      {
+        thinkingXhigh: "",
+        searchMatchText: "",
+        muted: "",
+        text: "",
+      } as ConstructorParameters<typeof Theme>[0],
       { selectedBg: "" } as ConstructorParameters<typeof Theme>[1],
       "truecolor",
     );

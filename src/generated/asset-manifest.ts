@@ -4,14 +4,14 @@
 export const ASSET_MANIFEST = {
   version: "0.9.4",
   tarballSha256:
-    "ae4d34c6f4cd578f453fcf5741f4867501831f8013a6d58f4335910acf44dde7",
+    "dd4a8da37dc83b500f0a3bcb98d2a2ac568b0621c8ca3a4525e9ede813e2b17a",
   files: {
     "theme/dark.json":
-      "113bc1fd556727b165804c18b5d377c14d421b3fdff3909a63736f421d0a3b00",
+      "103a5aecb74a2dab5cc903c9741845ee6158658ce2ff6e5445948784116eaef8",
     "theme/light.json":
-      "893f0d7e8513dbd5e5112982fd6eb65ceb03ae18ed04854ac57803b9c8908fa0",
+      "14c7172ba7e75eab6f509504de806af0f2d9ff817bfb45d9533bff15c7e6e657",
     "theme/theme-schema.json":
-      "40fa6755020aae5bb8e670b7e80464f4629073f646efde340c08ce683172a548",
+      "ee0a32f76e725fdaff20ffedc5a1c79e30801d1902f06cdbc3b52133f8736b68",
     "assets/clankolas.png":
       "169acd0dfe6fbb8d8742ed24a3fc654fd0b2e2d4223c733249c5493723f1b72d",
     "export-html/ansi-to-html.d.ts":
