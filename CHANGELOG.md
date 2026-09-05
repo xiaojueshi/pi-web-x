@@ -2,6 +2,26 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.10.0] - 2026-09-05
+
+### 新增
+
+- 内置 `ask_user` 提问工具：无需安装第三方插件，Agent 即可在需要用户输入时发起提问。配套 Codex 风格内联提问卡片，渲染在消息流底部（取代模态对话框，不再遮挡历史）；支持单选/多选、选项搜索过滤（超过 6 项时显示）、"其他"自由输入与 Esc 取消；结构化选项支持 label + description 展示。与第三方同名扩展冲突时内置版自动胜出（保留第三方扩展的其它工具）。
+- 内置 `todo` 工具与三层进度可视化：工具语义与社区 todo 插件完全兼容（list/add/toggle/clear，状态存入工具结果 details，分支/回溯自动正确，旧会话数据可直接渲染）。可视化分三层——顶部工具栏新增 TODO 按钮（与工具栏样式统一，带 n/m 进度徽标，有待办未完成时图标高亮）；点击打开统一下拉面板（进度条 + 逐项勾选列表）；消息流内每次操作留有快照卡片（常显进度条与勾选状态，展开可看原文）。
+
+### 变更
+
+- pi SDK（`@earendil-works/pi-agent-core`、`pi-ai`、`pi-coding-agent`、`pi-tui`）从 0.84.4 升级至 0.85.0；因上游 0.85.0 打包遗漏，宿主侧补充 `@earendil-works/pi-server` 0.85.0 直接依赖以保证 SDK 可导入。
+
+### 修复
+
+- 扩展提问请求按 id 去重：SSE 断线重连时服务端会把未答复的提问重放给客户端，此前重复投递会替换提问卡片对象导致已选选项/输入内容丢失（用户需反复重新选择）；现在同 id 重复投递保持现有卡片，仅真正的新请求触发重置与滚动。
+- pi SDK 0.85.0 兼容修复：`PlainTextTheme` 补齐 Theme 构造函数新增的 fallback 色（scrollbarTrack/scrollbarThumb），修复启动时 `fgAnsi(undefined)` 崩溃；0.85.0 内置资产变化，重新生成资产清单。
+
+### 测试与工程化
+
+- 新增 `ask_user` / `todo` 内置扩展单元测试（类型守卫、冲突顶替、会话状态重建、工具执行语义）与前端渲染测试（提问卡片、TODO 进度卡、工具栏接线、三语文案完整性）；全量单测 940 项通过。
+
 ## [0.9.4] - 2026-09-01
 
 ### 修复
@@ -126,6 +146,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.10.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.0
 [0.9.4]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.4
 [0.9.3]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.3
 [0.9.2]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.2
