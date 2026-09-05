@@ -973,7 +973,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     async (
       request: ExtensionUiDialogRequest,
       response:
-        | { value: string }
+        | { value: string | string[] }
         | { confirmed: boolean }
         | { cancelled: true },
     ) => {
@@ -1038,6 +1038,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         case "input":
         case "editor":
           setExtensionDialog(request);
+          // 提问卡片内联在消息流底部，出现时滚动到可见位置（小屏移动端必需）
+          requestAnimationFrame(() => scrollToBottom("auto"));
           break;
         case "notify": {
           addNotice({
@@ -1085,7 +1087,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           break;
       }
     },
-    [addNotice, onAttentionNeeded, opts.chatInputRef],
+    [addNotice, onAttentionNeeded, opts.chatInputRef, scrollToBottom],
   );
 
   const settleUiStage = useCallback(() => {

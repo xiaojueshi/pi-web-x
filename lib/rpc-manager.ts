@@ -24,6 +24,10 @@ import {
   preferUserBashExtension,
 } from "./project-command-env";
 import {
+  createAskUserExtension,
+  preferHostAskExtension,
+} from "./ask-user-extension";
+import {
   cacheSessionPath,
   invalidateSessionListCache,
   resolveSessionPath,
@@ -1609,6 +1613,11 @@ export class AgentSessionWrapper {
             method: "select",
             title,
             options,
+            ...(opts?.multiSelect ? { multiSelect: true } : {}),
+            ...(opts?.allowFreeform !== undefined
+              ? { allowFreeform: opts.allowFreeform }
+              : {}),
+            ...(opts?.context ? { context: opts.context } : {}),
             ...(opts?.timeout ? { timeout: opts.timeout } : {}),
           },
           undefined,
@@ -1638,7 +1647,10 @@ export class AgentSessionWrapper {
             ...(opts?.timeout ? { timeout: opts.timeout } : {}),
           },
           undefined,
-          (response) => ("value" in response ? response.value : undefined),
+          // SAFETY: input 只可能返回纯文本 value；联合类型里 string[] 仅供
+          // select 多选响应使用，此处断言收窄为 string。
+          (response) =>
+            "value" in response ? (response.value as string) : undefined,
           opts?.timeout,
           opts?.signal,
         ),
@@ -1651,7 +1663,9 @@ export class AgentSessionWrapper {
             ...(opts?.timeout ? { timeout: opts.timeout } : {}),
           },
           undefined,
-          (response) => ("value" in response ? response.value : undefined),
+          // SAFETY: editor 同 input，仅返回纯文本 value，断言收窄为 string。
+          (response) =>
+            "value" in response ? (response.value as string) : undefined,
           opts?.timeout,
           opts?.signal,
         ),
@@ -2280,9 +2294,12 @@ export async function startRpcSession(
                   () => listSubagentProfiles(sessionCwd),
                   isBuiltInSubagentsEnabled,
                 ),
+                createAskUserExtension(),
               ],
               extensionsOverride: (base) =>
-                preferUserBashExtension(preferPiWebSubagentExtension(base)),
+                preferHostAskExtension(
+                  preferUserBashExtension(preferPiWebSubagentExtension(base)),
+                ),
             },
       ...(trustReloadOptions
         ? { resourceLoaderReloadOptions: trustReloadOptions }

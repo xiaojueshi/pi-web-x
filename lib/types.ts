@@ -123,13 +123,32 @@ export type AgentMessage =
       | CustomMessage
       | BashExecutionMessage;
 
+/** 结构化选项：比纯字符串多提供 description 展示信息。 */
+export interface SelectOptionLike {
+  label: string;
+  description?: string;
+}
+
+/**
+ * 选项列表：兼容纯字符串数组或结构化对象数组。
+ * 服务端（rpc-manager）原样透传；UI 两种形态都能渲染。
+ */
+export type SelectOptionsLike = string[] | SelectOptionLike[];
+
 export type ExtensionUiRequest =
       | {
               type: "extension_ui_request";
               id: string;
               method: "select";
               title: string;
-              options: string[];
+              /** 选项：纯字符串或结构化 {label, description}。 */
+              options: SelectOptionsLike;
+              /** 允许多选（Codex 风格复选框）。默认单选。 */
+              multiSelect?: boolean;
+              /** 允许自定义答案（"其他"自由输入）。默认 true。 */
+              allowFreeform?: boolean;
+              /** 标题下方展示的可选上下文/背景说明。 */
+              context?: string;
               timeout?: number;
               expiresAt?: number;
         }
@@ -208,7 +227,7 @@ export type BlockingExtensionUiRequest = Extract<
 >;
 
 export type ExtensionUiResponse =
-      | { type: "extension_ui_response"; id: string; value: string }
+      | { type: "extension_ui_response"; id: string; value: string | string[] }
       | { type: "extension_ui_response"; id: string; confirmed: boolean }
       | { type: "extension_ui_response"; id: string; cancelled: true };
 

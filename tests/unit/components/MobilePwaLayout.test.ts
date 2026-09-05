@@ -26,6 +26,10 @@ const chatInputSource = await readFile(
   new URL("../../../components/ChatInput.tsx", import.meta.url),
   "utf8",
 );
+const promptCardSource = await readFile(
+  new URL("../../../components/ExtensionPromptCard.tsx", import.meta.url),
+  "utf8",
+);
 const viewportHookSource = await readFile(
   new URL("../../../hooks/useViewportHeight.ts", import.meta.url),
   "utf8",
@@ -96,7 +100,9 @@ test("contains chat content and inputs within the mobile viewport", () => {
     /\.markdown-code-block \{[\s\S]*?min-width: 0;[\s\S]*?max-width: 100%;/,
   );
   assert.match(chatWindowSource, /overflow-x-hidden overflow-y-auto/);
-  assert.match(chatWindowSource, /maxHeight: "min\(760px, 100%\)"/);
+  // 提问卡片改为消息流内联渲染（取代旧模态对话框），限制最大宽度防止撑破小屏
+  assert.match(chatWindowSource, /<ExtensionPromptCard/);
+  assert.match(promptCardSource, /maxWidth: 560/);
   assert.match(chatInputSource, /flex: 1,\s*minWidth: 0,\s*width: "100%",/);
 });
 

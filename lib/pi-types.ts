@@ -12,6 +12,7 @@ import type {
   PrepareNextTurnContext,
 } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
+import type { SelectOptionsLike } from "./types";
 
 export interface ContextUsage {
   percent: number | null;
@@ -93,6 +94,12 @@ interface ExtensionRunnerLike {
 type DialogOptionsLike = {
   signal?: AbortSignal;
   timeout?: number;
+  /** 允许多选（仅 select）。 */
+  multiSelect?: boolean;
+  /** 允许"其他"自由输入（仅 select，默认 true）。 */
+  allowFreeform?: boolean;
+  /** 标题下方展示的上下文说明（仅 select）。 */
+  context?: string;
 };
 
 type WidgetOptionsLike = {
@@ -102,9 +109,9 @@ type WidgetOptionsLike = {
 export interface ExtensionUiContextLike {
   select(
     title: string,
-    options: string[],
+    options: SelectOptionsLike,
     opts?: DialogOptionsLike,
-  ): Promise<string | undefined>;
+  ): Promise<string | string[] | undefined>;
   confirm(
     title: string,
     message: string,
