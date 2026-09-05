@@ -76,7 +76,17 @@ test("runUpdateCommand：开发模式（非二进制）给出明确提示", asyn
 test("runUpdateCommand：无新版本时 --check 返回 0 并提示已是最新", async () => {
   const { messages, out } = collectOutput();
   const fakeFetch = (async (url: string | URL | Request) => {
-    expect(String(url)).toContain("releases/latest");
+    const target = String(url);
+    // 主源：发布物下载 302 重定向，Location 携带最新 tag
+    if (target.endsWith("releases/latest/download/SHA256SUMS")) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: `https://github.com/xiaojueshi/pi-web-x/releases/download/v${APP_VERSION}/SHA256SUMS`,
+        },
+      });
+    }
+    expect(target).toContain("releases/latest");
     return new Response(JSON.stringify({ tag_name: `v${APP_VERSION}` }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -104,6 +114,16 @@ test("runUpdateCommand：完整更新流——下载→校验→备份→替换"
 
   const fakeFetch = (async (input: string | URL | Request) => {
     const url = String(input);
+    // 主源：发布物下载 302 重定向，Location 携带最新 tag
+    if (url.includes("releases/latest/download/SHA256SUMS")) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location:
+            "https://github.com/xiaojueshi/pi-web-x/releases/download/v9.9.9/SHA256SUMS",
+        },
+      });
+    }
     if (url.endsWith("/latest")) {
       return new Response(JSON.stringify({ tag_name: "v9.9.9" }), {
         status: 200,
@@ -155,6 +175,16 @@ test("runUpdateCommand：二进制替换成功后自动恢复已注册服务", a
   const hash = createHash("sha256").update(newBytes).digest("hex");
   const fakeFetch = (async (input: string | URL | Request) => {
     const url = String(input);
+    // 主源：发布物下载 302 重定向，Location 携带最新 tag
+    if (url.includes("releases/latest/download/SHA256SUMS")) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location:
+            "https://github.com/xiaojueshi/pi-web-x/releases/download/v9.9.9/SHA256SUMS",
+        },
+      });
+    }
     if (url.endsWith("/latest")) {
       return new Response(JSON.stringify({ tag_name: "v9.9.9" }), {
         status: 200,
@@ -196,6 +226,16 @@ test("runUpdateCommand：服务恢复失败时保留已更新二进制并返回 
   const hash = createHash("sha256").update(newBytes).digest("hex");
   const fakeFetch = (async (input: string | URL | Request) => {
     const url = String(input);
+    // 主源：发布物下载 302 重定向，Location 携带最新 tag
+    if (url.includes("releases/latest/download/SHA256SUMS")) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location:
+            "https://github.com/xiaojueshi/pi-web-x/releases/download/v9.9.9/SHA256SUMS",
+        },
+      });
+    }
     if (url.endsWith("/latest")) {
       return new Response(JSON.stringify({ tag_name: "v9.9.9" }), {
         status: 200,
@@ -234,6 +274,16 @@ test("runUpdateCommand：SHA256SUMS 缺失条目时中止", async () => {
 
   const fakeFetch = (async (input: string | URL | Request) => {
     const url = String(input);
+    // 主源：发布物下载 302 重定向，Location 携带最新 tag
+    if (url.includes("releases/latest/download/SHA256SUMS")) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location:
+            "https://github.com/xiaojueshi/pi-web-x/releases/download/v9.9.9/SHA256SUMS",
+        },
+      });
+    }
     if (url.endsWith("/latest")) {
       return new Response(JSON.stringify({ tag_name: "v9.9.9" }), {
         status: 200,

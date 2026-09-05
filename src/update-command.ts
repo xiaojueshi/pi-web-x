@@ -20,6 +20,7 @@ import {
 import {
   fetchLatestVersionFromSource,
   isNewerStableVersion,
+  type LatestVersionInfo,
 } from "../lib/app-update";
 import { ASSET_MANIFEST } from "./generated/asset-manifest";
 import {
@@ -336,7 +337,7 @@ export async function runUpdateCommand(
     return 1;
   }
 
-  let latest: { latestVersion: string; releaseUrl: string };
+  let latest: LatestVersionInfo;
   try {
     latest = await fetchLatestVersionFromSource(process.env, fetchFn, 5_000);
   } catch (error) {
@@ -348,6 +349,13 @@ export async function runUpdateCommand(
   }
 
   const hasUpdate = isNewerStableVersion(latest.latestVersion, APP_VERSION);
+  // 降级可感知：前面的源失败时明确告知版本信息来自哪个源，避免误信缓存延迟的
+  // 备源结果（如 jsDelivr 索引滞后）而误判"已是最新版本"
+  if (latest.degradedFrom) {
+    out(
+      `注意：主要更新源不可达（${latest.degradedFrom}），版本信息来自 ${latest.source}。\n`,
+    );
+  }
   if (!hasUpdate && !force) {
     out(`当前已是最新版本（${APP_VERSION}）。`);
     return 0;
