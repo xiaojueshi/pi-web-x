@@ -7,11 +7,13 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { Static } from "typebox";
-import { isTodoToolDetails } from "./todo-details";
+import {
+  isTodoToolDetails,
+  TODO_TOOL_NAME,
+} from "./todo-details";
 import type { TodoDetails, TodoItem } from "./todo-details";
 
-/** 内置待办工具名（与第三方同名 todo 扩展冲突时以内置为准）。 */
-export const TODO_TOOL_NAME = "todo";
+/** 内置待办工具名（与第三方同名 todo 扩展冲突时以内置为准）；常量定义在零依赖的 todo-details 模块。 */
 /** 内置扩展名，用于在扩展加载结果中识别宿主扩展。 */
 export const HOST_TODO_EXTENSION_NAME = "pi-web-todo";
 /** 内置扩展在加载结果中的虚拟路径（沿用 pi 的 <inline:...> 约定）。 */

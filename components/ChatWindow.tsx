@@ -40,6 +40,8 @@ import { ExtensionPromptCard } from "./ExtensionPromptCard";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
+import { extractLatestTodoDetails } from "@/lib/todo-details";
+import type { TodoDetails } from "@/lib/todo-details";
 import { AnsiText } from "./AnsiText";
 import { useI18n } from "@/hooks/useI18n";
 import {
@@ -80,6 +82,8 @@ interface Props {
   onSystemToolsChange?: (tools: ToolEntry[] | null) => void;
   onSystemInfoLoaderChange?: (loader: (() => Promise<void>) | null) => void;
   onSessionStatsChange?: (stats: SessionStatsInfo | null) => void;
+  /** 最新 todo 工具结果快照变化时上报（供顶部工具栏 TODO 面板展示）。 */
+  onTodoChange?: (details: TodoDetails | null) => void;
   onSessionStatsPanelOpen?: () => void;
   onContextUsageChange?: (
     usage: {
@@ -392,6 +396,7 @@ export function ChatWindow({
   onSystemToolsChange,
   onSystemInfoLoaderChange,
   onSessionStatsChange,
+  onTodoChange,
   onSessionStatsPanelOpen,
   onContextUsageChange,
   onOpenFile,
@@ -678,6 +683,16 @@ export function ChatWindow({
     }
     return map;
   }, [messages]);
+
+  // 常驻 TODO 面板数据：会话里最后一条 todo 工具结果（流式更新不改
+  // messages 数组，useMemo 不会每个 token 重算）；经回调上报给顶部工具栏
+  const latestTodoDetails = useMemo(() => extractLatestTodoDetails(messages), [
+    messages,
+  ]);
+  useEffect(() => {
+    onTodoChange?.(latestTodoDetails);
+    return () => onTodoChange?.(null);
+  }, [latestTodoDetails, onTodoChange]);
   const inputHistory = useMemo(() => {
     const seen = new Set<string>();
     const history: string[] = [];

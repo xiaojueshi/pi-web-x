@@ -6,6 +6,31 @@
  * 共用，避免把 SDK 运行时代码打进客户端包。
  */
 
+/** 内置 todo 工具名（服务端扩展与客户端提取逻辑共用）。 */
+export const TODO_TOOL_NAME = "todo";
+
+/**
+ * 从消息列表中提取最后一条 todo 工具结果的 details 快照。
+ *
+ * 用作常驻面板的数据源：从会话尾部反向扫描，历史消息（会话文件里的
+ * details）同样适用，分支/回溯后列表变化自动反映最新状态。
+ *
+ * @param messages 会话消息列表（AgentMessage[]，按需收窄避免耦合）
+ * @returns 最后一条 todo details；列表从未使用过 todo 时返回 null
+ */
+export function extractLatestTodoDetails(
+  messages: readonly { role?: string; toolName?: string; details?: unknown }[],
+): TodoDetails | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (!message) continue;
+    if (message.role !== "toolResult") continue;
+    if (message.toolName !== TODO_TOOL_NAME) continue;
+    if (isTodoToolDetails(message.details)) return message.details;
+  }
+  return null;
+}
+
 /** 单条待办。 */
 export interface TodoItem {
   id: number;

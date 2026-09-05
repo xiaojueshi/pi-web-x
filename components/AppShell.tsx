@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from "@/src/client/navigation";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
+import { TodoPanel } from "./TodoPanel";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { openFileTab, saveFileViewerState } from "./file-tab-state";
@@ -67,6 +68,7 @@ import type {
   SessionTreeNode,
 } from "@/lib/types";
 import type { ProjectTrustStatus } from "@/lib/api-types";
+import type { TodoDetails } from "@/lib/todo-details";
 import type { ChatInputHandle } from "./ChatInput";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 import type { FileViewerState } from "@/lib/file-viewer-state";
@@ -392,13 +394,16 @@ export function AppShell() {
 
   // Single active panel — only one dropdown open at a time
   const [activeTopPanel, setActiveTopPanel] = useState<
-    "agents" | "branches" | "system" | "tools" | "session" | "language" | null
+    "agents" | "branches" | "system" | "tools" | "todo" | "session" | "language" | null
   >(null);
   const [topPanelPos, setTopPanelPos] = useState<{
     top: number;
     left: number;
     width: number;
   } | null>(null);
+  // 最新 todo 快照（由 ChatWindow 经 onTodoChange 上报），驱动工具栏
+  // TODO 按钮徽标与下拉面板
+  const [todoDetails, setTodoDetails] = useState<TodoDetails | null>(null);
 
   useEffect(() => {
     if (!sessionHasBranches) {
@@ -419,6 +424,7 @@ export function AppShell() {
         | "branches"
         | "system"
         | "tools"
+        | "todo"
         | "session"
         | "language",
       keepMobileToolbarOpen = false,
@@ -2107,6 +2113,83 @@ export function AppShell() {
           </svg>
           {!mobile && <span>{translate("tools.label")}</span>}
         </button>
+        <button
+          type="button"
+          onClick={() => toggleTopPanel("todo", mobile)}
+          disabled={mobile && !showChat}
+          title={translate("chat.todoTitle")}
+          aria-label={translate("chat.todoTitle")}
+          aria-pressed={activeTopPanel === "todo"}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            width: mobile ? TOP_BAR_ICON_BUTTON_SIZE : undefined,
+            height: "100%",
+            padding: mobile ? 0 : "0 12px",
+            background:
+              activeTopPanel === "todo" ? "var(--bg-selected)" : "none",
+            border: "none",
+            borderTop:
+              activeTopPanel === "todo"
+                ? "2px solid var(--accent)"
+                : "2px solid transparent",
+            borderRight: "1px solid var(--border)",
+            cursor: mobile && !showChat ? "not-allowed" : "pointer",
+            color:
+              activeTopPanel === "todo" ? "var(--text)" : "var(--text-muted)",
+            opacity: mobile && !showChat ? 0.45 : 1,
+            fontSize: 11,
+            whiteSpace: "nowrap",
+            transition: "color 0.1s, background 0.1s",
+          }}
+          onMouseEnter={(event) => {
+            if (mobile && !showChat) return;
+            event.currentTarget.style.color = "var(--text)";
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.color =
+              activeTopPanel === "todo" ? "var(--text)" : "var(--text-muted)";
+          }}
+          data-mobile-toolbar-action={mobile ? "todo" : undefined}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              color:
+                todoDetails && todoDetails.todos.some((item) => !item.done)
+                  ? "var(--accent)"
+                  : "var(--text-dim)",
+              flexShrink: 0,
+            }}
+            aria-hidden="true"
+          >
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          {!mobile && <span>TODO</span>}
+          {!mobile && todoDetails && todoDetails.todos.length > 0 && (
+            <span
+              style={{
+                color: "var(--accent)",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {
+                todoDetails.todos.filter((item) => item.done).length
+              }
+              /{todoDetails.todos.length}
+            </span>
+          )}
+        </button>
         {mobile && renderThemeButton(true)}
         {mobile && renderLanguageButton(true)}
       </div>
@@ -2928,6 +3011,20 @@ export function AppShell() {
                       translate={translate}
                     />
                   )}
+                  {activeTopPanel === "todo" && (
+                    <div
+                      role="dialog"
+                      aria-label={translate("chat.todoTitle")}
+                      style={{
+                        background: "var(--bg-panel)",
+                        borderLeft: "1px solid var(--border)",
+                        borderRight: "1px solid var(--border)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      <TodoPanel details={todoDetails} />
+                    </div>
+                  )}
                   {activeTopPanel === "session" && (
                     <div
                       className="session-info-popover"
@@ -3464,6 +3561,7 @@ export function AppShell() {
                 onSystemToolsChange={handleSystemToolsChange}
                 onSystemInfoLoaderChange={handleSystemInfoLoaderChange}
                 onSessionStatsChange={handleSessionStatsChange}
+                onTodoChange={setTodoDetails}
                 onSessionStatsPanelOpen={openSessionStatsPanel}
                 onContextUsageChange={handleContextUsageChange}
                 onOpenFile={handleOpenLinkedFile}
