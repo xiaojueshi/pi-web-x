@@ -28,6 +28,10 @@ import {
   preferHostAskExtension,
 } from "./ask-user-extension";
 import {
+  createTodoExtension,
+  preferHostTodoExtension,
+} from "./todo-extension";
+import {
   cacheSessionPath,
   invalidateSessionListCache,
   resolveSessionPath,
@@ -2295,10 +2299,13 @@ export async function startRpcSession(
                   isBuiltInSubagentsEnabled,
                 ),
                 createAskUserExtension(),
+                createTodoExtension(),
               ],
               extensionsOverride: (base) =>
-                preferHostAskExtension(
-                  preferUserBashExtension(preferPiWebSubagentExtension(base)),
+                preferHostTodoExtension(
+                  preferHostAskExtension(
+                    preferUserBashExtension(preferPiWebSubagentExtension(base)),
+                  ),
                 ),
             },
       ...(trustReloadOptions

@@ -216,3 +216,100 @@ test("renders custom-message images as buttons that open a larger preview", () =
   assert.match(html, /<button[^>]+aria-label="Preview image"[^>]*>/);
   assert.match(html, /<img[^>]+src="data:image\/png;base64,YWJj"/);
 });
+
+test("todo 工具结果常显进度卡片：进度条 + 勾选状态", () => {
+  const block = {
+    type: "toolCall",
+    toolCallId: "call-todo-1",
+    toolName: "todo",
+    input: { action: "add", text: "编写测试" },
+  };
+  const result = {
+    role: "toolResult",
+    toolCallId: block.toolCallId,
+    content: [{ type: "text", text: "Added todo #2: 编写测试" }],
+    details: {
+      action: "add",
+      todos: [
+        { id: 1, text: "搭建框架", done: true },
+        { id: 2, text: "编写测试", done: false },
+      ],
+      nextId: 3,
+    },
+  };
+  const html = renderMessage(
+    {
+      role: "assistant",
+      provider: "anthropic",
+      model: "claude-test",
+      content: [block],
+    },
+    { toolResults: new Map([[block.toolCallId, result]]) },
+  );
+
+  // 进度 1/2 与进度条
+  assert.match(html, /1\/2/);
+  assert.match(html, /role="progressbar"/);
+  assert.match(html, /aria-valuenow="1"/);
+  assert.match(html, /width:50%/);
+  // 已完成项：绿色勾 + 删除线；未完成项：○
+  assert.match(html, /line-through/);
+  assert.match(html, /搭建框架/);
+  assert.match(html, /编写测试/);
+});
+
+test("todo 清空与错误 details 分别渲染空态与错误提示", () => {
+  const block = {
+    type: "toolCall",
+    toolCallId: "call-todo-2",
+    toolName: "todo",
+    input: { action: "clear" },
+  };
+  const cleared = renderMessage(
+    {
+      role: "assistant",
+      provider: "anthropic",
+      model: "claude-test",
+      content: [block],
+    },
+    {
+      toolResults: new Map([
+        [
+          block.toolCallId,
+          {
+            role: "toolResult",
+            toolCallId: block.toolCallId,
+            content: [{ type: "text", text: "Cleared 2 todos" }],
+            details: { action: "clear", todos: [], nextId: 1 },
+          },
+        ],
+      ]),
+    },
+  );
+  assert.match(cleared, /已清空全部待办|Cleared all todos/);
+
+  const errored = renderMessage(
+    {
+      role: "assistant",
+      provider: "anthropic",
+      model: "claude-test",
+      content: [block],
+    },
+    {
+      toolResults: new Map([
+        [
+          block.toolCallId,
+          {
+            role: "toolResult",
+            toolCallId: block.toolCallId,
+            isError: true,
+            content: [{ type: "text", text: "Error" }],
+            details: { action: "clear", todos: [], nextId: 1 },
+          },
+        ],
+      ]),
+    },
+  );
+  // 错误结果不渲染进度卡片（由通用错误样式呈现）
+  assert.doesNotMatch(errored, /role="progressbar"/);
+});
