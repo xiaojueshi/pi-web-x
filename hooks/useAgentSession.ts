@@ -184,6 +184,8 @@ export interface UseAgentSessionOptions {
   sessionRunning?: boolean;
   newSessionCwd: string | null;
   newSessionDraftKey: string | null;
+  /** 挂载后首次加载时不自动滚到底部，由阅读位置恢复流程接管。 */
+  deferInitialScroll?: boolean;
   onAgentEnd?: () => void;
   onAttentionNeeded?: (request: BlockingExtensionUiRequest) => void;
   onSessionCreated?: (session: SessionInfo, sourceDraftKey: string) => void;
@@ -472,7 +474,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(
     null,
   );
-  const initialScrollDoneRef = useRef(false);
+  const initialScrollDoneRef = useRef(Boolean(opts.deferInitialScroll));
   const lastUserMsgRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollToUserRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -540,6 +542,35 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     messagesEndRef.current?.scrollIntoView({ behavior });
     if (container) previousScrollTopRef.current = container.scrollTop;
   }, []);
+
+  /**
+   * 将指定消息元素滚动到视口顶部附近（可自定义偏移）。
+   *
+   * @param element 要定位的消息元素。
+   * @param viewportOffset 元素顶部相对视口顶部的偏移（px，默认 16）。
+   * @returns 无返回值。
+   */
+  const scrollToMessage = useCallback(
+    (element: HTMLElement, viewportOffset = 16) => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      if (liveFollowFrameRef.current !== null) {
+        cancelAnimationFrame(liveFollowFrameRef.current);
+        liveFollowFrameRef.current = null;
+      }
+      isNearBottomRef.current = false;
+      container.scrollTo({
+        top:
+          element.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop -
+          viewportOffset,
+        behavior: "instant",
+      });
+      previousScrollTopRef.current = container.scrollTop;
+    },
+    [],
+  );
 
   const currentModel =
     currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
@@ -723,7 +754,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   );
 
   const loadContext = useCallback(
-    async (sid: string, leafId: string | null, before?: string | null) => {
+    async (
+      sid: string,
+      leafId: string | null,
+      before?: string | null,
+      options?: { tail?: number; signal?: AbortSignal },
+    ): Promise<SessionData["context"] | null> => {
       try {
         const params = new URLSearchParams({
           deferThinking: "1",
@@ -733,11 +769,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // Page upward: ask the server for the `tail` ancestors preceding `before`,
         // then prepend them. Omitting `before` fetches the most-recent `tail`.
         if (before) params.set("before", before);
+        if (options?.tail) params.set("tail", String(options.tail));
         const url = `/api/sessions/${encodeURIComponent(sid)}/context?${params}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: options?.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const d = (await res.json()) as { context: SessionData["context"] };
-        if (sessionIdRef.current !== sid) return;
+        if (
+          sessionIdRef.current !== sid ||
+          options?.signal?.aborted ||
+          !sessionHookMountedRef.current
+        )
+          return null;
         setHistoryCursor(d.context.oldestEntryId);
         setHasEarlierMessages(d.context.hasMore);
         setData((prev) => {
@@ -761,8 +803,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setMessages(d.context.messages);
           setEntryIds(d.context.entryIds ?? []);
         }
+        return d.context;
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return null;
         console.error("Failed to load context:", e);
+        return null;
       }
     },
     [],
@@ -2742,6 +2787,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setMessages,
     loadContext,
     scrollToBottom,
+    scrollToMessage,
     scrollUserMsgToTop,
     dispatch,
     setAgentRunning,

@@ -1054,6 +1054,38 @@
   font-size: 12px;
 }
 
+.settings-idle-timeout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 10px;
+  border-radius: 5px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.settings-idle-timeout input {
+  width: 84px;
+  min-height: 28px;
+  margin-left: auto;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.settings-idle-timeout input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .settings-general-error {
   margin: 8px 0 0;
   color: #ef4444;

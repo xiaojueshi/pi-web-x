@@ -26,6 +26,7 @@ import { formatRelativeTime } from "@/lib/i18n/format";
 import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
+import { SessionSearch } from "./SessionSearch";
 
 declare global {
   interface Window {
@@ -101,7 +102,12 @@ function ToolbarIconButton({
 
 interface Props {
   selectedSessionId: string | null;
-  onSelectSession: (session: SessionInfo, isRestore?: boolean) => void;
+  onSelectSession: (
+    session: SessionInfo,
+    isRestore?: boolean,
+    entryId?: string,
+    blockIndex?: number,
+  ) => void;
   onNewSession?: (sessionId: string, cwd: string) => void;
   initialSessionId?: string | null;
   skipInitialProjectSelection?: boolean;
@@ -468,6 +474,15 @@ export function SessionSidebar({
   const [changesCount, setChangesCount] = useState(0);
   const [changesCollapsed, setChangesCollapsed] = useState(true);
   const [sessionRefreshDone, setSessionRefreshDone] = useState(false);
+  // 会话搜索：工具栏开关 + 搜索词；搜索激活时结果面板替换会话列表。
+  const [sessionSearchOpen, setSessionSearchOpen] = useState(false);
+  const [sessionSearchQuery, setSessionSearchQuery] = useState("");
+  // 跨窗口同步：会话列表代数变化（其他窗口增删会话）时重取列表。
+  const [sessionListVersion, setSessionListVersion] = useState<number | null>(
+    null,
+  );
+  const sessionListVersionRef = useRef<number | null>(null);
+  const sessionLoadIdRef = useRef(0);
   const [explorerRefreshDone, setExplorerRefreshDone] = useState(false);
   const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(
     () => new Set(),
@@ -495,6 +510,8 @@ export function SessionSidebar({
 
   const loadSessions = useCallback(
     async (showLoading = false, force = false) => {
+      // 只接受最后一次加载的结果，避免慢请求覆盖新状态。
+      const loadId = ++sessionLoadIdRef.current;
       try {
         if (showLoading) setLoading(true);
         const res = await fetch(
@@ -506,9 +523,13 @@ export function SessionSidebar({
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
           sessions: SessionInfo[];
+          sessionListVersion: number;
           runningSessionIds?: string[];
           completionNotificationSuppressedSessionIds?: string[];
         };
+        if (loadId !== sessionLoadIdRef.current) return;
+        sessionListVersionRef.current = data.sessionListVersion;
+        setSessionListVersion(data.sessionListVersion);
         setAllSessions(data.sessions);
         // Treat the fetched running set as an initial fallback only. Once the
         // lightweight poll is live, a slow session-list fetch cannot overwrite it.
@@ -543,9 +564,10 @@ export function SessionSidebar({
           );
         }
       } catch (e) {
-        setError(String(e));
+        if (loadId === sessionLoadIdRef.current) setError(String(e));
       } finally {
-        if (showLoading) setLoading(false);
+        if (showLoading && loadId === sessionLoadIdRef.current)
+          setLoading(false);
       }
     },
     [],
@@ -598,6 +620,7 @@ export function SessionSidebar({
         });
         if (!res.ok) return;
         const data = (await res.json()) as {
+          sessionListVersion: number;
           runningSessionIds?: string[];
           completionNotificationSuppressedSessionIds?: string[];
         };
@@ -607,6 +630,10 @@ export function SessionSidebar({
           data.completionNotificationSuppressedSessionIds ?? [],
         );
         setRunningSessionIds(new Set(data.runningSessionIds ?? []));
+        if (data.sessionListVersion !== sessionListVersionRef.current) {
+          // 复用已失效的缓存；强制扫描会再次改变版本。
+          void loadSessions();
+        }
       } catch {
         // Keep the last known state; the next visible-tab poll retries.
       } finally {
@@ -633,7 +660,7 @@ export function SessionSidebar({
       controller?.abort();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, []);
+  }, [loadSessions]);
 
   useEffect(() => {
     onRunningSessionIdsChange?.(runningSessionIds);
@@ -1078,9 +1105,15 @@ export function SessionSidebar({
   // works when the prop value won't change — e.g. re-clicking the already
   // open session after manually switching worktrees.
   const handleSelectSessionFromList = useCallback(
-    (s: SessionInfo) => {
+    (s: SessionInfo, entryId?: string, blockIndex?: number) => {
+      // 搜索结果可能来自尚未载入列表的会话，先补入当前列表。
+      setAllSessions((current) =>
+        current.some((session) => session.id === s.id)
+          ? current
+          : [s, ...current],
+      );
       if (s.cwd) setSelectedCwd(s.cwd);
-      onSelectSession(s);
+      onSelectSession(s, false, entryId, blockIndex);
     },
     [onSelectSession],
   );
@@ -1320,8 +1353,85 @@ export function SessionSidebar({
                 </svg>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSessionSearchOpen((open) => !open);
+                setWtDropdownOpen(false);
+              }}
+              title={t("sidebar.toggleSessionSearch")}
+              aria-label={t("sidebar.toggleSessionSearch")}
+              aria-expanded={sessionSearchOpen}
+              aria-controls="session-search-input"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: sessionSearchOpen
+                  ? "var(--bg-selected)"
+                  : "var(--bg-hover)",
+                border: "1px solid var(--border)",
+                color: sessionSearchOpen
+                  ? "var(--accent)"
+                  : "var(--text-muted)",
+                cursor: "pointer",
+                width: 32,
+                height: 32,
+                borderRadius: 7,
+                padding: 0,
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-4-4" />
+              </svg>
+            </button>
           </div>
         </div>
+
+        {sessionSearchOpen && (
+          <input
+            id="session-search-input"
+            type="search"
+            autoFocus
+            value={sessionSearchQuery}
+            maxLength={200}
+            aria-label={t("sidebar.searchSessions")}
+            placeholder={t("sidebar.searchSessions")}
+            onChange={(event) => setSessionSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
+                setSessionSearchQuery("");
+              }
+            }}
+            style={{
+              marginTop: 6,
+              display: "block",
+              height: 29,
+              width: "100%",
+              minWidth: 0,
+              borderRadius: 7,
+              border: "1px solid var(--border)",
+              background: "var(--bg)",
+              padding: "0 10px",
+              fontSize: 12,
+              color: "var(--text)",
+              outline: "none",
+            }}
+          />
+        )}
 
         {/* CWD picker */}
         <div ref={dropdownRef} style={{ position: "relative" }}>
@@ -1597,7 +1707,8 @@ export function SessionSidebar({
             switching between worktrees of one project keeps the row mounted
             instead of flickering while data refetches: all worktrees of a
             project share the same list anyway. */}
-        {showWorktreeSwitcher &&
+        {!sessionSearchOpen &&
+          showWorktreeSwitcher &&
           (() => {
             if (!worktreeState) return null;
             const showWtFilter = worktreeState.worktrees.length >= 8;
@@ -2100,7 +2211,7 @@ export function SessionSidebar({
               </div>
             );
           })()}
-        {inactiveWorktreeSelector && (
+        {!sessionSearchOpen && inactiveWorktreeSelector && (
           <button
             type="button"
             aria-disabled="true"
@@ -2151,73 +2262,83 @@ export function SessionSidebar({
       </div>
 
       {/* Session list */}
-      <div
-        style={{
-          flex:
-            explorerOpen && (selectedCwdProp || selectedCwd)
-              ? "1 1 0"
-              : "1 1 auto",
-          overflowY: "auto",
-          padding: "0",
-          minHeight: 80,
-        }}
+      <SessionSearch
+        open={sessionSearchOpen}
+        query={sessionSearchQuery}
+        refreshKey={sessionListVersion}
+        selectedSessionId={selectedSessionId}
+        onSelectSession={handleSelectSessionFromList}
       >
-        {loading && (
-          <div
-            style={{
-              padding: "16px 14px",
-              color: "var(--text-muted)",
-              fontSize: 12,
-            }}
-          >
-            {t("sidebar.loading")}
-          </div>
-        )}
-        {error && (
-          <div style={{ padding: "12px 14px", color: "#f87171", fontSize: 12 }}>
-            {error}
-          </div>
-        )}
-        {!loading && !error && sessionFamilies.length === 0 && (
-          <div
-            style={{
-              padding: "16px 14px",
-              color: "var(--text-muted)",
-              fontSize: 12,
-            }}
-          >
-            {t("sidebar.noSessions")}
-          </div>
-        )}
-        {sessionFamilies.map((family) => {
-          const familySessions = [family.root, ...family.subagents];
-          const displaySession =
-            family.latestModified === family.root.modified
-              ? family.root
-              : { ...family.root, modified: family.latestModified };
-          return (
-            <SessionItem
-              key={family.root.id}
-              session={displaySession}
-              isSelected={familySessions.some(
-                (session) => session.id === selectedSessionId,
-              )}
-              isRunning={familySessions.some((session) =>
-                runningSessionIds.has(session.id),
-              )}
-              isUnread={familySessions.some((session) =>
-                unreadSessionIds.has(session.id),
-              )}
-              onClick={() => handleSelectSessionFromList(family.root)}
-              onRenamed={loadSessions}
-              onDeleted={(id) => {
-                onSessionDeleted?.(id);
-                loadSessions();
+        <div
+          style={{
+            flex:
+              explorerOpen && (selectedCwdProp || selectedCwd)
+                ? "1 1 0"
+                : "1 1 auto",
+            overflowY: "auto",
+            padding: "0",
+            minHeight: 80,
+          }}
+        >
+          {loading && (
+            <div
+              style={{
+                padding: "16px 14px",
+                color: "var(--text-muted)",
+                fontSize: 12,
               }}
-            />
-          );
-        })}
-      </div>
+            >
+              {t("sidebar.loading")}
+            </div>
+          )}
+          {error && (
+            <div
+              style={{ padding: "12px 14px", color: "#f87171", fontSize: 12 }}
+            >
+              {error}
+            </div>
+          )}
+          {!loading && !error && sessionFamilies.length === 0 && (
+            <div
+              style={{
+                padding: "16px 14px",
+                color: "var(--text-muted)",
+                fontSize: 12,
+              }}
+            >
+              {t("sidebar.noSessions")}
+            </div>
+          )}
+          {sessionFamilies.map((family) => {
+            const familySessions = [family.root, ...family.subagents];
+            const displaySession =
+              family.latestModified === family.root.modified
+                ? family.root
+                : { ...family.root, modified: family.latestModified };
+            return (
+              <SessionItem
+                key={family.root.id}
+                session={displaySession}
+                isSelected={familySessions.some(
+                  (session) => session.id === selectedSessionId,
+                )}
+                isRunning={familySessions.some((session) =>
+                  runningSessionIds.has(session.id),
+                )}
+                isUnread={familySessions.some((session) =>
+                  unreadSessionIds.has(session.id),
+                )}
+                onClick={() => handleSelectSessionFromList(family.root)}
+                onRenamed={loadSessions}
+                onDeleted={(id) => {
+                  onSessionDeleted?.(id);
+                  loadSessions();
+                }}
+              />
+            );
+          })}
+        </div>
+      </SessionSearch>
 
       {/* File Explorer section */}
       {(selectedCwdProp || selectedCwd) && (

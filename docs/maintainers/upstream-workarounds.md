@@ -23,7 +23,7 @@
 
 | ID | 状态 | 依赖 | 本地入口 | 等待的上游能力 |
 | --- | --- | --- | --- | --- |
-| `UPSTREAM-001` | 生效中 | `@earendil-works/pi-ai@0.84.4` | `src/bun-runtime-modules.ts` | 一个稳定、统一的 Bun compiled-runtime 注册入口 |
+| `UPSTREAM-001` | 生效中 | `@earendil-works/pi-ai@0.85.1` | `src/bun-runtime-modules.ts` | 一个稳定、统一的 Bun compiled-runtime 注册入口 |
 
 ## UPSTREAM-001：Bun 单文件二进制静态注册运行时模块
 
@@ -70,6 +70,13 @@ bun run build
 3. 搜索新增的变量形式相对 dynamic import，重点关注 OAuth、provider API、native/Node-only 模块。
 4. 运行 compiled-runtime 探针；若出现新的 `/$bunfs` module-not-found，先确认上游是否提供对应公共注册 API，再扩展本地集中注册。
 5. 若上游已有统一入口，用其替换 `src/bun-runtime-modules.ts` 内的单项注册，完成八平台构建和功能测试后再删除本地封装。
+
+### 2026-09-06 复核（pi-ai 0.85.0 → 0.85.1）
+
+- `pi-ai` 0.85.1 exports 与 0.85.0 完全一致；`bun-oauth.js`、`bedrock-provider.js`、`compat.js` 零差异，本实现的三个公共注册入口不受影响。
+- 逐项复查结论：上游新增了 GPT-6 Astra 模型目录数据与 openai-responses prompt cache TTL 修复，未新增变量形式 dynamic import；本实现继续“生效中”。
+- 验证结果：compiled-runtime 探针通过；`bun run typecheck`、`bun run build`、`bun run build:all`（八平台）、`bun run test:bun`（973 通过）全部通过。
+- 同版本发现：`pi-coding-agent@0.85.1` 修复 0.85.0 误发布问题，移除了 experimental `client`/`experimental/plugin` 运行时子路径与 `pi-client`/`pi-protocol` 运行时依赖；本项目未引用，无需处置。
 
 ### 移除条件
 

@@ -7,14 +7,24 @@ import {
   readPowerShellToolEnabled,
   writePowerShellToolEnabled,
 } from "@/lib/powershell-settings";
+import {
+  readIdleSessionReapingSettings,
+  writeIdleSessionReapingSettings,
+} from "@/lib/idle-session-settings";
+import { refreshRpcSessionIdleReapingTimers } from "@/lib/rpc-manager";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const [powerShellEnabled, idleSessionReaping] = await Promise.all([
+      readPowerShellToolEnabled(),
+      readIdleSessionReapingSettings(),
+    ]);
     return HttpResponse.json({
       isWindows: process.platform === "win32",
-      powerShellEnabled: await readPowerShellToolEnabled(),
+      powerShellEnabled,
+      idleSessionReaping,
     });
   } catch (error) {
     return HttpResponse.json(
@@ -37,15 +47,28 @@ export async function PUT(req: Request) {
       { status: 415 },
     );
   }
-  if (process.platform !== "win32") {
-    return HttpResponse.json(
-      { error: "PowerShell tool settings are only available on Windows" },
-      { status: 404 },
-    );
-  }
-
   try {
-    const body = (await req.json()) as { enabled?: unknown };
+    const body = (await req.json()) as {
+      enabled?: unknown;
+      idleSessionReaping?: unknown;
+    };
+    if (body.idleSessionReaping !== undefined) {
+      const idleSessionReaping = await writeIdleSessionReapingSettings(
+        body.idleSessionReaping,
+      );
+      refreshRpcSessionIdleReapingTimers();
+      return HttpResponse.json({
+        isWindows: process.platform === "win32",
+        powerShellEnabled: await readPowerShellToolEnabled(),
+        idleSessionReaping,
+      });
+    }
+    if (process.platform !== "win32") {
+      return HttpResponse.json(
+        { error: "PowerShell tool settings are only available on Windows" },
+        { status: 404 },
+      );
+    }
     if (typeof body.enabled !== "boolean") {
       return HttpResponse.json(
         { error: "enabled must be a boolean" },
@@ -55,6 +78,7 @@ export async function PUT(req: Request) {
     return HttpResponse.json({
       isWindows: true,
       powerShellEnabled: await writePowerShellToolEnabled(body.enabled),
+      idleSessionReaping: await readIdleSessionReapingSettings(),
     });
   } catch (error) {
     return HttpResponse.json(

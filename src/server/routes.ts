@@ -48,6 +48,7 @@ import * as route36 from "../../app/api/sessions/[id]/export/route.ts";
 import * as route37 from "../../app/api/sessions/[id]/route.ts";
 import * as route38 from "../../app/api/sessions/[id]/state/route.ts";
 import * as route39 from "../../app/api/sessions/route.ts";
+import * as route51 from "../../app/api/sessions/search/route.ts";
 import * as route40 from "../../app/api/skills/check/route.ts";
 import * as route41 from "../../app/api/skills/install/route.ts";
 import * as route42 from "../../app/api/skills/route.ts";
@@ -58,6 +59,7 @@ import * as route46 from "../../app/api/subagents/profiles/route.ts";
 import * as route47 from "../../app/api/subagents/settings/route.ts";
 import * as route48 from "../../app/api/tools/settings/route.ts";
 import * as route49 from "../../app/api/worktrees/route.ts";
+import * as route50 from "../../app/api/plugins/check/route.ts";
 
 const ROUTES: Array<{ pattern: string; module: RouteModule }> = [
   { pattern: "/api/agent/[id]/bash-output", module: route0 as RouteModule },
@@ -116,6 +118,8 @@ const ROUTES: Array<{ pattern: string; module: RouteModule }> = [
   { pattern: "/api/subagents/settings", module: route47 as RouteModule },
   { pattern: "/api/tools/settings", module: route48 as RouteModule },
   { pattern: "/api/worktrees", module: route49 as RouteModule },
+  { pattern: "/api/plugins/check", module: route50 as RouteModule },
+  { pattern: "/api/sessions/search", module: route51 as RouteModule },
 ];
 
 /** 将 Bun Request 包装为遗留 route 所需的 HttpRequest 最小形态。 */

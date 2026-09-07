@@ -58,12 +58,35 @@ import {
   captureScrollDistance,
   getPromptAnchorSpacerHeight,
   getVisibleRenderWindow,
+  isScrollAtTail,
   restoreScrollTop,
   VISIBLE_PAGE_SIZE,
 } from "@/lib/chat-lazy-load";
+import {
+  findChatScrollAnchor,
+  type ChatScrollPosition,
+} from "@/lib/chat-scroll-position";
 
 interface Props {
   session: SessionInfo | null;
+  /** 搜索定位目标：命中消息的 entryId（可选 blockIndex）。 */
+  searchTarget?: {
+    sessionId: string;
+    entryId: string;
+    blockIndex?: number;
+  } | null;
+  /** 搜索目标处理完毕后上报，供 AppShell 清除目标。 */
+  onSearchTargetHandled?: (target: {
+    sessionId: string;
+    entryId: string;
+  }) => void;
+  /** 会话切换时恢复的阅读位置；null 表示回退到默认初始滚动。 */
+  initialScrollPosition?: ChatScrollPosition | null;
+  /** 阅读位置变化时上报（按 sessionId 记录）。 */
+  onScrollPositionChange?: (
+    sessionId: string,
+    position: ChatScrollPosition,
+  ) => void;
   sessionRunning?: boolean;
   newSessionCwd: string | null;
   newSessionDraftKey: string | null;
@@ -306,16 +329,22 @@ function ProcessDetailsGroup({
   messageCount,
   toolCallCount,
   defaultExpanded = false,
+  reveal = false,
   children,
   t,
 }: {
   messageCount: number;
   toolCallCount: number;
   defaultExpanded?: boolean;
+  /** 搜索目标位于折叠的过程详情内时，强制展开直到定位完成。 */
+  reveal?: boolean;
   children: ReactNode;
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  useLayoutEffect(() => {
+    if (reveal) setExpanded(true);
+  }, [reveal]);
   const parts = [
     t("chat.processDetails"),
     `${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`,
@@ -329,7 +358,7 @@ function ProcessDetailsGroup({
     <div style={{ marginBottom: 14 }}>
       <button
         type="button"
-        aria-expanded={expanded}
+        aria-expanded={expanded || reveal}
         onClick={() => setExpanded((v) => !v)}
         style={{
           display: "flex",
@@ -375,13 +404,17 @@ function ProcessDetailsGroup({
           {parts.join(" · ")}
         </span>
       </button>
-      {expanded && <div style={{ marginTop: 8 }}>{children}</div>}
+      {(expanded || reveal) && <div style={{ marginTop: 8 }}>{children}</div>}
     </div>
   );
 }
 
 export function ChatWindow({
   session,
+  searchTarget,
+  onSearchTargetHandled,
+  initialScrollPosition,
+  onScrollPositionChange,
   sessionRunning,
   newSessionCwd,
   newSessionDraftKey,
@@ -433,6 +466,32 @@ export function ChatWindow({
     },
     [chatInputRef],
   );
+
+  // Reading-position restore: while switching back to a session, defer the
+  // initial scroll-to-bottom and locate the saved anchor entry first.
+  const initialScrollPositionRef = useRef(
+    searchTarget ? null : (initialScrollPosition ?? null),
+  );
+  const [pendingScrollRestore, setPendingScrollRestore] = useState<Extract<
+    ChatScrollPosition,
+    { atBottom: false }
+  > | null>(() => {
+    const position = initialScrollPositionRef.current;
+    return position && !position.atBottom ? position : null;
+  });
+  const [restoreAnchorReady, setRestoreAnchorReady] = useState(false);
+  const messageContentRef = useRef<HTMLDivElement | null>(null);
+  const restoreStartedRef = useRef(false);
+  const pendingScrollRestoreRef = useRef(pendingScrollRestore);
+  pendingScrollRestoreRef.current = pendingScrollRestore;
+  const [pendingSearchScroll, setPendingSearchScroll] = useState<NonNullable<
+    Props["searchTarget"]
+  > | null>(null);
+
+  // 搜索定位优先：到达目标时取消未完成的阅读位置恢复。
+  useEffect(() => {
+    if (searchTarget) setPendingScrollRestore(null);
+  }, [searchTarget]);
 
   const {
     loading,
@@ -497,6 +556,8 @@ export function ChatWindow({
     handleThinkingLevelChange,
     loadSlashCommands,
     scrollUserMsgToTop,
+    scrollToBottom,
+    scrollToMessage,
     loadContext,
     activeLeafId,
   } = useAgentSession({
@@ -504,6 +565,7 @@ export function ChatWindow({
     sessionRunning,
     newSessionCwd,
     newSessionDraftKey,
+    deferInitialScroll: Boolean(pendingScrollRestore),
     onAgentEnd: wrappedOnAgentEnd,
     onAttentionNeeded,
     onSessionCreated,
@@ -537,10 +599,271 @@ export function ChatWindow({
   // --- Lazy-load historical messages ---
   // Only render the last N messages initially. When the user scrolls to the
   // top, load another page while keeping the scroll position stable.
+
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevScrollDistanceRef = useRef<number | null>(null);
   const loadingOlderRef = useRef(false);
+
+  // 会话历史快照：保存阅读位置与恢复锚点查找均需读最新值而不触发 effect 重跑。
+  const searchHistoryRef = useRef({
+    entryIds,
+    historyCursor,
+    hasEarlierMessages,
+  });
+  searchHistoryRef.current = { entryIds, historyCursor, hasEarlierMessages };
+
+  // 搜索目标对应的可见消息与文本块（用于 data-search-target 高亮定位）。
+  const searchMessage =
+    messages[entryIds.indexOf(pendingSearchScroll?.entryId ?? "")];
+  const searchBlock =
+    searchMessage?.role === "assistant"
+      ? pendingSearchScroll?.blockIndex === undefined
+        ? (searchMessage.content as AssistantContentBlock[]).find(
+            (block) => block.type === "text",
+          )
+        : (searchMessage.content as AssistantContentBlock[])[
+            pendingSearchScroll.blockIndex
+          ]
+      : undefined;
+
+  // 搜索定位：目标不在已加载窗口时额外拉取一页（tail 200）查找；
+  // 命中则展开可见窗口并滚动高亮，未命中则直接打开会话（不跳转）。
+  useEffect(() => {
+    if (!searchTarget || loading) return;
+    const controller = new AbortController();
+    const locate = async () => {
+      const history = searchHistoryRef.current;
+      let found = history.entryIds.includes(searchTarget.entryId);
+      if (
+        !found &&
+        !sessionBusy &&
+        history.hasEarlierMessages &&
+        history.historyCursor &&
+        !loadingOlderRef.current
+      ) {
+        loadingOlderRef.current = true;
+        const container = scrollContainerRef.current;
+        if (container)
+          prevScrollDistanceRef.current = captureScrollDistance(
+            container.scrollHeight,
+            container.scrollTop,
+          );
+        // ponytail：仅额外拉取一页 200 条；更深或其他分支的命中只打开会话。
+        const context = await loadContext(
+          searchTarget.sessionId,
+          activeLeafId,
+          history.historyCursor,
+          { tail: 200, signal: controller.signal },
+        );
+        loadingOlderRef.current = false;
+        found = Boolean(context?.entryIds.includes(searchTarget.entryId));
+      }
+      if (controller.signal.aborted) return;
+      if (found) {
+        prevScrollDistanceRef.current = null;
+        setVisibleCount((current) =>
+          Math.max(
+            current,
+            (searchHistoryRef.current.entryIds.length + 200) * 2,
+          ),
+        );
+        setPendingSearchScroll(searchTarget);
+      } else {
+        onSearchTargetHandled?.(searchTarget);
+      }
+    };
+    void locate();
+    return () => controller.abort();
+  }, [
+    searchTarget,
+    loading,
+    activeLeafId,
+    sessionBusy,
+    loadContext,
+    onSearchTargetHandled,
+    scrollContainerRef,
+  ]);
+
+  // 目标消息渲染完成后滚动定位并闪烁高亮；用户/assistant 分别定位容器/文本块。
+  useLayoutEffect(() => {
+    if (!pendingSearchScroll || pendingSearchScroll !== searchTarget) return;
+    const selector = `[data-entry-id="${CSS.escape(pendingSearchScroll.entryId)}"]`;
+    const element = scrollContainerRef.current?.querySelector<HTMLElement>(
+      searchMessage?.role === "user"
+        ? selector
+        : `${selector} [data-search-target]`,
+    );
+    if (element) {
+      scrollToMessage(element);
+      element.animate(
+        [
+          { backgroundColor: "var(--bg-selected)" },
+          { backgroundColor: "transparent" },
+        ],
+        { duration: 2500 },
+      );
+    }
+    setPendingSearchScroll(null);
+    onSearchTargetHandled?.(pendingSearchScroll);
+  }, [
+    pendingSearchScroll,
+    searchTarget,
+    searchMessage,
+    scrollContainerRef,
+    scrollToMessage,
+    onSearchTargetHandled,
+  ]);
+
+  // 记录会话阅读位置：卸载（切换会话）前把当前锚点交给 AppShell 缓存。
+  useLayoutEffect(() => {
+    const sessionId = session?.id;
+    const container = scrollContainerRef.current;
+    const content = messageContentRef.current;
+    if (!sessionId || !onScrollPositionChange || !container || !content) return;
+    return () => {
+      if (pendingScrollRestoreRef.current) return;
+      if (
+        isScrollAtTail(
+          container.scrollTop,
+          container.clientHeight,
+          container.scrollHeight,
+        )
+      ) {
+        onScrollPositionChange(sessionId, { atBottom: true });
+        return;
+      }
+      const viewportTop = container.getBoundingClientRect().top;
+      const candidates = Array.from(content.children).flatMap((element) => {
+        if (!(element instanceof HTMLElement) || !element.dataset.entryId)
+          return [];
+        const rect = element.getBoundingClientRect();
+        return [
+          {
+            entryId: element.dataset.entryId,
+            top: rect.top,
+            bottom: rect.bottom,
+          },
+        ];
+      });
+      const anchor = findChatScrollAnchor(candidates, viewportTop);
+      if (!anchor) return;
+      onScrollPositionChange(sessionId, {
+        atBottom: false,
+        ...anchor,
+        oldestEntryId: searchHistoryRef.current.historyCursor,
+      });
+    };
+  }, [loading, onScrollPositionChange, scrollContainerRef, session?.id]);
+
+  // 恢复：锚点不在已加载窗口时向前翻页查找；找不到则回退到底部。
+  useEffect(() => {
+    const position = pendingScrollRestore;
+    const sessionId = session?.id;
+    if (
+      !position ||
+      !sessionId ||
+      loading ||
+      searchTarget ||
+      restoreStartedRef.current
+    )
+      return;
+    restoreStartedRef.current = true;
+    const controller = new AbortController();
+
+    const locate = async () => {
+      const initialHistory = searchHistoryRef.current;
+      if (initialHistory.entryIds.includes(position.anchorEntryId)) {
+        setVisibleCount((current) =>
+          Math.max(current, initialHistory.entryIds.length * 2),
+        );
+        setRestoreAnchorReady(true);
+        return;
+      }
+
+      loadingOlderRef.current = true;
+      let before = initialHistory.historyCursor;
+      let hasMore = initialHistory.hasEarlierMessages;
+      try {
+        while (hasMore && before && !controller.signal.aborted) {
+          const context = await loadContext(sessionId, activeLeafId, before, {
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          if (!context) {
+            scrollToBottom("instant");
+            setPendingScrollRestore(null);
+            return;
+          }
+          setVisibleCount(
+            (current) =>
+              current +
+              Math.max(VISIBLE_PAGE_SIZE, context.messages.length * 2),
+          );
+          if (context.entryIds.includes(position.anchorEntryId)) {
+            setRestoreAnchorReady(true);
+            return;
+          }
+          if (
+            position.oldestEntryId &&
+            context.oldestEntryId === position.oldestEntryId
+          )
+            break;
+          before = context.oldestEntryId;
+          hasMore = context.hasMore;
+        }
+        if (!controller.signal.aborted) {
+          scrollToBottom("instant");
+          setPendingScrollRestore(null);
+        }
+      } finally {
+        loadingOlderRef.current = false;
+      }
+    };
+
+    void locate();
+    return () => {
+      controller.abort();
+      // 分支切换会取消恢复，需立即呈现新上下文。
+      setPendingScrollRestore(null);
+    };
+  }, [
+    activeLeafId,
+    loadContext,
+    loading,
+    pendingScrollRestore,
+    scrollToBottom,
+    searchTarget,
+    session?.id,
+  ]);
+
+  // 锚点元素渲染完成后定位到阅读位置。
+  useLayoutEffect(() => {
+    const position = pendingScrollRestore;
+    const content = messageContentRef.current;
+    if (!position || !content) return;
+    const element = Array.from(content.children).find(
+      (candidate) =>
+        candidate instanceof HTMLElement &&
+        candidate.dataset.entryId === position.anchorEntryId,
+    );
+    if (element instanceof HTMLElement) {
+      scrollToMessage(element, position.anchorOffset);
+      setPendingScrollRestore(null);
+      return;
+    }
+    if (restoreAnchorReady) {
+      scrollToBottom("instant");
+      setPendingScrollRestore(null);
+    }
+  }, [
+    entryIds,
+    pendingScrollRestore,
+    restoreAnchorReady,
+    scrollToBottom,
+    scrollToMessage,
+    visibleCount,
+  ]);
   // IntersectionObserver on the sentinel div at the top of the message list.
   // When it becomes visible, load the next page of older messages.
   useEffect(() => {
@@ -686,9 +1009,10 @@ export function ChatWindow({
 
   // 常驻 TODO 面板数据：会话里最后一条 todo 工具结果（流式更新不改
   // messages 数组，useMemo 不会每个 token 重算）；经回调上报给顶部工具栏
-  const latestTodoDetails = useMemo(() => extractLatestTodoDetails(messages), [
-    messages,
-  ]);
+  const latestTodoDetails = useMemo(
+    () => extractLatestTodoDetails(messages),
+    [messages],
+  );
   useEffect(() => {
     onTodoChange?.(latestTodoDetails);
     return () => onTodoChange?.(null);
@@ -716,7 +1040,6 @@ export function ChatWindow({
     streamState.streamingMessage?.content.length,
   );
   const messageCwd = session?.cwd ?? newSessionCwd ?? undefined;
-  const messageContentRef = useRef<HTMLDivElement | null>(null);
   const promptAnchorSpacerRef = useRef<HTMLDivElement | null>(null);
   const promptAnchorSpacerHeightRef = useRef(0);
   const promptAnchorMeasureFrameRef = useRef<number | null>(null);
@@ -1082,6 +1405,9 @@ export function ChatWindow({
             <div
               ref={scrollContainerRef}
               className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-4 [scrollbar-width:none]"
+              style={{
+                visibility: pendingScrollRestore ? "hidden" : undefined,
+              }}
             >
               <div
                 style={{ minWidth: 0, padding: `0 ${CHAT_COLUMN_PADDING}px` }}
@@ -1188,6 +1514,11 @@ export function ChatWindow({
                           onOpenFile={onOpenFile}
                           onOpenSession={onOpenSession}
                           entryId={entryIds[idx]}
+                          searchBlock={
+                            entryIds[idx] === pendingSearchScroll?.entryId
+                              ? searchBlock
+                              : undefined
+                          }
                           onFork={
                             sessionBusy ||
                             isNew ||
@@ -1226,6 +1557,7 @@ export function ChatWindow({
                       return (
                         <div
                           key={`${keyPrefix}-${idx}`}
+                          data-entry-id={entryIds[idx]}
                           ref={attachVisibleRef(idx, currentRefIdx)}
                         >
                           {view}
@@ -1340,6 +1672,18 @@ export function ChatWindow({
                           <ProcessDetailsGroup
                             messageCount={processCount}
                             defaultExpanded={!finalAnswerMessage}
+                            reveal={Boolean(
+                              pendingSearchScroll &&
+                                (visibleProcessIndices.some(
+                                  (index) =>
+                                    entryIds[index] ===
+                                    pendingSearchScroll.entryId,
+                                ) ||
+                                  (searchBlock &&
+                                    finalSplit.processBlocks.includes(
+                                      searchBlock,
+                                    ))),
+                            )}
                             t={t}
                             toolCallCount={
                               countToolCalls(messages, visibleProcessIndices) +
@@ -1490,7 +1834,7 @@ export function ChatWindow({
                 </div>
               </div>
             </div>
-            {isMobile ? null : (
+            {isMobile || pendingScrollRestore ? null : (
               <ChatMinimap
                 messages={messages}
                 streamingMessage={streamState.streamingMessage}

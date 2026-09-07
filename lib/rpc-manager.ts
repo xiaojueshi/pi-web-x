@@ -27,10 +27,7 @@ import {
   createAskUserExtension,
   preferHostAskExtension,
 } from "./ask-user-extension";
-import {
-  createTodoExtension,
-  preferHostTodoExtension,
-} from "./todo-extension";
+import { createTodoExtension, preferHostTodoExtension } from "./todo-extension";
 import {
   cacheSessionPath,
   invalidateSessionListCache,
@@ -42,6 +39,8 @@ import {
 } from "./project-trust";
 import { persistExplicitStartupPreferences } from "./startup-preferences";
 import { notifySessionComplete } from "./web-push";
+import { getCachedIdleSessionReapingSettings } from "./idle-session-settings";
+import { hasActiveSessionLivenessProvider } from "./session-liveness";
 import type { SlashCommandInfo, Theme } from "@earendil-works/pi-coding-agent";
 import type {
   AgentSessionLike,
@@ -494,25 +493,35 @@ export class AgentSessionWrapper {
     return release;
   }
 
+  /** 配置变更后按当前服务级策略重新安排 idle 回收。 */
+  refreshIdleReapingTimer(): void {
+    this.resetIdleTimer();
+  }
+
   private resetIdleTimer(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     if (!this._alive) return;
     if (!this.isRunning()) this.forceShutdownOnIdle = false;
-    this.idleTimer = setTimeout(
-      () => {
-        if (this.isRunning() && !this.forceShutdownOnIdle) {
-          this.resetIdleTimer();
-          return;
-        }
-        void this.shutdown().catch((error) => {
-          console.error(
-            "[pi-web-x] failed to shut down idle session:",
-            error instanceof Error ? error.message : error,
-          );
-        });
-      },
-      10 * 60 * 1000,
-    );
+
+    const idleSettings = getCachedIdleSessionReapingSettings();
+    if (!idleSettings.enabled) return;
+    const timeoutMs = idleSettings.timeoutMinutes * 60 * 1000;
+    this.idleTimer = setTimeout(() => {
+      const hasExtensionWork = hasActiveSessionLivenessProvider({
+        sessionId: this.sessionId,
+        ...(this.sessionFile ? { sessionFile: this.sessionFile } : {}),
+      });
+      if (!this.forceShutdownOnIdle && (this.isRunning() || hasExtensionWork)) {
+        this.resetIdleTimer();
+        return;
+      }
+      void this.shutdown().catch((error) => {
+        console.error(
+          "[pi-web-x] failed to shut down idle session:",
+          error instanceof Error ? error.message : error,
+        );
+      });
+    }, timeoutMs);
   }
 
   private persistBashOnlySession(): void {
@@ -1929,6 +1938,13 @@ export function getRpcSession(
   sessionId: string,
 ): AgentSessionWrapper | undefined {
   return getRegistry().get(sessionId);
+}
+
+/** 让所有存活的 Web Session 立即采用最新 idle 回收策略。 */
+export function refreshRpcSessionIdleReapingTimers(): void {
+  for (const session of getRegistry().values()) {
+    session.refreshIdleReapingTimer();
+  }
 }
 
 export interface SetRpcSessionToolsResult {

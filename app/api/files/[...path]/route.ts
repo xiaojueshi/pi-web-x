@@ -17,6 +17,7 @@ import {
   getDocumentMime,
   getFileExt,
   getImageMime,
+  getVideoMime,
 } from "@/lib/file-types";
 import { resolveDirentIsDirectory } from "@/lib/file-dirent";
 import { isFilePathReferencedBySession } from "@/lib/session-file-references";
@@ -635,6 +636,15 @@ export async function GET(
           request.headers.get("range"),
         );
       }
+      const videoMime = getVideoMime(filePath);
+      if (videoMime) {
+        return streamFile(
+          filePath,
+          stat,
+          videoMime,
+          request.headers.get("range"),
+        );
+      }
       const documentMime = getDocumentMime(filePath);
       if (documentMime) {
         return streamFile(
@@ -662,6 +672,7 @@ export async function GET(
       const mime =
         getImageMime(filePath) ||
         getAudioMime(filePath) ||
+        getVideoMime(filePath) ||
         getDocumentMime(filePath) ||
         "application/octet-stream";
       return streamFile(
@@ -679,11 +690,13 @@ export async function GET(
       }
       const imageMime = getImageMime(filePath);
       const audioMime = getAudioMime(filePath);
+      const videoMime = getVideoMime(filePath);
       const documentMime = getDocumentMime(filePath);
       return HttpResponse.json({
         size: stat.size,
         language: getLanguage(filePath),
-        mime: imageMime || audioMime || documentMime || "text/plain",
+        mime:
+          imageMime || audioMime || videoMime || documentMime || "text/plain",
         previewKind: documentPreviewKind(filePath),
       });
     }

@@ -149,11 +149,15 @@ export async function attachSessionProjectInfo(
 ): Promise<SessionInfo[]> {
   const uniqueCwds = [...new Set(sessions.map((s) => s.cwd).filter(Boolean))];
   const projectByCwd = new Map<string, ProjectInfo>();
-  await Promise.all(
+  const resolvedProjects = await Promise.all(
     uniqueCwds.map(async (cwd) => {
-      projectByCwd.set(cwd, await resolveProject(cwd));
+      const project = await resolveProject(cwd);
+      return { cwd, project };
     }),
   );
+  for (const { cwd, project } of resolvedProjects) {
+    projectByCwd.set(cwd, project);
+  }
 
   return sessions.map((session) => {
     const project = session.cwd ? projectByCwd.get(session.cwd) : undefined;
@@ -394,6 +398,17 @@ export function invalidateSessionListCache(): void {
   globalThis.__piSessionListCache = undefined;
 }
 
+/**
+ * 返回会话列表当前代数：列表因扫描/失效而变化时单调递增。
+ *
+ * 侧边栏与轻量轮询用它做跨窗口同步：版本变化即触发列表重取。
+ *
+ * @returns 当前会话列表代数；尚未扫描时为 0。
+ */
+export function getSessionListVersion(): number {
+  return globalThis.__piSessionListGeneration ?? 0;
+}
+
 function getPathCache(): Map<string, string> {
   if (!globalThis.__piSessionPathCache)
     globalThis.__piSessionPathCache = new Map();
@@ -498,6 +513,8 @@ export function readSessionHeader(filePath: string): SessionHeader | null {
 
 export function getSessionEntries(filePath: string): SessionEntry[] {
   const entries = SessionManager.open(filePath).getEntries();
+  // SAFETY: SDK SessionManager 返回的条目与本地 SessionEntry 同源自 pi JSONL，
+  // 字段结构完全兼容，跨 SDK 边界仅类型声明不同。
   return entries as unknown as SessionEntry[];
 }
 
@@ -567,10 +584,13 @@ export function buildSessionContext(
   const byId = new Map<string, SessionEntry>();
   for (const e of sliced) byId.set(e.id, e);
 
+  // SAFETY: sliced 条目来自 SDK session JSONL，与 PiSessionEntry 同源结构，
+  // piBuildContextEntries 需要的 id/parentId/role 字段均实际存在。
   const piEntries = sliced as unknown as PiSessionEntry[];
   const contextEntries = piBuildContextEntries(
     piEntries,
     leafId,
+    // SAFETY: byId 与 sliced 同批构建，键值类型与 PiSessionEntry 一致。
     byId as unknown as Map<string, PiSessionEntry>,
   );
 
@@ -579,6 +599,8 @@ export function buildSessionContext(
   const messages: AgentMessage[] = [];
   const entryIds: string[] = [];
   for (const entry of contextEntries) {
+    // SAFETY: contextEntries 由 SDK 条目转换而来，与本地 SessionEntry
+    // 同源 JSONL 结构，entryToUiMessage 需要的 id/role/content 均存在。
     const localEntry = entry as unknown as SessionEntry;
     const m = entryToUiMessage(localEntry, options);
     if (m) {

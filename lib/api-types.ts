@@ -12,6 +12,10 @@ export interface SubagentSettingsResponse {
 export interface ShellToolSettingsResponse {
   isWindows: boolean;
   powerShellEnabled: boolean;
+  idleSessionReaping: {
+    enabled: boolean;
+    timeoutMinutes: number;
+  };
 }
 
 export interface SkillSearchResult {
@@ -108,9 +112,27 @@ export interface PluginResourceInfo {
   relativePath: string;
 }
 
+/** 插件更新检查结果状态：有更新 / 已最新 / 不支持自动检查 / 检查失败。 */
+export type PluginUpdateState =
+  | "update-available"
+  | "up-to-date"
+  | "unsupported"
+  | "error";
+
+/** 单个插件的远端更新检查结果（只读，不落盘）。 */
+export interface PluginUpdateResult {
+  source: string;
+  scope: PluginScope;
+  displayName: string;
+  type: "npm" | "git";
+  state: PluginUpdateState;
+  message?: string;
+}
+
 export interface PluginPackageInfo {
   source: string;
   scope: PluginScope;
+  canCheckForUpdates: boolean;
   filtered: boolean;
   disabled: boolean;
   installedPath?: string;

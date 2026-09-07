@@ -44,6 +44,14 @@ _Avoid_: ~/pi-web-x (legacy), install dir
 The `PI_WEB_X_PASSWORD` HTTP Basic authentication path for programmatic clients (CLI, curl, tests), kept alongside the browser-facing Web Access Authentication.
 _Avoid_: password auth, legacy auth
 
+**Idle Session Reaping**:
+A service-level lifecycle policy that releases an inactive in-memory AgentSession while preserving its persisted Pi session history for later restoration.
+_Avoid_: session deletion, timeout logout, garbage collection
+
+**Extension Liveness**:
+The declaration that extension-owned background work for a Web Session remains active and must prevent Idle Session Reaping.
+_Avoid_: browser keepalive, SSE heartbeat, agent streaming
+
 ## Mobile Experience
 
 **Mobile Companion**:

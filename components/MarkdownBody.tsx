@@ -43,6 +43,7 @@ export function MarkdownBody({
               <MermaidBlock
                 code={raw.replace(/\n$/, "")}
                 isStreaming={isStreaming}
+                defaultPreview
               />
             );
           }

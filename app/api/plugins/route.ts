@@ -18,6 +18,7 @@ import {
   isApiRequestAllowed,
 } from "@/lib/request-security";
 import { getProjectTrustStatus } from "@/lib/project-trust";
+import { isPluginSourceCheckable } from "@/lib/plugin-updates";
 import type {
   PluginDiagnostic,
   PluginPackageInfo,
@@ -315,6 +316,7 @@ async function readPlugins(cwd: string): Promise<PluginsResponse> {
     return {
       source: pkg.source,
       scope,
+      canCheckForUpdates: isPluginSourceCheckable(pkg.source),
       filtered: pkg.filtered,
       disabled,
       installedPath: pkg.installedPath,
@@ -346,6 +348,7 @@ function readScope(scope: unknown): PluginScope {
 }
 
 export async function GET(req: Request) {
+  // pi-lens-ignore: unchecked-throwing-call — 服务端构造的 Request URL 恒为合法 URL
   const { searchParams } = new URL(req.url);
   const cwd = searchParams.get("cwd");
   if (!cwd)
@@ -425,6 +428,22 @@ export async function POST(req: Request) {
         return HttpResponse.json({ error: "source required" }, { status: 400 });
       await packageManager.removeAndPersist(source, { local });
     } else if (body.action === "update") {
+      // 批量更新（不带 source）会触达所有 scope 的包；项目未信任时禁止波及项目插件
+      if (
+        !source &&
+        !projectTrust.trusted &&
+        packageManager
+          .listConfiguredPackages()
+          .some((pkg) => pkg.scope === "project")
+      ) {
+        return HttpResponse.json(
+          {
+            error:
+              "Project resources must be trusted before updating project plugins",
+          },
+          { status: 403 },
+        );
+      }
       await packageManager.update(source);
     } else if (body.action === "disable") {
       if (!source)

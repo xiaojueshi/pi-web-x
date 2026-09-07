@@ -3,6 +3,7 @@ import {
   getCompletionNotificationSuppressedRpcSessionIds,
   getRunningRpcSessionIds,
 } from "@/lib/rpc-manager";
+import { getSessionListVersion } from "@/lib/session-reader";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return HttpResponse.json(
     {
+      sessionListVersion: getSessionListVersion(),
       runningSessionIds: getRunningRpcSessionIds(),
       completionNotificationSuppressedSessionIds:
         getCompletionNotificationSuppressedRpcSessionIds(),

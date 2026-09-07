@@ -29,10 +29,19 @@ export const enLocale: LocalePlugin = {
     "settings.shellToolDescription":
       "Choose which shell the model uses for commands. Direct ! and !! commands still use Bash.",
     "settings.usePowerShell": "Use PowerShell instead of Bash",
+    "settings.idleReaping": "Idle session reaping",
+    "settings.idleReapingDescription":
+      "Release inactive in-memory sessions while preserving their saved history.",
+    "settings.idleReapingEnabled": "Automatically reap inactive sessions",
+    "settings.idleReapingTimeout": "Reap after",
+    "settings.idleReapingInvalidTimeout":
+      "Enter a whole number between 5 and 1,440 minutes.",
+    "settings.minutes": "minutes",
     "settings.projectRequired": "Open a project to configure this section",
     "settings.security": "Security",
     "auth.setupTitle": "Set up Pi Web X",
-    "auth.setupDescription": "This is the first run of Pi Web X. Enter the setup token printed in the server log and choose a password to enable access authentication.",
+    "auth.setupDescription":
+      "This is the first run of Pi Web X. Enter the setup token printed in the server log and choose a password to enable access authentication.",
     "auth.loginTitle": "Sign in",
     "auth.password": "Password",
     "auth.setupToken": "Setup token",
@@ -40,27 +49,35 @@ export const enLocale: LocalePlugin = {
     "auth.confirmNewPassword": "Confirm new password",
     "auth.currentPassword": "Current password",
     "auth.changePassword": "Change password",
-    "auth.changePasswordDescription": "Updating the password signs out all devices. You will need to sign in again.",
+    "auth.changePasswordDescription":
+      "Updating the password signs out all devices. You will need to sign in again.",
     "auth.logout": "Sign out",
     "auth.logoutDescription": "End this session on this device.",
     "auth.submit": "Continue",
     "auth.processing": "Working…",
     "auth.saveAndRelogin": "Save and sign out all devices",
-    "auth.setupHint": "The setup token is shown once in the server startup log. Keep this page open while you copy it.",
+    "auth.setupHint":
+      "The setup token is shown once in the server startup log. Keep this page open while you copy it.",
     "auth.loading": "Checking authentication…",
     "auth.error.AUTH_INVALID_PARAMETERS": "Invalid request parameters.",
     "auth.error.AUTH_PASSWORD_MISMATCH": "Passwords do not match.",
-    "auth.error.AUTH_SETUP_RATE_LIMITED": "Too many setup attempts. Try again later.",
-    "auth.error.AUTH_SETUP_FAILED": "Setup failed. Check the token and try again.",
-    "auth.error.AUTH_PASSWORD_INVALID": "Password must be 8-128 characters and not a common weak password.",
+    "auth.error.AUTH_SETUP_RATE_LIMITED":
+      "Too many setup attempts. Try again later.",
+    "auth.error.AUTH_SETUP_FAILED":
+      "Setup failed. Check the token and try again.",
+    "auth.error.AUTH_PASSWORD_INVALID":
+      "Password must be 8-128 characters and not a common weak password.",
     "auth.error.AUTH_SETUP_TOKEN_INVALID": "Invalid setup token.",
     "auth.error.AUTH_ALREADY_INITIALIZED": "Authentication is already set up.",
-    "auth.error.AUTH_LOGIN_RATE_LIMITED": "Too many login attempts. Try again later.",
+    "auth.error.AUTH_LOGIN_RATE_LIMITED":
+      "Too many login attempts. Try again later.",
     "auth.error.AUTH_LOGIN_FAILED": "Incorrect password.",
     "auth.error.AUTH_LOGOUT_FAILED": "Sign out failed. Try again.",
-    "auth.error.AUTH_UNAUTHORIZED": "Your session expired. Please sign in again.",
+    "auth.error.AUTH_UNAUTHORIZED":
+      "Your session expired. Please sign in again.",
     "auth.error.AUTH_PASSWORD_CHANGE_FAILED": "Password change failed.",
-    "auth.error.AUTH_NETWORK_ERROR": "Network error. Check the connection and try again.",
+    "auth.error.AUTH_NETWORK_ERROR":
+      "Network error. Check the connection and try again.",
     "skills.scope.global": "global",
     "skills.scope.project": "project",
     "skills.scope.path": "path",
@@ -209,6 +226,14 @@ export const enLocale: LocalePlugin = {
     "sidebar.new": "New",
     "sidebar.newSessionTitle": "New session in {path}",
     "sidebar.refresh": "Refresh",
+    "sidebar.searchSessions": "Search all conversations...",
+    "sidebar.toggleSessionSearch": "Search conversations",
+    "sidebar.sessionSearching": "Searching...",
+    "sidebar.sessionSearchEmpty": "No matching conversations",
+    "sidebar.sessionSearchCount": "{count} matching conversations",
+    "sidebar.sessionSearchPartial":
+      "Search limit reached. Results may be incomplete.",
+    "sidebar.sessionSearchFailed": "Could not search conversations",
     "sidebar.selectProject": "Select project…",
     "sidebar.filterProjects": "Filter projects…",
     "sidebar.noMatchingProjects": "No matching projects",
@@ -601,6 +626,15 @@ export const enLocale: LocalePlugin = {
     "i18n.upToDate": "Up to date",
     "i18n.automaticChecksUnavailable": "Automatic checks unavailable",
     "i18n.checkFailed": "Check failed",
+    "i18n.updateAllPlugins": "Update all",
+    "i18n.updateAllPluginsHint": "Update all plugins with available updates",
+    "i18n.confirmUpdateTitle": "Update this plugin?",
+    "i18n.confirmUpdateBody":
+      "Updating runs the package manager against the configured source. Reload the session afterwards to apply the change.",
+    "i18n.confirmUpdateAllTitle": "Update all plugins?",
+    "i18n.confirmUpdateAllBody": "The following plugins will be updated:",
+    "i18n.confirmUpdateAllNote":
+      "Reload the session afterwards to apply the change.",
     "i18n.installed": "Installed",
     "i18n.status": "Status",
     "i18n.version": "Version",
@@ -651,20 +685,25 @@ export const enLocale: LocalePlugin = {
     "i18n.attentionNeeded": "Pi needs your attention",
     "i18n.extensionInputNeeded": "An extension is waiting for your input.",
     "pwa.connectionSafetyTitle": "Connection safety notice",
-    "pwa.insecureConnection": "This HTTP connection cannot provide installation, background notifications, or reliable offline support.",
-    "pwa.authenticationUnavailable": "Web Access Authentication is not active for this connection.",
-    "pwa.connectionSafetyAdvice": "Use HTTPS, a trusted VPN, and Web Access Authentication when accessing Pi Web X beyond this device.",
+    "pwa.insecureConnection":
+      "This HTTP connection cannot provide installation, background notifications, or reliable offline support.",
+    "pwa.authenticationUnavailable":
+      "Web Access Authentication is not active for this connection.",
+    "pwa.connectionSafetyAdvice":
+      "Use HTTPS, a trusted VPN, and Web Access Authentication when accessing Pi Web X beyond this device.",
     "pwa.connectionKind": "Current address type: {kind}.",
     "pwa.connectionKind.loopback": "this device",
     "pwa.connectionKind.lan": "private LAN address",
     "pwa.connectionKind.other": "other address",
     "pwa.notificationTitle": "Get task completion notifications",
-    "pwa.notificationDescription": "Enable notifications to hear when a background task finishes. Notifications only show the session name and status.",
+    "pwa.notificationDescription":
+      "Enable notifications to hear when a background task finishes. Notifications only show the session name and status.",
     "pwa.notNow": "Not now",
     "pwa.enableNotifications": "Enable notifications",
     "pwa.enabling": "Enabling…",
     "pwa.updateReadyTitle": "Interface ready",
-    "pwa.updateReadyDescription": "The upgrade is complete. The latest interface (v{version}) is ready — refresh to use it.",
+    "pwa.updateReadyDescription":
+      "The upgrade is complete. The latest interface (v{version}) is ready — refresh to use it.",
     "pwa.applyUpdate": "Refresh now",
     "pwa.updating": "Refreshing…",
   },

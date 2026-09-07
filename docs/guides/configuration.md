@@ -71,6 +71,7 @@ Mirror endpoints must be protected with the same integrity and access controls a
 | Pi Web X installation and directory assets on macOS/Linux | `~/.pi-web-x` |
 | Browser password-verification state | `~/.pi-web-x/auth/pi-web-auth.json` |
 | Persisted browser session hashes/metadata | `~/.pi-web-x/auth/pi-web-sessions.json` |
+| Global idle session reaping setting | `~/.pi-web-x/settings.json` |
 | Linux systemd environment snapshot | `~/.pi-web-x/env` |
 | macOS service logs | `~/Library/Logs/pi-web-x.{out,err}.log` |
 | Windows service log | `%USERPROFILE%\.pi-web-x\service.log` |
@@ -88,6 +89,7 @@ This means server passwords and mirror configuration should not appear in `git`,
 - CLI options override environment defaults for the current run.
 - `service install` snapshots port, hostname, and Basic Auth configuration at installation time; changing the current shell later does not alter an installed service.
 - Browser settings are stored by the application and are separate from process environment variables.
+- Idle session reaping is configured in **Settings → General**. It is a global service setting: disable it or select a whole-minute timeout from 5 to 1,440 minutes; the default is 10 minutes. It has no environment-variable override, and extension-owned background work prevents reaping while it remains active.
 - Pi Web X does not read legacy `PI_WEB_*` variables or `pi-web:*` browser storage.
 
 See [system service registration](./system-service.md) for platform-specific persistence.

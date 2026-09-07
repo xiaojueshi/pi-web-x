@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { AgentSessionWrapper } = await import(
-  "../../../lib/rpc-manager.ts",
+const { AgentSessionWrapper } = await import("../../../lib/rpc-manager.ts");
+const { registerSessionLivenessProvider } = await import(
+  "../../../lib/session-liveness.ts"
 );
 
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
@@ -560,6 +561,45 @@ test("idle timer preserves active work but reaps a run stuck after Stop", async 
   inner.isStreaming = false;
   resolveAbort();
   await stopping;
+});
+
+test("idle timer preserves extension-owned background work", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let active = true;
+  const calls = [];
+  const disposeLiveness = registerSessionLivenessProvider({
+    name: "test-extension",
+    sessionId: "session-1",
+    isActive: () => active,
+  });
+  const inner = makePromptInner(() => Promise.resolve());
+  inner.subscribe = () => () => {};
+  inner.extensionRunner = {
+    async emit(event) {
+      calls.push(["emit", event]);
+    },
+  };
+  inner.dispose = () => calls.push(["dispose"]);
+  const wrapper = new AgentSessionWrapper(inner);
+  t.after(() => {
+    disposeLiveness();
+    wrapper.destroy();
+  });
+  wrapper.start();
+
+  t.mock.timers.tick(10 * 60 * 1000);
+  await nextTurn();
+  assert.equal(wrapper.isAlive(), true);
+  assert.deepEqual(calls, []);
+
+  active = false;
+  t.mock.timers.tick(10 * 60 * 1000);
+  await nextTurn();
+  assert.equal(wrapper.isAlive(), false);
+  assert.deepEqual(calls, [
+    ["emit", { type: "session_shutdown", reason: "quit" }],
+    ["dispose"],
+  ]);
 });
 
 test("direct bash commands use sanitized project operations with current shell settings", async (t) => {

@@ -67,6 +67,8 @@ export async function GET(
     // Cumulative usage over ALL entries, including history compacted away —
     // the same aggregation the SDK's getSessionStats() uses. Lets the client
     // keep monotonic token/cost counters across compaction and page reloads.
+    // SAFETY: SDK SessionManager entries use the same persisted JSONL shape as
+    // the local SessionEntry contract; only their exported TypeScript types differ.
     const stats = computeSessionStats(entries as unknown as SessionEntry[]);
     const sessionName = sm.getSessionName();
     const firstUserEntry = entries.find(
@@ -200,9 +202,15 @@ export async function DELETE(
 
     // Read only the bounded header before deleting.
     const parentSessionPath = readSessionHeader(filePath)?.parentSession;
-    const parentSessionId = parentSessionPath
-      ? readSessionHeader(parentSessionPath)?.id
-      : undefined;
+    let parentSessionId: string | undefined;
+    if (parentSessionPath) {
+      try {
+        parentSessionId = readSessionHeader(parentSessionPath)?.id;
+      } catch {
+        // 父 JSONL 已被手动删除时仍应允许删除当前会话并去父化子会话。
+        parentSessionId = undefined;
+      }
+    }
 
     // Re-attach all direct children to this session's parent (cascade re-parent)
     // Scan sibling files in the same directory
@@ -228,37 +236,43 @@ export async function DELETE(
             header.parentSession &&
             sessionPathKey(header.parentSession) === targetPathKey
           ) {
-            // Rewrite header with new parentSession
-            header.parentSession = parentSessionPath;
-            lines[0] = JSON.stringify(header);
+            // 父会话仍存在时重挂；否则子会话必须去父化，不能留下悬挂路径。
             if (parentSessionPath && parentSessionId) {
-              for (let index = 1; index < lines.length; index += 1) {
-                let entry: {
-                  type?: string;
-                  customType?: string;
-                  data?: unknown;
-                };
-                try {
-                  entry = JSON.parse(lines[index]);
-                } catch {
-                  continue;
-                }
-                if (
-                  entry.type !== "custom" ||
-                  entry.customType !== SUBAGENT_META_TYPE ||
-                  typeof entry.data !== "object" ||
-                  entry.data === null ||
-                  Array.isArray(entry.data)
-                )
-                  continue;
-                entry.data = {
-                  ...entry.data,
-                  parentSessionId,
-                  parentSessionPath,
-                };
-                lines[index] = JSON.stringify(entry);
-                break;
+              header.parentSession = parentSessionPath;
+            } else {
+              delete header.parentSession;
+            }
+            lines[0] = JSON.stringify(header);
+            for (let index = 1; index < lines.length; index += 1) {
+              let entry: {
+                type?: string;
+                customType?: string;
+                data?: unknown;
+              };
+              try {
+                entry = JSON.parse(lines[index]);
+              } catch {
+                continue;
               }
+              if (
+                entry.type !== "custom" ||
+                entry.customType !== SUBAGENT_META_TYPE ||
+                typeof entry.data !== "object" ||
+                entry.data === null ||
+                Array.isArray(entry.data)
+              )
+                continue;
+              const metadata = { ...entry.data } as Record<string, unknown>;
+              if (parentSessionPath && parentSessionId) {
+                metadata.parentSessionId = parentSessionId;
+                metadata.parentSessionPath = parentSessionPath;
+              } else {
+                delete metadata.parentSessionId;
+                delete metadata.parentSessionPath;
+              }
+              entry.data = metadata;
+              lines[index] = JSON.stringify(entry);
+              break;
             }
             writeFileSync(childPath, lines.join("\n"));
           }

@@ -1,6 +1,7 @@
 import { HttpResponse } from "@/src/server/http";
 import {
   attachSessionProjectInfo,
+  getSessionListVersion,
   listAllSessions,
   mergeSessionLists,
 } from "@/lib/session-reader";
@@ -15,14 +16,18 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const force = new URL(req.url).searchParams.get("force") === "1";
+    const persistedSessionsPromise = listAllSessions({ force });
+    // 在 await 前捕获：扫描期间的变更仍需后续轮询刷新。
+    const sessionListVersion = getSessionListVersion();
     const [persistedSessions, runtimeSessions] = await Promise.all([
-      listAllSessions({ force }),
+      persistedSessionsPromise,
       attachSessionProjectInfo(getRpcSessionInfos()),
     ]);
     const sessions = mergeSessionLists(persistedSessions, runtimeSessions);
     return HttpResponse.json(
       {
         sessions,
+        sessionListVersion,
         runningSessionIds: getRunningRpcSessionIds(),
         completionNotificationSuppressedSessionIds:
           getCompletionNotificationSuppressedRpcSessionIds(),

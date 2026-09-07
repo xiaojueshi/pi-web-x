@@ -43,6 +43,7 @@ import {
   showBrowserNotification,
 } from "@/lib/browser-notifications";
 import { setupPushSubscription } from "@/lib/push-client";
+import { requestPluginUpdateCheck } from "@/lib/plugin-update-store";
 import { offerPwaNotifications } from "./PwaRegistration";
 import { getInitialNavigation } from "@/lib/initial-navigation";
 import {
@@ -68,6 +69,7 @@ import type {
   SessionTreeNode,
 } from "@/lib/types";
 import type { ProjectTrustStatus } from "@/lib/api-types";
+import type { ChatScrollPosition } from "@/lib/chat-scroll-position";
 import type { TodoDetails } from "@/lib/todo-details";
 import type { ChatInputHandle } from "./ChatInput";
 import type { SessionStatsInfo } from "@/lib/pi-types";
@@ -181,6 +183,28 @@ export function AppShell() {
   const [initialCwdError, setInitialCwdError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
+  // 按会话缓存阅读位置：切回会话时恢复到离开时的位置（底部则保持跟随）。
+  const sessionScrollPositionsRef = useRef(
+    new Map<string, ChatScrollPosition>(),
+  );
+  const handleSessionScrollPositionChange = useCallback(
+    (sessionId: string, position: ChatScrollPosition) => {
+      sessionScrollPositionsRef.current.set(sessionId, position);
+    },
+    [],
+  );
+  // 会话搜索定位目标：搜索结果点击后由 ChatWindow 滚动到命中消息并高亮。
+  const [searchTarget, setSearchTarget] = useState<{
+    sessionId: string;
+    entryId: string;
+    blockIndex?: number;
+  } | null>(null);
+  const handleSearchTargetHandled = useCallback(
+    (target: { sessionId: string; entryId: string }) => {
+      setSearchTarget((current) => (current === target ? null : current));
+    },
+    [],
+  );
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [settingsSection, setSettingsSection] =
     useState<SettingsSection | null>(null);
@@ -394,7 +418,14 @@ export function AppShell() {
 
   // Single active panel — only one dropdown open at a time
   const [activeTopPanel, setActiveTopPanel] = useState<
-    "agents" | "branches" | "system" | "tools" | "todo" | "session" | "language" | null
+    | "agents"
+    | "branches"
+    | "system"
+    | "tools"
+    | "todo"
+    | "session"
+    | "language"
+    | null
   >(null);
   const [topPanelPos, setTopPanelPos] = useState<{
     top: number;
@@ -608,6 +639,12 @@ export function AppShell() {
 
   const initialSessionId = initialNavigation.sessionId;
   const [activeCwd, setActiveCwd] = useState<string | null>(null);
+  // 每次页面加载（或切换项目 cwd）后对当前项目的插件做一次只读的后台更新检查；
+  // 结果存入全局 store，供插件设置面板展示。更新本身仍需在面板中显式确认。
+  useEffect(() => {
+    if (!activeCwd) return;
+    void requestPluginUpdateCheck(activeCwd, { silent: true });
+  }, [activeCwd]);
   const activeProjectKeyRef = useRef<string | null>(null);
   // True once the initial ?session= URL param has been resolved (or confirmed absent)
   const [initialSessionRestored, setInitialSessionRestored] = useState<boolean>(
@@ -805,7 +842,16 @@ export function AppShell() {
   );
 
   const handleSelectSession = useCallback(
-    (session: SessionInfo, isRestore = false) => {
+    (
+      session: SessionInfo,
+      isRestore = false,
+      entryId?: string,
+      blockIndex?: number,
+    ) => {
+      // 搜索结果点击：先设定定位目标（已打开会话也需定位）。
+      setSearchTarget(
+        entryId ? { sessionId: session.id, entryId, blockIndex } : null,
+      );
       invalidateWorkspaceRestore();
       activeNewSessionDraftKeyRef.current = null;
       // Re-clicking the already-open session must not remount the chat and
@@ -2183,10 +2229,8 @@ export function AppShell() {
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {
-                todoDetails.todos.filter((item) => item.done).length
-              }
-              /{todoDetails.todos.length}
+              {todoDetails.todos.filter((item) => item.done).length}/
+              {todoDetails.todos.length}
             </span>
           )}
         </button>
@@ -3545,11 +3589,25 @@ export function AppShell() {
               <ChatWindow
                 key={sessionKey}
                 session={selectedSession}
+                searchTarget={
+                  searchTarget?.sessionId === selectedSession?.id
+                    ? searchTarget
+                    : null
+                }
+                onSearchTargetHandled={handleSearchTargetHandled}
                 sessionRunning={Boolean(
                   selectedSession && runningSessionIds.has(selectedSession.id),
                 )}
                 newSessionCwd={effectiveNewSessionCwd}
                 newSessionDraftKey={newSessionDraftKey}
+                initialScrollPosition={
+                  selectedSession
+                    ? (sessionScrollPositionsRef.current.get(
+                        selectedSession.id,
+                      ) ?? null)
+                    : null
+                }
+                onScrollPositionChange={handleSessionScrollPositionChange}
                 onAgentEnd={handleAgentEnd}
                 onAttentionNeeded={handleAttentionNeeded}
                 onSessionCreated={handleSessionCreated}

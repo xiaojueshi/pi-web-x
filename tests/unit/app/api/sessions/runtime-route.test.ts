@@ -37,13 +37,13 @@ const stateRoute = await readFile(
   "utf8",
 );
 const { DELETE: deleteSession, GET: getSessionDetail } = await import(
-  "../../../../../app/api/sessions/[id]/route.ts",
+  "../../../../../app/api/sessions/[id]/route.ts"
 );
 const { GET: getSessionState } = await import(
-  "../../../../../app/api/sessions/[id]/state/route.ts",
+  "../../../../../app/api/sessions/[id]/state/route.ts"
 );
 const { cacheSessionPath, invalidateSessionPathCache } = await import(
-  "../../../../../lib/session-reader.ts",
+  "../../../../../lib/session-reader.ts"
 );
 
 test("session listing merges live registry snapshots and honors force refresh", () => {
@@ -144,6 +144,70 @@ test("deleting an intermediate subagent reparents both relation representations"
     version: 1,
     parentSessionId: "delete-reparent-grandparent",
     parentSessionPath: grandparentPath,
+    profile: "Explore",
+    description: "Inspect parser",
+  });
+});
+
+test("deleting a session whose parent file is missing deparents its children", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pi-web-x-delete-orphan-parent-"));
+  const missingParentPath = join(dir, "missing-parent.jsonl");
+  const targetPath = join(dir, "target.jsonl");
+  const childPath = join(dir, "child.jsonl");
+  const targetId = "delete-orphan-target";
+  const header = (id, parentSession) =>
+    JSON.stringify({
+      type: "session",
+      version: 3,
+      id,
+      timestamp: "2026-01-01T00:00:00.000Z",
+      cwd: dir,
+      ...(parentSession ? { parentSession } : {}),
+    });
+  await writeFile(targetPath, `${header(targetId, missingParentPath)}\n`);
+  await writeFile(
+    childPath,
+    [
+      header("delete-orphan-child", targetPath),
+      JSON.stringify({
+        type: "custom",
+        customType: "pi-web-x:subagent",
+        id: "meta",
+        parentId: null,
+        timestamp: "2026-01-01T00:00:00.000Z",
+        data: {
+          version: 1,
+          parentSessionId: targetId,
+          parentSessionPath: targetPath,
+          profile: "Explore",
+          description: "Inspect parser",
+        },
+      }),
+      "",
+    ].join("\n"),
+  );
+  cacheSessionPath(targetId, targetPath);
+  tcompatCleanups.push(async () => {
+    invalidateSessionPathCache(targetId);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const response = await deleteSession(
+    new Request(`http://localhost/api/sessions/${targetId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: targetId }) },
+  );
+
+  assert.equal(response.status, 200);
+  const [childHeaderLine, childMetadataLine] = (
+    await readFile(childPath, "utf8")
+  )
+    .trim()
+    .split("\n");
+  assert.equal(JSON.parse(childHeaderLine).parentSession, undefined);
+  assert.deepEqual(JSON.parse(childMetadataLine).data, {
+    version: 1,
     profile: "Explore",
     description: "Inspect parser",
   });

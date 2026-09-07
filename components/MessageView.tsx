@@ -223,6 +223,8 @@ interface Props {
   onOpenFile?: (filePath: string) => void;
   onOpenSession?: (sessionId: string) => void;
   entryId?: string;
+  /** 搜索命中且待高亮的文本块；存在时该块会被滚动定位。 */
+  searchBlock?: AssistantContentBlock;
   onFork?: (entryId: string) => void;
   forking?: boolean;
   onNavigate?: (entryId: string) => void;
@@ -307,6 +309,7 @@ export const MessageView = memo(
     onOpenFile,
     onOpenSession,
     entryId,
+    searchBlock,
     onFork,
     forking,
     onNavigate,
@@ -346,6 +349,7 @@ export const MessageView = memo(
           prevTimestamp={prevTimestamp}
           sessionId={sessionId}
           entryId={entryId}
+          searchBlock={searchBlock}
           writtenFiles={writtenFiles}
         />
       );
@@ -390,6 +394,7 @@ export const MessageView = memo(
       prev.onOpenFile === next.onOpenFile &&
       prev.onOpenSession === next.onOpenSession &&
       prev.entryId === next.entryId &&
+      prev.searchBlock === next.searchBlock &&
       prev.onFork === next.onFork &&
       prev.forking === next.forking &&
       prev.onNavigate === next.onNavigate &&
@@ -863,6 +868,7 @@ function AssistantMessageView({
   prevTimestamp,
   sessionId,
   entryId,
+  searchBlock,
   writtenFiles,
 }: {
   message: AssistantMessage;
@@ -876,6 +882,8 @@ function AssistantMessageView({
   prevTimestamp?: number;
   sessionId?: string;
   entryId?: string;
+  /** 搜索命中且待高亮的文本块。 */
+  searchBlock?: AssistantContentBlock;
   writtenFiles?: WrittenFile[];
 }) {
   const { t } = useI18n();
@@ -1124,6 +1132,7 @@ function AssistantMessageView({
           <BlockView
             key={`${entryId ?? "stream"}-${originalIndex}`}
             block={block}
+            searchTarget={block === searchBlock}
             toolResults={toolResults}
             isStreaming={isStreaming}
             streamingDuration={
@@ -1257,6 +1266,7 @@ function AssistantMessageView({
 
 function BlockView({
   block,
+  searchTarget,
   toolResults,
   isStreaming,
   streamingDuration,
@@ -1269,6 +1279,8 @@ function BlockView({
   blockIndex,
 }: {
   block: AssistantContentBlock;
+  /** 本块是否为搜索定位目标：为 true 时渲染 data-search-target 供滚动定位。 */
+  searchTarget?: boolean;
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
   streamingDuration?: number;
@@ -1282,12 +1294,14 @@ function BlockView({
 }) {
   if (block.type === "text") {
     return (
-      <TextBlock
-        block={block as TextContent}
-        isStreaming={isStreaming}
-        cwd={cwd}
-        onOpenFile={onOpenFile}
-      />
+      <div data-message-text data-search-target={searchTarget || undefined}>
+        <TextBlock
+          block={block as TextContent}
+          isStreaming={isStreaming}
+          cwd={cwd}
+          onOpenFile={onOpenFile}
+        />
+      </div>
     );
   }
   if (block.type === "thinking") {

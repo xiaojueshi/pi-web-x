@@ -211,6 +211,9 @@ function GeneralSettings({
     useState<ShellToolSettingsResponse | null>(null);
   const [shellSaving, setShellSaving] = useState(false);
   const [shellError, setShellError] = useState<string | null>(null);
+  const [idleSaving, setIdleSaving] = useState(false);
+  const [idleError, setIdleError] = useState<string | null>(null);
+  const [idleTimeoutInput, setIdleTimeoutInput] = useState("10");
   const themeOptions: { id: ThemePreference; label: string }[] = [
     { id: "light", label: t("settings.themeLight") },
     { id: "dark", label: t("settings.themeDark") },
@@ -226,7 +229,10 @@ function GeneralSettings({
         };
         if (!response.ok || data.error)
           throw new Error(data.error ?? `HTTP ${response.status}`);
-        if (!cancelled) setShellSettings(data);
+        if (!cancelled) {
+          setShellSettings(data);
+          setIdleTimeoutInput(String(data.idleSessionReaping.timeoutMinutes));
+        }
       })
       .catch((cause) => {
         if (!cancelled)
@@ -236,6 +242,40 @@ function GeneralSettings({
       cancelled = true;
     };
   }, []);
+
+  const saveIdleSessionReaping = async (enabled: boolean) => {
+    const timeoutMinutes = Number(idleTimeoutInput);
+    if (
+      !Number.isInteger(timeoutMinutes) ||
+      timeoutMinutes < 5 ||
+      timeoutMinutes > 1_440
+    ) {
+      setIdleError(t("settings.idleReapingInvalidTimeout"));
+      return;
+    }
+    setIdleSaving(true);
+    setIdleError(null);
+    try {
+      const response = await fetch("/api/tools/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idleSessionReaping: { enabled, timeoutMinutes },
+        }),
+      });
+      const data = (await response.json()) as ShellToolSettingsResponse & {
+        error?: string;
+      };
+      if (!response.ok || data.error)
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      setShellSettings(data);
+      setIdleTimeoutInput(String(data.idleSessionReaping.timeoutMinutes));
+    } catch (cause) {
+      setIdleError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setIdleSaving(false);
+    }
+  };
 
   const togglePowerShell = async (enabled: boolean) => {
     setShellSaving(true);
@@ -297,6 +337,51 @@ function GeneralSettings({
           })}
         </div>
       </section>
+
+      {shellSettings && (
+        <section className="settings-general-section">
+          <h3 className="settings-general-heading">
+            {t("settings.idleReaping")}
+          </h3>
+          <p className="settings-general-description">
+            {t("settings.idleReapingDescription")}
+          </p>
+          <div className="settings-shell-option">
+            <span>{t("settings.idleReapingEnabled")}</span>
+            <ConfigSwitch
+              checked={shellSettings.idleSessionReaping.enabled}
+              loading={idleSaving}
+              label={t("settings.idleReapingEnabled")}
+              onChange={(enabled) => void saveIdleSessionReaping(enabled)}
+            />
+          </div>
+          <label className="settings-idle-timeout">
+            <span>{t("settings.idleReapingTimeout")}</span>
+            <input
+              type="number"
+              min={5}
+              max={1_440}
+              step={1}
+              inputMode="numeric"
+              disabled={!shellSettings.idleSessionReaping.enabled || idleSaving}
+              value={idleTimeoutInput}
+              aria-label={t("settings.idleReapingTimeout")}
+              onChange={(event) => setIdleTimeoutInput(event.target.value)}
+              onBlur={() => {
+                if (shellSettings.idleSessionReaping.enabled) {
+                  void saveIdleSessionReaping(true);
+                }
+              }}
+            />
+            <span>{t("settings.minutes")}</span>
+          </label>
+          {idleError && (
+            <p role="alert" className="settings-general-error">
+              {idleError}
+            </p>
+          )}
+        </section>
+      )}
 
       {shellSettings?.isWindows && (
         <section className="settings-general-section">

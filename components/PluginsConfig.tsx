@@ -1,8 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { sendAgentCommand } from "@/lib/agent-client";
-import type { PluginPackageInfo, PluginsResponse } from "@/lib/api-types";
+import type {
+  PluginPackageInfo,
+  PluginUpdateResult,
+  PluginsResponse,
+} from "@/lib/api-types";
+import {
+  clearPluginUpdateResults,
+  getPluginUpdateSnapshot,
+  mergePluginUpdateResults,
+  removePluginUpdateResult,
+  subscribePluginUpdates,
+} from "@/lib/plugin-update-store";
 import { useI18n } from "@/hooks/useI18n";
 import {
   getLastSettingsSelection,
@@ -34,6 +52,11 @@ import {
 
 type PluginScope = PluginPackageInfo["scope"];
 type PluginAction = "install" | "remove" | "update" | "disable" | "enable";
+
+/** 更新确认目标：单项更新或批量更新清单，等待用户在对话框中显式确认。 */
+type UpdateConfirmTarget =
+  | { kind: "single"; pkg: PluginPackageInfo }
+  | { kind: "all"; items: PluginUpdateResult[] };
 
 function shortenPath(path: string): string {
   return path.replace(/^\/(?:Users|home)\/[^/]+/, "~");
@@ -496,7 +519,12 @@ function PackageDetail({
   actionError,
   actionMessage,
   sessionId,
+  updateStatus,
+  checkingUpdate,
+  updateError,
   onAction,
+  onCheckUpdate,
+  onUpdateRequest,
   onReloadSession,
 }: {
   pkg: PluginPackageInfo;
@@ -505,7 +533,12 @@ function PackageDetail({
   actionError: string | null;
   actionMessage: string | null;
   sessionId: string | null;
+  updateStatus?: PluginUpdateResult;
+  checkingUpdate: boolean;
+  updateError: string | null;
   onAction: (action: PluginAction, pkg: PluginPackageInfo) => void;
+  onCheckUpdate: () => void;
+  onUpdateRequest: (pkg: PluginPackageInfo) => void;
   onReloadSession: () => void;
 }) {
   const { t } = useI18n();
@@ -513,6 +546,8 @@ function PackageDetail({
   const busy = busyKey?.endsWith(key) ?? false;
   const reloadBusy = busyKey === "reload";
   const enabled = !pkg.disabled;
+  const canCheckForUpdates = pkg.canCheckForUpdates;
+  const updateAvailable = updateStatus?.state === "update-available";
 
   return (
     <ConfigDetailStack>
@@ -563,12 +598,22 @@ function PackageDetail({
         <ConfigDetailActions>
           <ConfigButton
             size="small"
-            onClick={() => onAction("update", pkg)}
-            disabled={busy || reloadBusy}
+            variant={updateAvailable ? "primary" : undefined}
+            onClick={
+              updateAvailable || !canCheckForUpdates
+                ? () => onUpdateRequest(pkg)
+                : onCheckUpdate
+            }
+            disabled={busy || reloadBusy || checkingUpdate}
+            title={updateAvailable ? t("i18n.updateAvailable") : undefined}
           >
             {busyKey === `update:${key}`
               ? t("i18n.updating")
-              : t("i18n.update")}
+              : checkingUpdate
+                ? t("i18n.checking")
+                : updateAvailable || !canCheckForUpdates
+                  ? t("i18n.update")
+                  : t("i18n.check")}
           </ConfigButton>
           <ConfigButton
             size="small"
@@ -623,9 +668,53 @@ function PackageDetail({
         </div>
         <div style={{ color: "var(--text-dim)" }}>{t("i18n.version")}</div>
         <div
-          style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            minWidth: 0,
+          }}
         >
-          {versionSummary(pkg, t)}
+          <div className="skill-version-row">
+            <span className="skill-version-value">
+              {versionSummary(pkg, t)}
+            </span>
+            {updateAvailable && (
+              <span
+                className="skill-version-value is-update"
+                title={updateStatus?.displayName}
+              >
+                {t("i18n.updateAvailable")}
+              </span>
+            )}
+            {canCheckForUpdates &&
+              (checkingUpdate || (updateStatus && !updateAvailable)) && (
+                <span
+                  className={`skill-update-status ${
+                    checkingUpdate
+                      ? "is-checking"
+                      : updateStatus?.state === "up-to-date"
+                        ? "is-success"
+                        : updateStatus?.state === "error"
+                          ? "is-error"
+                          : "is-muted"
+                  }`}
+                >
+                  {checkingUpdate
+                    ? t("i18n.checking")
+                    : updateStatus?.state === "up-to-date"
+                      ? t("i18n.upToDate")
+                      : updateStatus?.state === "unsupported"
+                        ? t("i18n.automaticChecksUnavailable")
+                        : updateStatus?.message || t("i18n.checkFailed")}
+                </span>
+              )}
+          </div>
+          {updateError && (
+            <span style={{ fontSize: 12, color: "#ef4444" }}>
+              {updateError}
+            </span>
+          )}
         </div>
         <div style={{ color: "var(--text-dim)" }}>{t("i18n.package")}</div>
         <div
@@ -684,6 +773,197 @@ function PackageDetail({
   );
 }
 
+/**
+ * 插件更新确认对话框：单项更新展示单个插件，批量更新展示完整清单；
+ * 用户必须在此显式确认后才会真正执行更新。
+ */
+function UpdateConfirmDialog({
+  target,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  target: UpdateConfirmTarget;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useI18n();
+  const items =
+    target.kind === "single"
+      ? [
+          {
+            key: packageKey(target.pkg),
+            name: target.pkg.source,
+            scope: target.pkg.scope,
+          },
+        ]
+      : target.items.map((item) => ({
+          key: packageKey(item),
+          name: item.displayName,
+          scope: item.scope,
+        }));
+
+  return (
+    <div
+      role="presentation"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        background: "rgba(0,0,0,0.4)",
+      }}
+      onClick={(event) => {
+        if (!busy && event.target === event.currentTarget) onCancel();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plugin-update-confirm-title"
+        style={{
+          width: 460,
+          maxWidth: "100%",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--bg-panel)",
+          boxShadow: "0 12px 36px rgba(0,0,0,0.24)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ padding: "18px 18px 14px" }}>
+          <div
+            id="plugin-update-confirm-title"
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
+            {target.kind === "single"
+              ? t("i18n.confirmUpdateTitle")
+              : t("i18n.confirmUpdateAllTitle")}
+          </div>
+          <div
+            style={{
+              marginTop: 7,
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: "var(--text-muted)",
+            }}
+          >
+            {target.kind === "single"
+              ? t("i18n.confirmUpdateBody")
+              : t("i18n.confirmUpdateAllBody")}
+          </div>
+          <ul
+            style={{
+              marginTop: 10,
+              maxHeight: 220,
+              overflowY: "auto",
+              margin: "10px 0 0",
+              padding: "8px 10px",
+              border: "1px solid var(--border)",
+              borderRadius: 5,
+              background: "var(--bg)",
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            {items.map((item) => (
+              <li
+                key={item.key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 12,
+                  color: "var(--text)",
+                  minWidth: 0,
+                }}
+              >
+                <ScopeTag scope={item.scope} />
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {item.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {target.kind === "all" && (
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: "var(--text-muted)",
+              }}
+            >
+              {t("i18n.confirmUpdateAllNote")}
+            </div>
+          )}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            padding: "10px 18px",
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            style={{
+              height: 32,
+              padding: "0 12px",
+              border: "1px solid var(--border)",
+              borderRadius: 5,
+              background: "transparent",
+              color: "var(--text-muted)",
+              cursor: busy ? "not-allowed" : "pointer",
+              fontSize: 12,
+            }}
+          >
+            {t("i18n.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            style={{
+              height: 32,
+              padding: "0 12px",
+              border: "1px solid var(--accent)",
+              borderRadius: 5,
+              background: "var(--accent)",
+              color: "white",
+              cursor: busy ? "wait" : "pointer",
+              opacity: busy ? 0.7 : 1,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {busy ? t("i18n.updating") : t("i18n.update")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PluginsConfig({
   cwd,
   sessionId,
@@ -710,8 +990,33 @@ export function PluginsConfig({
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [updateStatuses, setUpdateStatuses] = useState<
+    Record<string, PluginUpdateResult>
+  >({});
+  const [checkingUpdates, setCheckingUpdates] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [checkingAll, setCheckingAll] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updatingAll, setUpdatingAll] = useState(false);
+  const pluginUpdateSnapshot = useSyncExternalStore(
+    subscribePluginUpdates,
+    getPluginUpdateSnapshot,
+  );
+  const [confirmTarget, setConfirmTarget] =
+    useState<UpdateConfirmTarget | null>(null);
 
   const packages = useMemo(() => data?.packages ?? [], [data?.packages]);
+  // 展示状态 = 全局 store（页面加载时的后台检查）与面板本地状态的合并，
+  // 面板内更“新”的本地结果优先
+  const effectiveStatuses = useMemo(() => {
+    const stored =
+      pluginUpdateSnapshot.cwd === cwd
+        ? pluginUpdateSnapshot.statuses
+        : undefined;
+    if (!stored) return updateStatuses;
+    return { ...stored, ...updateStatuses };
+  }, [cwd, pluginUpdateSnapshot, updateStatuses]);
   const selectedPackage =
     packages.find((pkg) => packageKey(pkg) === selected) ?? null;
   const projectResourcesLoaded = data?.projectResourcesLoaded ?? true;
@@ -748,12 +1053,117 @@ export function PluginsConfig({
   }, [cwd]);
 
   useEffect(() => {
+    setUpdateStatuses({});
+    setCheckingUpdates(new Set());
+    setCheckingAll(false);
+    setUpdateError(null);
+    setConfirmTarget(null);
     void loadPlugins();
   }, [loadPlugins]);
 
   useEffect(() => {
     if (selected) setLastSettingsSelection("plugins", selected, cwd);
   }, [cwd, selected]);
+
+  const checkForUpdates = useCallback(
+    async (
+      pkg?: PluginPackageInfo,
+      targetList?: PluginPackageInfo[],
+      options: { silent?: boolean } = {},
+    ) => {
+      const targets = pkg
+        ? [pkg]
+        : (targetList ?? packages.filter((item) => item.canCheckForUpdates));
+      const keys = targets.map(packageKey);
+      if (keys.length === 0) return;
+
+      if (!options.silent) setUpdateError(null);
+      setCheckingUpdates((current) => new Set([...current, ...keys]));
+      if (!pkg) setCheckingAll(true);
+      try {
+        const res = await fetch("/api/plugins/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cwd,
+            source: pkg?.source,
+            scope: pkg?.scope,
+          }),
+        });
+        const next = (await res.json()) as {
+          updates?: PluginUpdateResult[];
+          error?: string;
+        };
+        if (!res.ok || next.error)
+          throw new Error(next.error ?? `HTTP ${res.status}`);
+        // 静默（自动）检查不采纳 error 状态，避免页面加载时的网络失败信息
+        const accepted = options.silent
+          ? (next.updates ?? []).filter((update) => update.state !== "error")
+          : (next.updates ?? []);
+        setUpdateStatuses((current) => {
+          const merged = { ...current };
+          for (const update of accepted) {
+            merged[packageKey(update)] = update;
+          }
+          return merged;
+        });
+        // 结果写回全局 store，供其他面板实例与下一次页面加载复用
+        mergePluginUpdateResults(cwd, accepted);
+      } catch (err) {
+        if (!options.silent)
+          setUpdateError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setCheckingUpdates((current) => {
+          const remaining = new Set(current);
+          for (const item of keys) remaining.delete(item);
+          return remaining;
+        });
+        if (!pkg) setCheckingAll(false);
+      }
+    },
+    [cwd, packages],
+  );
+
+  // 每次面板数据加载完成（打开或刷新）后，自动检查一次可检查插件；
+  // 自动检查为静默模式，网络失败不打扰用户，手动检查仍会展示错误
+  useEffect(() => {
+    if (loading || !data) return;
+    const checkable = packages.filter((item) => item.canCheckForUpdates);
+    if (checkable.length === 0) return;
+    void checkForUpdates(undefined, checkable, { silent: true });
+  }, [data, packages, loading, checkForUpdates]);
+
+  // 批量更新：仅在确认对话框中展示完整清单并二次确认后才会执行
+  const updateAllPlugins = useCallback(async () => {
+    setConfirmTarget(null);
+    setUpdatingAll(true);
+    setActionError(null);
+    setActionMessage(null);
+    setUpdateError(null);
+    try {
+      const res = await fetch("/api/plugins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update", cwd }),
+      });
+      const next = (await res.json()) as PluginsResponse & { error?: string };
+      if (!res.ok || next.error)
+        throw new Error(next.error ?? `HTTP ${res.status}`);
+      setData(next);
+      setUpdateStatuses({});
+      // 批量更新已生效，全局 store 中的过期检查结果同步清空
+      clearPluginUpdateResults(cwd);
+      setActionMessage(
+        sessionId
+          ? `${t("i18n.updateAllPlugins")} · ${t("agents.reloadRequired")}`
+          : t("i18n.updateAllPlugins"),
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUpdatingAll(false);
+    }
+  }, [cwd, sessionId, t]);
 
   const runAction = useCallback(
     async (action: PluginAction, pkg: PluginPackageInfo) => {
@@ -776,6 +1186,15 @@ export function PluginsConfig({
         if (!res.ok || next.error)
           throw new Error(next.error ?? `HTTP ${res.status}`);
         setData(next);
+        if (action === "remove" || action === "update") {
+          setUpdateStatuses((current) => {
+            const remaining = { ...current };
+            delete remaining[key];
+            return remaining;
+          });
+          // 全局 store 中该插件的过期检查结果同步移除
+          removePluginUpdateResult(cwd, key);
+        }
         if (action === "remove") {
           setSelected(next.packages[0] ? packageKey(next.packages[0]) : null);
           if (next.packages.length === 0) setAddMode(true);
@@ -855,6 +1274,13 @@ export function PluginsConfig({
   }, [loadPlugins, onReloaded, sessionId]);
 
   const addBusy = busyKey?.startsWith("install:") ?? false;
+  const availableUpdateCount = Object.values(effectiveStatuses).filter(
+    (status) => status.state === "update-available",
+  ).length;
+  const hasCheckablePackages = packages.some((pkg) => pkg.canCheckForUpdates);
+  const footerBusy =
+    loading || busyKey !== null || checkingUpdates.size > 0 || updatingAll;
+  const dialogBusy = updatingAll || busyKey !== null;
 
   return (
     <ConfigPanelShell
@@ -910,6 +1336,15 @@ export function PluginsConfig({
                         >
                           {pkg.source}
                         </ConfigSidebarText>
+                        {effectiveStatuses[packageKey(pkg)]?.state ===
+                          "update-available" && (
+                          <span
+                            title={t("i18n.updateAvailable")}
+                            className="skill-update-indicator"
+                          >
+                            ↑
+                          </span>
+                        )}
                       </ConfigSidebarItem>
                     );
                   })}
@@ -952,7 +1387,16 @@ export function PluginsConfig({
                 actionError={actionError}
                 actionMessage={actionMessage}
                 sessionId={sessionId}
+                updateStatus={effectiveStatuses[packageKey(selectedPackage)]}
+                checkingUpdate={checkingUpdates.has(
+                  packageKey(selectedPackage),
+                )}
+                updateError={updateError}
                 onAction={runAction}
+                onCheckUpdate={() => void checkForUpdates(selectedPackage)}
+                onUpdateRequest={(target) =>
+                  setConfirmTarget({ kind: "single", pkg: target })
+                }
                 onReloadSession={reloadSession}
               />
             ) : (
@@ -964,7 +1408,14 @@ export function PluginsConfig({
 
       <ConfigFooter
         status={
-          data?.diagnostics.length ? (
+          availableUpdateCount > 0 ? (
+            <span style={{ fontSize: 12, color: "var(--accent)" }}>
+              {availableUpdateCount}{" "}
+              {availableUpdateCount === 1
+                ? t("i18n.update")
+                : t("i18n.updates")}
+            </span>
+          ) : data?.diagnostics.length ? (
             <span
               title={data.diagnostics
                 .map(
@@ -993,14 +1444,58 @@ export function PluginsConfig({
         {!embedded && (
           <ConfigButton onClick={onClose}>{t("i18n.close")}</ConfigButton>
         )}
+        {hasCheckablePackages && (
+          <ConfigButton
+            variant={availableUpdateCount > 0 ? "primary" : "secondary"}
+            onClick={() =>
+              void (availableUpdateCount > 0
+                ? setConfirmTarget({
+                    kind: "all",
+                    items: Object.values(effectiveStatuses).filter(
+                      (status) => status.state === "update-available",
+                    ),
+                  })
+                : checkForUpdates())
+            }
+            disabled={footerBusy}
+            title={
+              availableUpdateCount > 0
+                ? t("i18n.updateAllPluginsHint")
+                : undefined
+            }
+          >
+            {checkingAll
+              ? t("i18n.checking")
+              : availableUpdateCount > 0
+                ? `${t("i18n.updateAllPlugins")} (${availableUpdateCount})`
+                : t("i18n.checkUpdates")}
+          </ConfigButton>
+        )}
         <ConfigButton
           variant="secondary"
           onClick={() => void loadPlugins()}
-          disabled={loading || busyKey !== null}
+          disabled={footerBusy}
         >
           {t("i18n.refresh")}
         </ConfigButton>
       </ConfigFooter>
+
+      {confirmTarget && (
+        <UpdateConfirmDialog
+          target={confirmTarget}
+          busy={dialogBusy}
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={() =>
+            void (confirmTarget.kind === "single"
+              ? (async () => {
+                  const target = confirmTarget;
+                  setConfirmTarget(null);
+                  await runAction("update", target.pkg);
+                })()
+              : updateAllPlugins())
+          }
+        />
+      )}
     </ConfigPanelShell>
   );
 }

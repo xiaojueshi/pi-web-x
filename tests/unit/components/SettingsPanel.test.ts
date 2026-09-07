@@ -190,6 +190,16 @@ test("uses the shared General layout for security actions", () => {
   assert.doesNotMatch(cssSource, /\.settings-security-card/);
 });
 
+test("exposes global idle session reaping controls in General", () => {
+  assert.match(panelSource, /settings\.idleReaping/);
+  assert.match(panelSource, /idleSessionReaping/);
+  assert.match(panelSource, /min=\{5\}/);
+  assert.match(panelSource, /max=\{1_440\}/);
+  assert.match(panelSource, /method: "PUT"/);
+  assert.match(panelSource, /settings\.idleReapingInvalidTimeout/);
+  assert.match(cssSource, /\.settings-idle-timeout \{/);
+});
+
 test("uses the compact controls glyph for General", () => {
   assert.match(
     panelSource,

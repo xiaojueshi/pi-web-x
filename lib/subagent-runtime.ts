@@ -36,6 +36,7 @@ import {
 import { projectTrustReloadOptions } from "./project-trust";
 import { resolveShellTools } from "./powershell-settings";
 import { isBuiltInSubagentsEnabled } from "./subagent-settings";
+import { registerSessionLivenessProvider } from "./session-liveness";
 
 interface HostSession {
   readonly inner: AgentSessionLike;
@@ -342,6 +343,18 @@ export function createSubagentController(
         abortRequested: false,
       };
       getSubagentRuns().set(initialRun.sessionId, stored);
+      // 后台 subagent 的完成通知仍需回到父会话；父会话在此期间不得被
+      // idle 回收，否则扩展拥有的工作会在通知前失去运行时。
+      const releaseParentLiveness = runInBackground
+        ? registerSessionLivenessProvider({
+            name: "pi-web-x-subagents",
+            sessionId: parentSessionId,
+            sessionFile: parent.sessionFile,
+            isActive: () =>
+              stored.run.status === "starting" ||
+              stored.run.status === "running",
+          })
+        : () => {};
       request.onUpdate?.(initialRun);
       dependencies.invalidateSessionList();
 
@@ -396,6 +409,7 @@ export function createSubagentController(
               : {}),
           };
         } finally {
+          releaseParentLiveness();
           unsubscribeTurns();
           request.signal?.removeEventListener("abort", handleParentAbort);
         }
