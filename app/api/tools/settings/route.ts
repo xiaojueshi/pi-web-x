@@ -13,7 +13,6 @@ import {
 } from "@/lib/idle-session-settings";
 import { refreshRpcSessionIdleReapingTimers } from "@/lib/rpc-manager";
 
-
 export async function GET() {
   try {
     const [powerShellEnabled, idleSessionReaping] = await Promise.all([

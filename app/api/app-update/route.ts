@@ -7,7 +7,6 @@ import {
 } from "@/lib/app-update";
 import { APP_VERSION } from "@/src/version";
 
-
 const CURRENT_VERSION = APP_VERSION;
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const SKIP_VERSION_CHECK = process.env.PI_WEB_X_SKIP_VERSION_CHECK === "1";

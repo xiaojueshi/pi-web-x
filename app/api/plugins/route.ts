@@ -29,7 +29,6 @@ import type {
   PluginsResponse,
 } from "@/lib/api-types";
 
-
 type PluginAction = "install" | "remove" | "update" | "disable" | "enable";
 
 function emptyCounts(): PluginResourceCounts {

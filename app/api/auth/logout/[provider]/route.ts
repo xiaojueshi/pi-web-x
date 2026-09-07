@@ -2,7 +2,6 @@ import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { invalidateModelsCache } from "@/lib/models-cache";
 import { removeStoredCredentialIfType } from "@/lib/provider-credential-store";
 
-
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ provider: string }> },

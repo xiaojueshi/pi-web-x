@@ -11,7 +11,6 @@ import {
 } from "@/lib/request-security";
 import { getProjectTrustStatus } from "@/lib/project-trust";
 
-
 const ANSI_RE = /\x1B\[[0-9;]*m/g;
 
 // POST /api/skills/install  body: { package: string; scope: "global" | "project"; cwd?: string }

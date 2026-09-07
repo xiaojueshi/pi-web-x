@@ -5,7 +5,6 @@ import {
   parseDiscoveredModels,
 } from "@/lib/model-discovery";
 
-
 const DISCOVERY_TIMEOUT_MS = 20_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

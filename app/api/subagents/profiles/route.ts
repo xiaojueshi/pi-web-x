@@ -12,7 +12,6 @@ import {
   type SubagentWritableScope,
 } from "@/lib/subagents";
 
-
 async function validateCwd(cwd: unknown): Promise<string> {
   if (typeof cwd !== "string" || !cwd || !existsSync(cwd))
     throw new Error("Valid cwd required");

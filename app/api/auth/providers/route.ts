@@ -5,7 +5,6 @@ import {
 } from "@/lib/provider-listing";
 import { collectProviderListingInputs } from "@/lib/provider-listing-runtime";
 
-
 // Providers that declare an OAuth login method, including anthropic
 // (Claude Pro/Max) — see lib/provider-listing.ts (#309).
 export async function GET() {

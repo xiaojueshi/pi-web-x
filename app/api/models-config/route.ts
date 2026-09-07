@@ -1,7 +1,6 @@
 import { HttpResponse } from "@/src/server/http";
 import { readModelsConfig, writeModelsConfig } from "@/lib/models-config-store";
 
-
 export async function GET() {
   return HttpResponse.json(readModelsConfig());
 }

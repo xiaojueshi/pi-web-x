@@ -23,7 +23,6 @@ import {
 } from "@/lib/file-access";
 import { projectTrustReloadOptions } from "@/lib/project-trust";
 
-
 const modelNameCollator = new Intl.Collator(undefined, {
   numeric: true,
   sensitivity: "base",
@@ -120,8 +119,7 @@ const EMPTY_MODELS: ModelsData = {
 };
 
 export async function GET(req: Request) {
-  const requestedCwd =
-    requestSearchParams(req).get("cwd") || process.cwd();
+  const requestedCwd = requestSearchParams(req).get("cwd") || process.cwd();
   const cwd = resolve(requestedCwd);
 
   let cwdStat;

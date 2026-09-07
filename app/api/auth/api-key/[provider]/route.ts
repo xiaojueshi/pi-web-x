@@ -6,7 +6,6 @@ import {
   storeProviderCredential,
 } from "@/lib/provider-credential-store";
 
-
 type Params = { params: Promise<{ provider: string }> };
 
 // POST /api/auth/api-key/[provider]  body: { apiKey: string }

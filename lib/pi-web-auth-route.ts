@@ -15,7 +15,7 @@ export const PI_WEB_X_SESSION_COOKIE = "pi_web_x_session";
 
 // 预构建的会话 cookie 提取正则：cookie 名为模块常量，避免每请求 new RegExp。
 const SESSION_COOKIE_RE = new RegExp(
-  `(?:^|;\\s*)${PI_WEB_X_SESSION_COOKIE}=([^;]*)`,
+ `(?:^|;\\s*)${PI_WEB_X_SESSION_COOKIE}=([^;]*)`,
 );
 
 /**
@@ -24,16 +24,16 @@ const SESSION_COOKIE_RE = new RegExp(
  * @throws Content-Type 非法时抛出带 status 的 Error（415）
  */
 export function validateAuthJsonHeaders(request: Request): void {
-  const mediaType = request.headers
-    .get("content-type")
-    ?.split(";", 1)[0]
-    ?.trim()
-    .toLowerCase();
-  if (mediaType !== "application/json") {
-    throw Object.assign(new Error("Content-Type must be application/json"), {
-      status: 415,
-    });
-  }
+ const mediaType = request.headers
+  .get("content-type")
+  ?.split(";", 1)[0]
+  ?.trim()
+  .toLowerCase();
+ if (mediaType !== "application/json") {
+  throw Object.assign(new Error("Content-Type must be application/json"), {
+   status: 415,
+  });
+ }
 }
 
 /**
@@ -44,11 +44,11 @@ export function validateAuthJsonHeaders(request: Request): void {
  * @returns JSON 错误响应
  */
 export function authError(
-  errorCode: string,
-  message: string,
-  status: number,
+ errorCode: string,
+ message: string,
+ status: number,
 ): Response {
-  return Response.json({ errorCode, error: message }, { status });
+ return Response.json({ errorCode, error: message }, { status });
 }
 
 /**
@@ -59,60 +59,60 @@ export function authError(
  * @throws 非 JSON、超限或结构非法时抛出带 status 的 Error
  */
 export async function readAuthJson(
-  request: Request,
-  options: { allowEmpty?: boolean } = {},
+ request: Request,
+ options: { allowEmpty?: boolean } = {},
 ): Promise<Record<string, unknown>> {
-  const hasBody = request.body !== null;
-  if (!hasBody && options.allowEmpty) return {};
-  validateAuthJsonHeaders(request);
-  const reader = request.body?.getReader();
-  let bytes = 0;
-  const chunks: Uint8Array[] = [];
-  if (reader) {
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-        if (bytes > MAX_BODY_BYTES) {
-          await reader.cancel();
-          throw Object.assign(new Error("Request body is too large"), {
-            status: 413,
-          });
-        }
-        chunks.push(value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-  const text = new TextDecoder().decode(concatChunks(chunks, bytes));
-  if (!text.trim() && options.allowEmpty) return {};
-  let parsed: unknown;
+ const hasBody = request.body !== null;
+ if (!hasBody && options.allowEmpty) return {};
+ validateAuthJsonHeaders(request);
+ const reader = request.body?.getReader();
+ let bytes = 0;
+ const chunks: Uint8Array[] = [];
+ if (reader) {
   try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw Object.assign(new Error("Request body must be valid JSON"), {
-      status: 400,
-    });
+   while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > MAX_BODY_BYTES) {
+     await reader.cancel();
+     throw Object.assign(new Error("Request body is too large"), {
+      status: 413,
+     });
+    }
+    chunks.push(value);
+   }
+  } finally {
+   reader.releaseLock();
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw Object.assign(new Error("Invalid request body format"), {
-      status: 400,
-    });
-  }
-  return parsed as Record<string, unknown>;
+ }
+ const text = new TextDecoder().decode(concatChunks(chunks, bytes));
+ if (!text.trim() && options.allowEmpty) return {};
+ let parsed: unknown;
+ try {
+  parsed = JSON.parse(text);
+ } catch {
+  throw Object.assign(new Error("Request body must be valid JSON"), {
+   status: 400,
+  });
+ }
+ if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  throw Object.assign(new Error("Invalid request body format"), {
+   status: 400,
+  });
+ }
+ return parsed as Record<string, unknown>;
 }
 
 /** 合并请求体分块（不预先分配无界缓冲）。 */
 function concatChunks(chunks: Uint8Array[], byteLength: number): Uint8Array {
-  const result = new Uint8Array(byteLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result;
+ const result = new Uint8Array(byteLength);
+ let offset = 0;
+ for (const chunk of chunks) {
+  result.set(chunk, offset);
+  offset += chunk.byteLength;
+ }
+ return result;
 }
 
 /**
@@ -121,8 +121,8 @@ function concatChunks(chunks: Uint8Array[], byteLength: number): Uint8Array {
  * @returns 原始会话 token，缺失时返回 null
  */
 export function getSessionToken(request: Request): string | null {
-  const cookie = request.headers.get("cookie") ?? "";
-  return cookie.match(SESSION_COOKIE_RE)?.[1] || null;
+ const cookie = request.headers.get("cookie") ?? "";
+ return cookie.match(SESSION_COOKIE_RE)?.[1] || null;
 }
 
 /**
@@ -131,11 +131,11 @@ export function getSessionToken(request: Request): string | null {
  * @returns 会话 token 与校验结果
  */
 export function getAuthenticatedSession(request: Request): {
-  token: string;
-  valid: boolean;
+ token: string;
+ valid: boolean;
 } {
-  const token = getSessionToken(request);
-  return { token: token ?? "", valid: token ? getSession(token).valid : false };
+ const token = getSessionToken(request);
+ return { token: token ?? "", valid: token ? getSession(token).valid : false };
 }
 
 /**
@@ -145,18 +145,18 @@ export function getAuthenticatedSession(request: Request): {
  * @returns Set-Cookie 头值
  */
 export function sessionCookie(request: Request, token: string | null): string {
-  let isHttps = false;
-  try {
-    isHttps =
-      new URL(request.url).protocol === "https:" ||
-      request.headers.get("x-forwarded-proto") === "https";
-  } catch {
-    isHttps = false;
-  }
-  const secure = isHttps ? "; Secure" : "";
-  const age = token ? "86400" : "0";
-  const value = token ?? "";
-  return `${PI_WEB_X_SESSION_COOKIE}=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${age}${secure}`;
+ let isHttps = false;
+ try {
+  isHttps =
+   new URL(request.url).protocol === "https:" ||
+   request.headers.get("x-forwarded-proto") === "https";
+ } catch {
+  isHttps = false;
+ }
+ const secure = isHttps ? "; Secure" : "";
+ const age = token ? "86400" : "0";
+ const value = token ?? "";
+ return `${PI_WEB_X_SESSION_COOKIE}=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${age}${secure}`;
 }
 
 /** 会话滑动续期后待附加到响应的 Set-Cookie 头（按请求隔离）。 */
@@ -171,11 +171,11 @@ const sessionRefreshCookies = new WeakMap<Request, string>();
  * @returns 续期成功时返回新的 Set-Cookie 头值，否则 null
  */
 export function touchAuthenticatedSession(request: Request): string | null {
-  const token = getSessionToken(request);
-  if (!token || !touchSession(token)) return null;
-  const cookie = sessionCookie(request, token);
-  sessionRefreshCookies.set(request, cookie);
-  return cookie;
+ const token = getSessionToken(request);
+ if (!token || !touchSession(token)) return null;
+ const cookie = sessionCookie(request, token);
+ sessionRefreshCookies.set(request, cookie);
+ return cookie;
 }
 
 /**
@@ -184,9 +184,9 @@ export function touchAuthenticatedSession(request: Request): string | null {
  * @returns 待附加的 Set-Cookie 头值，无续期时为 null
  */
 export function drainSessionRefreshCookie(request: Request): string | null {
-  const cookie = sessionRefreshCookies.get(request) ?? null;
-  sessionRefreshCookies.delete(request);
-  return cookie;
+ const cookie = sessionRefreshCookies.get(request) ?? null;
+ sessionRefreshCookies.delete(request);
+ return cookie;
 }
 
 /**
@@ -195,12 +195,12 @@ export function drainSessionRefreshCookie(request: Request): string | null {
  * @returns 限流桶 key
  */
 export function loginRateKey(request: Request): string {
-  if (process.env.PI_WEB_X_TRUSTED_PROXY === "true") {
-    return (
-      request.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() ||
-      request.headers.get("x-real-ip")?.trim() ||
-      "anonymous"
-    );
-  }
-  return "anonymous";
+ if (process.env.PI_WEB_X_TRUSTED_PROXY === "true") {
+  return (
+   request.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() ||
+   request.headers.get("x-real-ip")?.trim() ||
+   "anonymous"
+  );
+ }
+ return "anonymous";
 }

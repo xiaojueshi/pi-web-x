@@ -2,7 +2,6 @@ import type { AuthEvent, AuthPrompt } from "@earendil-works/pi-ai";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { invalidateModelsCache } from "@/lib/models-cache";
 
-
 // In-memory registry: loginToken -> resolve/reject for the manualCodeInput promise
 declare global {
   var __piLoginCallbacks:

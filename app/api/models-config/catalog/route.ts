@@ -6,7 +6,6 @@ import {
   type ModelCatalogEntry,
 } from "@/lib/model-catalog";
 
-
 const MODELS_DEV_URL = "https://models.dev/api.json";
 const CATALOG_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 15_000;

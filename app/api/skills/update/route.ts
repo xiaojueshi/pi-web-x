@@ -8,7 +8,6 @@ import {
   isExistingFilePathAllowed,
 } from "@/lib/file-access";
 
-
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {

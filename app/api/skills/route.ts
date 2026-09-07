@@ -10,7 +10,6 @@ import {
   isExistingFilePathAllowed,
 } from "@/lib/file-access";
 
-
 // GET /api/skills?cwd=<path>
 // Uses DefaultResourceLoader (same logic as AgentSession startup) so settings.json
 // skill paths, package skills, and .agents/skills directories are all included.

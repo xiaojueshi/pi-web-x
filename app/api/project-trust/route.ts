@@ -13,7 +13,6 @@ import {
   hasBusyRpcSessionForCwd,
 } from "@/lib/rpc-manager";
 
-
 async function validateCwd(
   value: unknown,
 ): Promise<{ cwd: string } | { response: HttpResponse }> {

@@ -8,7 +8,6 @@ import {
   writeBuiltInSubagentsEnabled,
 } from "@/lib/subagent-settings";
 
-
 export async function GET() {
   try {
     const settings = readSubagentSettings();

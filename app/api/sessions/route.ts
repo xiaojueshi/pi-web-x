@@ -11,7 +11,6 @@ import {
   getRunningRpcSessionIds,
 } from "@/lib/rpc-manager";
 
-
 export async function GET(req: Request) {
   try {
     const force = requestSearchParams(req).get("force") === "1";

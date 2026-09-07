@@ -12,7 +12,6 @@ import {
   isApiRequestAllowed,
 } from "@/lib/request-security";
 
-
 const TEST_TIMEOUT_MS = 20_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

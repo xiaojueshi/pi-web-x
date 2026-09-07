@@ -52,7 +52,10 @@ test("shared media hook pauses its watcher and synchronizes after connecting", (
   const synchronize = block.indexOf("synchronize();", eventSource);
 
   assert.ok(guard >= 0, "watchEnabled guard missing");
-  assert.ok(eventSource > guard, "EventSource created before watchEnabled guard");
+  assert.ok(
+    eventSource > guard,
+    "EventSource created before watchEnabled guard",
+  );
   assert.ok(synchronize > eventSource, "connected synchronization missing");
   assert.match(block, /\}, \[[^\]]*watchEnabled[^\]]*\]\);/);
   // 三个 Viewer 都必须经由公共 hook 获取监听状态。
@@ -67,9 +70,7 @@ test("shared media hook pauses its watcher and synchronizes after connecting", (
     );
     assert.match(
       viewerBlock,
-      new RegExp(
-        `useWatchedFileMeta\\(\\{[\\s\\S]*?watchEnabled,`
-      ),
+      new RegExp(`useWatchedFileMeta\\(\\{[\\s\\S]*?watchEnabled,`),
       `${viewer} 未使用公共 watch hook`,
     );
   }
