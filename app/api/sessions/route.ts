@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import {
   attachSessionProjectInfo,
   getSessionListVersion,
@@ -14,7 +14,7 @@ import {
 
 export async function GET(req: Request) {
   try {
-    const force = new URL(req.url).searchParams.get("force") === "1";
+    const force = requestSearchParams(req).get("force") === "1";
     const persistedSessionsPromise = listAllSessions({ force });
     // 在 await 前捕获：扫描期间的变更仍需后续轮询刷新。
     const sessionListVersion = getSessionListVersion();

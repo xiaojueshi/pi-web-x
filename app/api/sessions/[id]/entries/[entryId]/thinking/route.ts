@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { getSessionEntries, resolveSessionPath } from "@/lib/session-reader";
 
 export async function GET(
@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; entryId: string }> },
 ) {
   const { id, entryId } = await params;
-  const blockIndexParam = new URL(req.url).searchParams.get("blockIndex");
+  const blockIndexParam = requestSearchParams(req).get("blockIndex");
   const blockIndex =
     blockIndexParam === null ? Number.NaN : Number(blockIndexParam);
   if (!Number.isSafeInteger(blockIndex) || blockIndex < 0) {

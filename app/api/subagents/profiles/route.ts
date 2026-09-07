@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { existsSync } from "fs";
 import {
   getAllowedFileRoots,
@@ -29,7 +29,7 @@ function validateScope(scope: unknown): SubagentWritableScope {
 
 export async function GET(req: Request) {
   try {
-    const cwd = await validateCwd(new URL(req.url).searchParams.get("cwd"));
+    const cwd = await validateCwd(requestSearchParams(req).get("cwd"));
     return HttpResponse.json({ profiles: listSubagentProfileSources(cwd) });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

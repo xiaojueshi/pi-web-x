@@ -5,7 +5,7 @@ import { tmpdir } from "os";
 import { basename, dirname, join } from "path";
 import { promisify } from "util";
 import { fileURLToPath, pathToFileURL } from "url";
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { resolveSessionPath } from "@/lib/session-reader";
 
 const execFileAsync = promisify(execFile);
@@ -272,7 +272,7 @@ export async function GET(
   const { id } = await params;
   let inline = false;
   try {
-    inline = new URL(req.url).searchParams.get("inline") === "1";
+    inline = requestSearchParams(req).get("inline") === "1";
   } catch {
     // 非法 URL 按非 inline 处理。
   }

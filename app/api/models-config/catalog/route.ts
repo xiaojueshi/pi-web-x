@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import {
   flattenModelsDevCatalog,
   recommendModelCatalogPreset,
@@ -67,7 +67,7 @@ async function loadCatalog(): Promise<ModelCatalogEntry[]> {
 }
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+  const searchParams = requestSearchParams(req);
   const query = (searchParams.get("q") ?? "").slice(0, 120);
   const provider = (searchParams.get("provider") ?? "").slice(0, 120);
   const baseUrl = (searchParams.get("baseUrl") ?? "").slice(0, 500);

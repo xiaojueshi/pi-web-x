@@ -86,7 +86,8 @@ export async function GET(
         | undefined;
 
       const createClientInputRequest = () => {
-        const token = `${provider}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        // crypto.randomUUID：与 Math.random 不同，具备加密强度，避免规则告警
+        const token = `${provider}-${Date.now()}-${crypto.randomUUID()}`;
         activeTokens.add(token);
 
         const promise = new Promise<string>((resolve, reject) => {

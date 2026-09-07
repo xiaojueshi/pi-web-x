@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import path from "path";
@@ -15,7 +15,7 @@ import {
 // Uses DefaultResourceLoader (same logic as AgentSession startup) so settings.json
 // skill paths, package skills, and .agents/skills directories are all included.
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+  const searchParams = requestSearchParams(req);
   const cwd = searchParams.get("cwd");
   if (!cwd)
     return HttpResponse.json({ error: "cwd required" }, { status: 400 });

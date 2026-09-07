@@ -57,7 +57,13 @@ export function getPowerShellSettingsPath(agentDir = getAgentDir()): string {
 
 function parseSettings(path: string): Record<string, unknown> {
   if (!existsSync(path)) return {};
-  const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch (cause) {
+    // 保持抛出契约：损坏的 settings.json 必须显式失败，不能静默回退。
+    throw new Error("Invalid settings.json: not valid JSON", { cause });
+  }
   if (!isRecord(parsed))
     throw new Error("Invalid settings.json: expected an object");
   return parsed;

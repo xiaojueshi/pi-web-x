@@ -65,7 +65,13 @@ export function parseDiscoveredModels(value: unknown): DiscoveredModel[] {
 }
 
 export function buildModelsListUrl(baseUrl: string, api: string): URL {
-  const url = new URL(baseUrl.trim());
+  let url: URL;
+  try {
+    url = new URL(baseUrl.trim());
+  } catch (cause) {
+    // 保持抛出契约，但带上更明确的错误信息。
+    throw new Error(`Invalid base URL: ${baseUrl.trim()}`, { cause });
+  }
   const trimmedPath = url.pathname.replace(/\/+$/, "");
 
   if (!/\/models$/i.test(trimmedPath)) {

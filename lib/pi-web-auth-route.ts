@@ -13,6 +13,11 @@ const MAX_BODY_BYTES = 16 * 1024;
 /** 会话 cookie 名（HttpOnly、SameSite=Lax）。 */
 export const PI_WEB_X_SESSION_COOKIE = "pi_web_x_session";
 
+// 预构建的会话 cookie 提取正则：cookie 名为模块常量，避免每请求 new RegExp。
+const SESSION_COOKIE_RE = new RegExp(
+  `(?:^|;\\s*)${PI_WEB_X_SESSION_COOKIE}=([^;]*)`,
+);
+
 /**
  * 校验认证变更请求的 JSON 头（无 body 场景）。
  * @param request 当前 HTTP 请求
@@ -117,10 +122,7 @@ function concatChunks(chunks: Uint8Array[], byteLength: number): Uint8Array {
  */
 export function getSessionToken(request: Request): string | null {
   const cookie = request.headers.get("cookie") ?? "";
-  const match = cookie.match(
-    new RegExp(`(?:^|;\\s*)${PI_WEB_X_SESSION_COOKIE}=([^;]*)`),
-  );
-  return match?.[1] || null;
+  return cookie.match(SESSION_COOKIE_RE)?.[1] || null;
 }
 
 /**

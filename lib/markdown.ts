@@ -24,12 +24,20 @@ export function normalizeDisplayMath(markdown: string): string {
   let rawCodeTag: string | null = null;
   const unmatchedDisplayMathUntil = new Map<string, number>();
 
+  // 闭标签正则预构建：避免在逐行循环内反复 new RegExp（来源仅限固定标签集）。
+  const rawCodeClosePatterns: Record<string, RegExp> = {
+    code: /<\/code\s*>/i,
+    pre: /<\/pre\s*>/i,
+    script: /<\/script\s*>/i,
+    style: /<\/style\s*>/i,
+  };
+
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
 
     if (rawCodeTag) {
       normalized.push(line);
-      if (new RegExp(`</${rawCodeTag}\\s*>`, "i").test(line)) rawCodeTag = null;
+      if (rawCodeClosePatterns[rawCodeTag]?.test(line)) rawCodeTag = null;
       continue;
     }
 
@@ -55,7 +63,7 @@ export function normalizeDisplayMath(markdown: string): string {
       const remainder = line.slice(
         (rawCodeOpen.index ?? 0) + rawCodeOpen[0].length,
       );
-      if (!new RegExp(`</${tag}\\s*>`, "i").test(remainder)) rawCodeTag = tag;
+      if (!rawCodeClosePatterns[tag]?.test(remainder)) rawCodeTag = tag;
       inlineCodeMarkerSize = 0;
       normalized.push(line);
       continue;

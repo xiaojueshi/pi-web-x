@@ -27,6 +27,8 @@ export async function POST(
     // globalThis keeps wrappers alive across dev hot reloads; older instances
     // may predate waitUntilReady(), but those have already completed startup.
     await session.waitUntilReady?.();
+    // SAFETY: session.inner 是 wrapper 持有的原生 AgentSession 实例，
+    // wrapper 仅包装了会话外壳，inner 本身即 SDK AgentSession。
     const result = await generateSessionTitle(
       session.inner as unknown as AgentSession,
     );

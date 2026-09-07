@@ -21,7 +21,7 @@ test("context route parses ?tail and ?before, excluding the boundary on paging",
     routeSrc,
     /const tail =\s*Number\.isFinite\(rawTail\) && rawTail > 0 \? Math\.min\(rawTail, 1000\) : 50/,
   );
-  assert.match(routeSrc, /const before = url\.searchParams\.get\("before"\)/);
+  assert.match(routeSrc, /const before = url\.get\("before"\)/);
   assert.match(
     routeSrc,
     /buildSessionContext\(\s*sm\.getEntries\(\) as never,\s*before \?\? leafId,\s*\{[^}]*excludeLeaf: Boolean\(before\)/,

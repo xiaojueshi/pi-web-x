@@ -18,7 +18,13 @@ export function getSubagentSettingsPath(agentDir = getAgentDir()): string {
 
 function readStoredSettings(settingsPath: string): StoredSubagentSettings {
   if (!existsSync(settingsPath)) return {};
-  const parsed: unknown = JSON.parse(readFileSync(settingsPath, "utf8"));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(settingsPath, "utf8"));
+  } catch (cause) {
+    // 保持抛出契约：损坏的设置文件必须显式失败，不能静默回退。
+    throw new Error("Invalid subagent settings: not valid JSON", { cause });
+  }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("Invalid subagent settings: expected an object");
   }

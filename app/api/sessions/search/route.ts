@@ -1,12 +1,11 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { listAllSessions } from "@/lib/session-reader";
 import { searchSessionContents } from "@/lib/session-search";
 
 
 // GET /api/sessions/search?q=... - 会话 JSONL 字面全文搜索。
 export async function GET(request: Request) {
-  // pi-lens-ignore: unchecked-throwing-call — 服务端构造的 Request URL 恒为合法 URL
-  const { searchParams } = new URL(request.url);
+  const searchParams = requestSearchParams(request);
   const query = (searchParams.get("q") ?? "").trim();
   const headers = { "Cache-Control": "no-store" };
   if (query.length > 200) {

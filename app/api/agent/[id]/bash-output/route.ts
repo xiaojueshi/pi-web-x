@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
 import {
@@ -20,9 +20,9 @@ export async function GET(
   let path: string | null = null;
   let download = false;
   try {
-    const url = new URL(_req.url);
-    path = url.searchParams.get("path");
-    download = url.searchParams.get("download") === "1";
+    const url = requestSearchParams(_req);
+    path = url.get("path");
+    download = url.get("download") === "1";
   } catch {
     return HttpResponse.json({ error: "invalid url" }, { status: 400 });
   }
@@ -43,6 +43,8 @@ export async function GET(
   try {
     if (download) {
       const { handle } = await openRegularFileNoFollow(resolved);
+      // SAFETY: Node Readable.toWeb 运行时返回 Web ReadableStream，
+      // 与 ReadableStream<Uint8Array> 结构兼容，仅类型声明缺失。
       const stream = Readable.toWeb(
         handle.createReadStream(),
       ) as unknown as ReadableStream<Uint8Array>;

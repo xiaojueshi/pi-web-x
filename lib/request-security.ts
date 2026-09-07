@@ -73,7 +73,13 @@ function canonicalOrigin(value: string): string | null {
 }
 
 function getRequestOrigin(request: Request): string | null {
-  const requestUrl = new URL(request.url);
+  let requestUrl: URL;
+  try {
+    requestUrl = new URL(request.url);
+  } catch {
+    // 无法解析的请求 URL 视为无来源，调用方按不可信处理（fail closed）。
+    return null;
+  }
   const host = request.headers.get("host");
   return host ? canonicalOrigin(`${requestUrl.protocol}//${host}`) : null;
 }

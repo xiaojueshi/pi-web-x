@@ -1,6 +1,6 @@
 import { stat } from "fs/promises";
 import { resolve } from "path";
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   getAllowedFileRoots,
@@ -52,7 +52,7 @@ async function validateCwd(
 }
 
 export async function GET(req: Request) {
-  const result = await validateCwd(new URL(req.url).searchParams.get("cwd"));
+  const result = await validateCwd(requestSearchParams(req).get("cwd"));
   if ("response" in result) return result.response;
   return HttpResponse.json(getProjectTrustStatus(result.cwd, getAgentDir()));
 }

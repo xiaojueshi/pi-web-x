@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { existsSync, readFileSync, statSync } from "fs";
 import { basename, dirname, extname, join, relative } from "path";
 import {
@@ -347,8 +347,7 @@ function readScope(scope: unknown): PluginScope {
 }
 
 export async function GET(req: Request) {
-  // pi-lens-ignore: unchecked-throwing-call — 服务端构造的 Request URL 恒为合法 URL
-  const { searchParams } = new URL(req.url);
+  const searchParams = requestSearchParams(req);
   const cwd = searchParams.get("cwd");
   if (!cwd)
     return HttpResponse.json({ error: "cwd required" }, { status: 400 });

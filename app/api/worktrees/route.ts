@@ -1,4 +1,4 @@
-import { HttpResponse } from "@/src/server/http";
+import { HttpResponse, requestSearchParams } from "@/src/server/http";
 import { existsSync } from "fs";
 import {
   addWorktree,
@@ -31,7 +31,7 @@ async function checkCwdAllowed(cwd: string): Promise<HttpResponse | null> {
 // GET /api/worktrees?cwd=  →  { projectRoot, projectKey, isGit, isTopLevel, currentWorktreePath, worktrees }
 export async function GET(req: Request) {
   try {
-    const cwd = new URL(req.url).searchParams.get("cwd");
+    const cwd = requestSearchParams(req).get("cwd");
     if (!cwd) {
       return HttpResponse.json({ error: "cwd is required" }, { status: 400 });
     }

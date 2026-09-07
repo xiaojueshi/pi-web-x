@@ -1,4 +1,5 @@
 import { stat } from "fs/promises";
+import { requestSearchParams } from "@/src/server/http";
 import { resolve } from "path";
 import {
   createAgentSessionServices,
@@ -120,7 +121,7 @@ const EMPTY_MODELS: ModelsData = {
 
 export async function GET(req: Request) {
   const requestedCwd =
-    new URL(req.url).searchParams.get("cwd") || process.cwd();
+    requestSearchParams(req).get("cwd") || process.cwd();
   const cwd = resolve(requestedCwd);
 
   let cwdStat;
