@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "bun:test";
 
 const { createSubagentController } = await import(
-  "../../../lib/subagent-runtime.ts",
+  "../../../lib/subagent-runtime.ts"
 );
 
 function completedRun() {

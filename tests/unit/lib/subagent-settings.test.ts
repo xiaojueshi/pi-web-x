@@ -18,9 +18,7 @@ const {
   isBuiltInSubagentsEnabled,
   readSubagentSettings,
   writeBuiltInSubagentsEnabled,
-} = await import(
-  "../../../lib/subagent-settings.ts",
-);
+} = await import("../../../lib/subagent-settings.ts");
 
 test("subagent settings default the built-in extension to disabled", async () => {
   const root = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-settings-"));

@@ -345,12 +345,9 @@ function GeneralSettings({
       };
       if (!response.ok || data.error)
         throw new Error(data.error ?? `HTTP ${response.status}`);
-      if (typeof data.enabled === "boolean")
-        setSubagentEnabled(data.enabled);
+      if (typeof data.enabled === "boolean") setSubagentEnabled(data.enabled);
     } catch (cause) {
-      setSubagentError(
-        cause instanceof Error ? cause.message : String(cause),
-      );
+      setSubagentError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSubagentSaving(false);
     }
@@ -437,9 +434,7 @@ function GeneralSettings({
       )}
 
       <section className="settings-general-section">
-        <h3 className="settings-general-heading">
-          {t("settings.subagents")}
-        </h3>
+        <h3 className="settings-general-heading">{t("settings.subagents")}</h3>
         <p className="settings-general-description">
           {t("settings.subagentsDescription")}
         </p>
