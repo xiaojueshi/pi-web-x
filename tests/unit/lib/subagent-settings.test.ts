@@ -42,7 +42,7 @@ test("subagent settings persist both states and preserve unrelated fields", asyn
   assert.deepEqual(readSubagentSettings(settingsPath), {
     builtInEnabled: true,
   });
-  assert.equal(isBuiltInSubagentsEnabled(settingsPath), false);
+  assert.equal(isBuiltInSubagentsEnabled(settingsPath), true);
   const first = JSON.parse(await readFile(settingsPath, "utf8"));
   assert.deepEqual(first, { version: 1, builtInEnabled: true });
 

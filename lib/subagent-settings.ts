@@ -38,8 +38,24 @@ export function readSubagentSettings(
   return { builtInEnabled: stored.builtInEnabled === true };
 }
 
-export function isBuiltInSubagentsEnabled(): boolean {
-  return false;
+/**
+ * 判断内置 subagent 是否启用。
+ *
+ * 读取 agents/settings.json 的 builtInEnabled 字段：默认关闭，写入后生效；
+ * 设置文件缺失或损坏时 fail closed（视为未启用）。
+ *
+ * @param settingsPath 设置文件路径，默认取 agentDir/agents/settings.json。
+ * @returns 是否启用内置 subagent。
+ */
+export function isBuiltInSubagentsEnabled(
+  settingsPath = getSubagentSettingsPath(),
+): boolean {
+  try {
+    return readSubagentSettings(settingsPath).builtInEnabled;
+  } catch {
+    // 设置损坏时 fail closed：不误暴露内置 subagent。
+    return false;
+  }
 }
 
 export function writeBuiltInSubagentsEnabled(

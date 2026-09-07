@@ -37,6 +37,10 @@ export const enLocale: LocalePlugin = {
     "settings.idleReapingInvalidTimeout":
       "Enter a whole number between 5 and 1,440 minutes.",
     "settings.minutes": "minutes",
+    "settings.subagents": "Built-in subagents",
+    "settings.subagentsDescription":
+      "Enable the built-in Agent tool so the model can delegate sub-tasks to sub-sessions.",
+    "settings.subagentsEnabled": "Enable built-in subagents",
     "settings.projectRequired": "Open a project to configure this section",
     "settings.security": "Security",
     "auth.setupTitle": "Set up Pi Web X",

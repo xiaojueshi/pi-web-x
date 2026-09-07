@@ -35,6 +35,10 @@ export const zhTWLocale: LocalePlugin = {
     "settings.idleReapingInvalidTimeout":
       "請輸入 5 到 1,440 之間的整數分鐘數。",
     "settings.minutes": "分鐘",
+    "settings.subagents": "內建 subagent",
+    "settings.subagentsDescription":
+      "啟用內建 Agent 工具，讓模型可以把子任務委派給子工作階段。",
+    "settings.subagentsEnabled": "啟用內建 subagent",
     "settings.projectRequired": "開啟專案後才能設定此項",
     "settings.security": "安全性",
     "auth.setupTitle": "初始化 Pi Web X",

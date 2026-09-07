@@ -90,3 +90,26 @@ test("disabled built-in subagents reject stale Agent calls before starting", asy
     /built-in sub-agents are disabled/,
   );
 });
+
+test("enabled built-in subagents pass the gate and proceed to parent checks", async () => {
+  const controller = createSubagentController({
+    getSession: () => null,
+    registerSession: () => {},
+    reopenSession: async () => null,
+    resolveSessionPath: async () => null,
+    invalidateSessionList: () => {},
+    isBuiltInSubagentsEnabled: () => true,
+  });
+
+  // 门禁已开（不再报 disabled），继续走到 parent 会话检查并明确报错。
+  await assert.rejects(
+    controller.extensionRuntime.start({
+      parentContext: { sessionManager: { getSessionId: () => "parent" } },
+      parentToolCallId: "call",
+      profile: "explore",
+      task: "Inspect",
+      description: "Inspect",
+    }),
+    /Parent session is no longer available/,
+  );
+});
