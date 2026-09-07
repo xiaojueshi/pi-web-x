@@ -1,23 +1,16 @@
-import { randomUUID } from "crypto";
-import { execFile } from "child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { basename, dirname, join } from "path";
-import { promisify } from "util";
-import { fileURLToPath, pathToFileURL } from "url";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { HttpResponse, requestSearchParams } from "@/src/server/http";
+import { execFileAsync, exportFromFile } from "@/src/export-html-entry";
 import { resolveSessionPath } from "@/lib/session-reader";
-
-const execFileAsync = promisify(execFile);
 
 export const runtime = "nodejs";
 
 type PiCodingAgentModule = {
   getPackageDir: () => string;
-};
-
-type ExportHtmlModule = {
-  exportFromFile: (inputPath: string, outputPath: string) => Promise<string>;
 };
 
 async function getPiPackageDir(): Promise<string | null> {
@@ -250,18 +243,8 @@ async function exportSession(
     return;
   }
 
-  const packageDir = await getPiPackageDir();
-  if (!packageDir) {
-    throw new Error(
-      "找不到 pi CLI（dist/cli.js）。HTML 导出依赖含 Node.js 运行时的安装环境；" +
-        "请在安装有 Node.js 的环境中使用，或改用源码/npm 方式安装 pi-web-x。",
-    );
-  }
-
-  const exporterUrl = pathToFileURL(
-    join(packageDir, "dist", "core", "export-html", "index.js"),
-  ).href;
-  const { exportFromFile } = (await import(exporterUrl)) as ExportHtmlModule;
+  // 无独立 pi CLI 时（Bun 编译二进制等形态）：直接调用编译期内嵌的
+  // exportFromFile（见 src/export-html-entry.ts）。
   await exportFromFile(filePath, outputPath);
 }
 
