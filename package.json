@@ -24,7 +24,7 @@
   "scripts": {
     "dev": "bun run scripts/build-css.ts && bun --watch src/cli.ts -- --no-open",
     "dev:lan": "bun run scripts/build-css.ts && bun --watch src/cli.ts -- -H 0.0.0.0 --no-open",
-    "build": "bun run scripts/build-css.ts && bun build --compile --target=bun-linux-x64 src/cli.ts --asset ./public --outfile dist/pi-web-x",
+    "build": "bun run scripts/build-css.ts && bun build --compile --target=bun-linux-x64 --minify src/cli.ts --asset ./public --outfile dist/pi-web-x",
     "build:all": "bun run scripts/build-all.ts",
     "start": "bun run scripts/build-css.ts && bun src/cli.ts",
     "start:lan": "bun run scripts/build-css.ts && bun src/cli.ts -H 0.0.0.0",
@@ -39,7 +39,6 @@
     "@earendil-works/pi-agent-core": "0.85.1",
     "@earendil-works/pi-ai": "0.85.1",
     "@earendil-works/pi-coding-agent": "0.85.1",
-    "@earendil-works/pi-server": "0.85.1",
     "@earendil-works/pi-tui": "0.85.1",
     "ansi_up": "^6.0.6",
     "js-yaml": "^5.2.3",

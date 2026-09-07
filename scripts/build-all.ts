@@ -30,7 +30,13 @@ async function buildAll(): Promise<void> {
       );
       return Bun.build({
         entrypoints: ["src/cli.ts"],
-        compile: { target, outfile: output, assets: ["./public"] },
+        // 压缩 JS 部分：实测 25.0MB → 14.4MB，单二进制约省 10MB。
+        minify: true,
+        compile: {
+          target,
+          outfile: output,
+          assets: ["./public"],
+        },
       });
     }),
   );

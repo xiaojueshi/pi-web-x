@@ -4,7 +4,7 @@
 export const ASSET_MANIFEST = {
   version: "0.10.1",
   tarballSha256:
-    "bf35a51c3c232f2841f3c3580273e290ea3aff84a06868a4f3ccef68118ab693",
+    "65c4b3ab205e2e590b6a4f4410e701afb5b0e5b1e052df6dca32d5b5973f3ee5",
   files: {
     "theme/dark.json":
       "103a5aecb74a2dab5cc903c9741845ee6158658ce2ff6e5445948784116eaef8",
