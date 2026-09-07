@@ -29,7 +29,6 @@ import type {
   PluginsResponse,
 } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
 
 type PluginAction = "install" | "remove" | "update" | "disable" | "enable";
 

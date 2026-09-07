@@ -5,7 +5,6 @@ import {
 } from "@/lib/rpc-manager";
 import { getSessionListVersion } from "@/lib/session-reader";
 
-export const dynamic = "force-dynamic";
 
 // GET /api/agent/running - Lightweight snapshot for visible-tab polling.
 export async function GET() {

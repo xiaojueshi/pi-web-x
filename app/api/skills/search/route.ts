@@ -2,7 +2,6 @@ import { HttpResponse } from "@/src/server/http";
 import { runNpx } from "@/lib/npx";
 import type { SkillSearchResult } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
 
 const ANSI_RE = /\x1B\[[0-9;]*m/g;
 const DEFAULT_LIMIT = 50;

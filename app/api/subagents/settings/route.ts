@@ -8,7 +8,6 @@ import {
   writeBuiltInSubagentsEnabled,
 } from "@/lib/subagent-settings";
 
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

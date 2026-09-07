@@ -5,7 +5,6 @@ import {
   parseDiscoveredModels,
 } from "@/lib/model-discovery";
 
-export const dynamic = "force-dynamic";
 
 const DISCOVERY_TIMEOUT_MS = 20_000;
 

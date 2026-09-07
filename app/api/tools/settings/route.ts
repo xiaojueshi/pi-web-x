@@ -13,7 +13,6 @@ import {
 } from "@/lib/idle-session-settings";
 import { refreshRpcSessionIdleReapingTimers } from "@/lib/rpc-manager";
 
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

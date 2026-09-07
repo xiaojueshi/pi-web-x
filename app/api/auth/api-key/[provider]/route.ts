@@ -6,7 +6,6 @@ import {
   storeProviderCredential,
 } from "@/lib/provider-credential-store";
 
-export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ provider: string }> };
 

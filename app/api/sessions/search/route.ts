@@ -2,7 +2,6 @@ import { HttpResponse } from "@/src/server/http";
 import { listAllSessions } from "@/lib/session-reader";
 import { searchSessionContents } from "@/lib/session-search";
 
-export const dynamic = "force-dynamic";
 
 // GET /api/sessions/search?q=... - 会话 JSONL 字面全文搜索。
 export async function GET(request: Request) {

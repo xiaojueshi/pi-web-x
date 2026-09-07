@@ -13,7 +13,6 @@ import {
   hasBusyRpcSessionForCwd,
 } from "@/lib/rpc-manager";
 
-export const dynamic = "force-dynamic";
 
 async function validateCwd(
   value: unknown,

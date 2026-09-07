@@ -10,7 +10,6 @@ import {
   isExistingFilePathAllowed,
 } from "@/lib/file-access";
 
-export const dynamic = "force-dynamic";
 
 // GET /api/skills?cwd=<path>
 // Uses DefaultResourceLoader (same logic as AgentSession startup) so settings.json

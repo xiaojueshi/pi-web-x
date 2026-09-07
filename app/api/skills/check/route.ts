@@ -7,7 +7,6 @@ import {
   isExistingFilePathAllowed,
 } from "@/lib/file-access";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {

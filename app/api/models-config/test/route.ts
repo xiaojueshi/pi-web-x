@@ -12,7 +12,6 @@ import {
   isApiRequestAllowed,
 } from "@/lib/request-security";
 
-export const dynamic = "force-dynamic";
 
 const TEST_TIMEOUT_MS = 20_000;
 

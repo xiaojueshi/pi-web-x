@@ -22,7 +22,6 @@ import {
 } from "@/lib/file-access";
 import { projectTrustReloadOptions } from "@/lib/project-trust";
 
-export const dynamic = "force-dynamic";
 
 const modelNameCollator = new Intl.Collator(undefined, {
   numeric: true,

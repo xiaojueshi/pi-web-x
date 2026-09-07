@@ -25,8 +25,6 @@ function functionBlock(name, nextName) {
 }
 
 for (const [name, nextName] of [
-  ["ImageViewer", "formatDuration"],
-  ["AudioViewer", "DocumentViewer"],
   ["DocumentViewer", "FileViewer"],
   ["TextFileViewer", null],
 ]) {
@@ -45,6 +43,37 @@ for (const [name, nextName] of [
     assert.match(block, /\}, \[[^\]]*watchEnabled[^\]]*\]\);/);
   });
 }
+
+test("shared media hook pauses its watcher and synchronizes after connecting", () => {
+  // Image/Audio/Video 三个同构 Viewer 的监听逻辑集中在公共 hook 中。
+  const block = functionBlock("useWatchedFileMeta", "ImageViewer");
+  const guard = block.indexOf("if (!watchEnabled) return;");
+  const eventSource = block.indexOf("new EventSource", guard);
+  const synchronize = block.indexOf("synchronize();", eventSource);
+
+  assert.ok(guard >= 0, "watchEnabled guard missing");
+  assert.ok(eventSource > guard, "EventSource created before watchEnabled guard");
+  assert.ok(synchronize > eventSource, "connected synchronization missing");
+  assert.match(block, /\}, \[[^\]]*watchEnabled[^\]]*\]\);/);
+  // 三个 Viewer 都必须经由公共 hook 获取监听状态。
+  for (const viewer of ["ImageViewer", "AudioViewer", "VideoViewer"]) {
+    const viewerBlock = functionBlock(
+      viewer,
+      viewer === "ImageViewer"
+        ? "formatDuration"
+        : viewer === "AudioViewer"
+          ? "DocumentViewer"
+          : "TextFileViewer",
+    );
+    assert.match(
+      viewerBlock,
+      new RegExp(
+        `useWatchedFileMeta\\(\\{[\\s\\S]*?watchEnabled,`
+      ),
+      `${viewer} 未使用公共 watch hook`,
+    );
+  }
+});
 
 test("FileViewer forwards watcher state to every viewer implementation", () => {
   const block = functionBlock("FileViewer", "TextFileViewer");

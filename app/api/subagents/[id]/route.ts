@@ -5,7 +5,6 @@ import {
   steerSubagent,
 } from "@/lib/rpc-manager";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,

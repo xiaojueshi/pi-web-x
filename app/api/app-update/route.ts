@@ -7,7 +7,6 @@ import {
 } from "@/lib/app-update";
 import { APP_VERSION } from "@/src/version";
 
-export const dynamic = "force-dynamic";
 
 const CURRENT_VERSION = APP_VERSION;
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;

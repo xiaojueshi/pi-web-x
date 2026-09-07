@@ -332,6 +332,126 @@ type DiffLine = {
   newLineNo: number | null;
 };
 
+interface WatchedFileMetaOptions {
+  filePath: string;
+  sourceSessionId?: string | null;
+  watchEnabled: boolean;
+  /** 重新同步/文件变化时调用：重置 viewer 私有状态（时长/原始尺寸等）。 */
+  onInvalidate?: () => void;
+}
+
+interface WatchedFileMetaState {
+  watching: boolean;
+  bust: number;
+  size: number | null;
+  error: string | null;
+  /** viewer 自身加载失败时写入错误（如媒体资源加载失败）。 */
+  setError: (error: string | null) => void;
+}
+
+/**
+ * Image/Audio/Video Viewer 共享的文件监听与元信息同步逻辑。
+ *
+ * 行为：连接 /api/files watch SSE；connected 后拉取 meta 更新 size 并
+ * 触发 bust 刷新资源 URL；change 事件同步 size 并失效资源；断开时标记
+ * 静态。onInvalidate 用于各 viewer 重置自己的派生状态（如 duration）。
+ *
+ * @param options 监听目标与失效回调。
+ * @returns 共享的监听状态与 meta 数据。
+ */
+function useWatchedFileMeta({
+  filePath,
+  sourceSessionId,
+  watchEnabled,
+  onInvalidate,
+}: WatchedFileMetaOptions): WatchedFileMetaState {
+  const [watching, setWatching] = useState(false);
+  const [bust, setBust] = useState(0);
+  const [size, setSize] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const esRef = useRef<EventSource | null>(null);
+  const syncRequestRef = useRef(0);
+  const onInvalidateRef = useRef(onInvalidate);
+  onInvalidateRef.current = onInvalidate;
+
+  useEffect(() => {
+    setBust(0);
+    setSize(null);
+    setError(null);
+    setWatching(false);
+    onInvalidateRef.current?.();
+  }, [filePath, sourceSessionId]);
+
+  useEffect(() => {
+    setWatching(false);
+
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
+    }
+
+    if (!watchEnabled) return;
+
+    let active = true;
+    const invalidate = () => {
+      setError(null);
+      setBust((value) => value + 1);
+      onInvalidateRef.current?.();
+    };
+    const synchronize = () => {
+      const requestId = ++syncRequestRef.current;
+      fetch(getFileApiUrl(filePath, "meta", sourceSessionId))
+        .then((response) => response.json())
+        .then((next: { size?: number; error?: string }) => {
+          if (!active || requestId !== syncRequestRef.current) return;
+          if (next.error) {
+            setError(next.error);
+            return;
+          }
+          if (typeof next.size === "number") setSize(next.size);
+          invalidate();
+        })
+        .catch((nextError) => {
+          if (active && requestId === syncRequestRef.current)
+            setError(String(nextError));
+        });
+    };
+
+    const es = new EventSource(
+      getFileApiUrl(filePath, "watch", sourceSessionId),
+    );
+    esRef.current = es;
+
+    es.addEventListener("connected", () => {
+      setWatching(true);
+      synchronize();
+    });
+    es.addEventListener("change", (e) => {
+      syncRequestRef.current += 1;
+      try {
+        const d = JSON.parse((e as MessageEvent).data) as { size?: number };
+        if (typeof d.size === "number") setSize(d.size);
+      } catch {
+        /* ignore */
+      }
+      invalidate();
+    });
+    const markDisconnected = () => {
+      setWatching(false);
+    };
+    es.addEventListener("error", markDisconnected);
+    es.onerror = markDisconnected;
+
+    return () => {
+      active = false;
+      es.close();
+      if (esRef.current === es) esRef.current = null;
+    };
+  }, [filePath, sourceSessionId, watchEnabled]);
+
+  return { watching, bust, size, error, setError };
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -538,92 +658,18 @@ function ImageViewer({
   watchEnabled = true,
 }: Props) {
   const { t } = useI18n();
-  const [watching, setWatching] = useState(false);
-  const [bust, setBust] = useState(0);
-  const [size, setSize] = useState<number | null>(null);
   const [naturalSize, setNaturalSize] = useState<{
     w: number;
     h: number;
   } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const syncRequestRef = useRef(0);
+  const { watching, bust, size, error, setError } = useWatchedFileMeta({
+    filePath,
+    sourceSessionId,
+    watchEnabled,
+    onInvalidate: () => setNaturalSize(null),
+  });
 
   const ext = getFileName(filePath).toLowerCase().split(".").pop() ?? "";
-
-  useEffect(() => {
-    setBust(0);
-    setSize(null);
-    setNaturalSize(null);
-    setError(null);
-    setWatching(false);
-  }, [filePath, sourceSessionId]);
-
-  useEffect(() => {
-    setWatching(false);
-
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
-
-    if (!watchEnabled) return;
-
-    let active = true;
-    const synchronize = () => {
-      const requestId = ++syncRequestRef.current;
-      fetch(getFileApiUrl(filePath, "meta", sourceSessionId))
-        .then((response) => response.json())
-        .then((next: { size?: number; error?: string }) => {
-          if (!active || requestId !== syncRequestRef.current) return;
-          if (next.error) {
-            setError(next.error);
-            return;
-          }
-          if (typeof next.size === "number") setSize(next.size);
-          setNaturalSize(null);
-          setError(null);
-          setBust((value) => value + 1);
-        })
-        .catch((nextError) => {
-          if (active && requestId === syncRequestRef.current)
-            setError(String(nextError));
-        });
-    };
-
-    const es = new EventSource(
-      getFileApiUrl(filePath, "watch", sourceSessionId),
-    );
-    esRef.current = es;
-
-    es.addEventListener("connected", () => {
-      setWatching(true);
-      synchronize();
-    });
-    es.addEventListener("change", (e) => {
-      syncRequestRef.current += 1;
-      try {
-        const d = JSON.parse((e as MessageEvent).data) as { size?: number };
-        if (typeof d.size === "number") setSize(d.size);
-      } catch {
-        /* ignore */
-      }
-      setNaturalSize(null);
-      setError(null);
-      setBust((b) => b + 1);
-    });
-    const markDisconnected = () => {
-      setWatching(false);
-    };
-    es.addEventListener("error", markDisconnected);
-    es.onerror = markDisconnected;
-
-    return () => {
-      active = false;
-      es.close();
-      if (esRef.current === es) esRef.current = null;
-    };
-  }, [filePath, sourceSessionId, watchEnabled]);
 
   const src = getFileApiUrl(
     filePath,
@@ -743,89 +789,15 @@ function AudioViewer({
   watchEnabled = true,
 }: Props) {
   const { t } = useI18n();
-  const [watching, setWatching] = useState(false);
-  const [bust, setBust] = useState(0);
-  const [size, setSize] = useState<number | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const syncRequestRef = useRef(0);
+  const { watching, bust, size, error, setError } = useWatchedFileMeta({
+    filePath,
+    sourceSessionId,
+    watchEnabled,
+    onInvalidate: () => setDuration(null),
+  });
 
   const ext = getFileName(filePath).toLowerCase().split(".").pop() ?? "";
-
-  useEffect(() => {
-    setBust(0);
-    setSize(null);
-    setDuration(null);
-    setError(null);
-    setWatching(false);
-  }, [filePath, sourceSessionId]);
-
-  useEffect(() => {
-    setWatching(false);
-
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
-
-    if (!watchEnabled) return;
-
-    let active = true;
-    const synchronize = () => {
-      const requestId = ++syncRequestRef.current;
-      fetch(getFileApiUrl(filePath, "meta", sourceSessionId))
-        .then((response) => response.json())
-        .then((next: { size?: number; error?: string }) => {
-          if (!active || requestId !== syncRequestRef.current) return;
-          if (next.error) {
-            setError(next.error);
-            return;
-          }
-          if (typeof next.size === "number") setSize(next.size);
-          setDuration(null);
-          setError(null);
-          setBust((value) => value + 1);
-        })
-        .catch((nextError) => {
-          if (active && requestId === syncRequestRef.current)
-            setError(String(nextError));
-        });
-    };
-
-    const es = new EventSource(
-      getFileApiUrl(filePath, "watch", sourceSessionId),
-    );
-    esRef.current = es;
-
-    es.addEventListener("connected", () => {
-      setWatching(true);
-      synchronize();
-    });
-    es.addEventListener("change", (e) => {
-      syncRequestRef.current += 1;
-      try {
-        const d = JSON.parse((e as MessageEvent).data) as { size?: number };
-        if (typeof d.size === "number") setSize(d.size);
-      } catch {
-        /* ignore */
-      }
-      setDuration(null);
-      setError(null);
-      setBust((b) => b + 1);
-    });
-    const markDisconnected = () => {
-      setWatching(false);
-    };
-    es.addEventListener("error", markDisconnected);
-    es.onerror = markDisconnected;
-
-    return () => {
-      active = false;
-      es.close();
-      if (esRef.current === es) esRef.current = null;
-    };
-  }, [filePath, sourceSessionId, watchEnabled]);
 
   const src = getFileApiUrl(
     filePath,
@@ -934,89 +906,15 @@ function VideoViewer({
   watchEnabled = true,
 }: Props) {
   const { t } = useI18n();
-  const [watching, setWatching] = useState(false);
-  const [bust, setBust] = useState(0);
-  const [size, setSize] = useState<number | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const syncRequestRef = useRef(0);
+  const { watching, bust, size, error, setError } = useWatchedFileMeta({
+    filePath,
+    sourceSessionId,
+    watchEnabled,
+    onInvalidate: () => setDuration(null),
+  });
 
   const ext = getFileName(filePath).toLowerCase().split(".").pop() ?? "";
-
-  useEffect(() => {
-    setBust(0);
-    setSize(null);
-    setDuration(null);
-    setError(null);
-    setWatching(false);
-  }, [filePath, sourceSessionId]);
-
-  useEffect(() => {
-    setWatching(false);
-
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
-
-    if (!watchEnabled) return;
-
-    let active = true;
-    const synchronize = () => {
-      const requestId = ++syncRequestRef.current;
-      fetch(getFileApiUrl(filePath, "meta", sourceSessionId))
-        .then((response) => response.json())
-        .then((next: { size?: number; error?: string }) => {
-          if (!active || requestId !== syncRequestRef.current) return;
-          if (next.error) {
-            setError(next.error);
-            return;
-          }
-          if (typeof next.size === "number") setSize(next.size);
-          setDuration(null);
-          setError(null);
-          setBust((value) => value + 1);
-        })
-        .catch((nextError) => {
-          if (active && requestId === syncRequestRef.current)
-            setError(String(nextError));
-        });
-    };
-
-    const es = new EventSource(
-      getFileApiUrl(filePath, "watch", sourceSessionId),
-    );
-    esRef.current = es;
-
-    es.addEventListener("connected", () => {
-      setWatching(true);
-      synchronize();
-    });
-    es.addEventListener("change", (e) => {
-      syncRequestRef.current += 1;
-      try {
-        const d = JSON.parse((e as MessageEvent).data) as { size?: number };
-        if (typeof d.size === "number") setSize(d.size);
-      } catch {
-        /* ignore */
-      }
-      setDuration(null);
-      setError(null);
-      setBust((b) => b + 1);
-    });
-    const markDisconnected = () => {
-      setWatching(false);
-    };
-    es.addEventListener("error", markDisconnected);
-    es.onerror = markDisconnected;
-
-    return () => {
-      active = false;
-      es.close();
-      if (esRef.current === es) esRef.current = null;
-    };
-  }, [filePath, sourceSessionId, watchEnabled]);
 
   const src = getFileApiUrl(
     filePath,

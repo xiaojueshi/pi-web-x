@@ -12,7 +12,6 @@ import {
 import { checkPluginUpdates } from "@/lib/plugin-updates";
 import type { PluginScope } from "@/lib/api-types";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   if (!isApiRequestAllowed(req)) {

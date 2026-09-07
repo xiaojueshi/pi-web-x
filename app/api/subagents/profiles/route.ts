@@ -12,7 +12,6 @@ import {
   type SubagentWritableScope,
 } from "@/lib/subagents";
 
-export const dynamic = "force-dynamic";
 
 async function validateCwd(cwd: unknown): Promise<string> {
   if (typeof cwd !== "string" || !cwd || !existsSync(cwd))
