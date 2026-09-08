@@ -133,6 +133,21 @@ test("does not expose disk-backed actions for transient sessions", () => {
   assert.match(sessionItemSource, /\{hovered && !session\.transient && \(/);
 });
 
+test("keeps the selected session row visible after switching or refreshing", () => {
+  assert.match(
+    source,
+    /const selectedSessionRowRef = useRef<HTMLDivElement>\(null\)/,
+  );
+  assert.match(
+    source,
+    /selectedSessionRowRef\.current\?\.scrollIntoView\(\{\s*block: "nearest",\s*inline: "nearest",\s*\}\)/,
+  );
+  assert.match(
+    source,
+    /sessionRowRef=\{\s*isFamilySelected \? selectedSessionRowRef : undefined\s*\}/,
+  );
+});
+
 test("hides subagent rows and aggregates their state into the main session row", () => {
   assert.match(
     source,

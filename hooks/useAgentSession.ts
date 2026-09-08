@@ -117,7 +117,7 @@ function normalizeQueuedMessages(
 
 type ExtensionUiDialogRequest = Extract<
   ExtensionUiRequest,
-  { method: "select" | "confirm" | "input" | "editor" }
+  { method: "select" | "confirm" | "input" | "editor" | "ask_user" }
 >;
 type ExtensionUiCustomRequest = Extract<
   ExtensionUiRequest,
@@ -1020,6 +1020,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     async (
       request: ExtensionUiDialogRequest,
       response:
+        | { answers: Array<string | string[]>; supplement?: string }
         | { value: string | string[] }
         | { confirmed: boolean }
         | { cancelled: true },
@@ -1084,7 +1085,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         case "select":
         case "confirm":
         case "input":
-        case "editor": {
+        case "editor":
+        case "ask_user": {
           // SSE 重连时服务端会把未答复的 extension_ui_request 重放给新监听器
           // （rpc-manager onEvent 遍历 pendingUiRequests）。同 id 的重复投递
           // 不能替换当前 dialog：对象引用变化会触发 ExtensionPromptCard 的

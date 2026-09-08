@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import type { ExtensionUiRequest, SelectOptionLike } from "@/lib/types";
+import type {
+  AskUserAnswer,
+  ExtensionUiRequest,
+  SelectOptionLike,
+} from "@/lib/types";
 
 type ExtensionDialogRequest = Extract<
   ExtensionUiRequest,
-  { method: "select" | "confirm" | "input" | "editor" }
+  { method: "select" | "confirm" | "input" | "editor" | "ask_user" }
 >;
 
 /** 提交给父组件的响应：多选时 value 为数组。 */
 export type ExtensionDialogResponse =
+  | { answers: AskUserAnswer[]; supplement?: string }
   | { value: string | string[] }
   | { confirmed: boolean }
   | { cancelled: true };
@@ -63,20 +68,324 @@ const radioMark = (checked: boolean, multi: boolean) => (
   </span>
 );
 
+/** 判断一个批量提问答案是否已经完成。 */
+function hasBatchAnswer(answer: AskUserAnswer, freeform: string): boolean {
+  return (
+    (Array.isArray(answer) ? answer.length > 0 : answer.trim().length > 0) ||
+    freeform.trim().length > 0
+  );
+}
+
+/**
+ * 批量 ask_user 的 Tab 问答卡片。
+ *
+ * 每道题独占一个 Tab；单选后自动跳至下一题，多选与文本题由用户显式点击
+ * Next。最后的补充 Tab 始终可跳过，直接提交即可。
+ */
+function BatchAskUserPromptCard({
+  request,
+  onRespond,
+}: {
+  request: Extract<ExtensionUiRequest, { method: "ask_user" }>;
+  onRespond: (
+    request: ExtensionDialogRequest,
+    response: ExtensionDialogResponse,
+  ) => void;
+}) {
+  const { t } = useI18n();
+  const isMobile = useIsMobile();
+  const { questions } = request;
+  const [activeTab, setActiveTab] = useState(0);
+  const [answers, setAnswers] = useState<AskUserAnswer[]>(() =>
+    questions.map((question) => (question.allowMultiple ? [] : "")),
+  );
+  const [freeforms, setFreeforms] = useState<string[]>(() =>
+    questions.map(() => ""),
+  );
+  const [supplement, setSupplement] = useState("");
+  const isSupplementTab = activeTab === questions.length;
+  const currentQuestion = questions[activeTab];
+  const currentAnswer = answers[activeTab] ?? "";
+  const currentFreeform = freeforms[activeTab] ?? "";
+  const currentOptions = currentQuestion
+    ? toOptions(currentQuestion.options)
+    : [];
+  const isMulti = currentQuestion?.allowMultiple === true;
+  const canAdvance = currentQuestion
+    ? hasBatchAnswer(currentAnswer, currentFreeform)
+    : true;
+  const allQuestionsAnswered = questions.every((question, index) =>
+    hasBatchAnswer(
+      answers[index] ?? (question.allowMultiple ? [] : ""),
+      freeforms[index] ?? "",
+    ),
+  );
+
+  useEffect(() => {
+    setActiveTab(0);
+    setAnswers(questions.map((question) => (question.allowMultiple ? [] : "")));
+    setFreeforms(questions.map(() => ""));
+    setSupplement("");
+  }, [request, questions]);
+
+  const setAnswer = (index: number, answer: AskUserAnswer) => {
+    setAnswers((previous) =>
+      previous.map((item, itemIndex) => (itemIndex === index ? answer : item)),
+    );
+  };
+  const setFreeform = (index: number, value: string) => {
+    setFreeforms((previous) =>
+      previous.map((item, itemIndex) => (itemIndex === index ? value : item)),
+    );
+  };
+  const advance = () => {
+    if (!canAdvance) return;
+    setActiveTab((current) => Math.min(current + 1, questions.length));
+  };
+  const selectOption = (label: string) => {
+    if (!currentQuestion) return;
+    if (isMulti) {
+      const selected = Array.isArray(currentAnswer) ? currentAnswer : [];
+      setAnswer(
+        activeTab,
+        selected.includes(label)
+          ? selected.filter((item) => item !== label)
+          : [...selected, label],
+      );
+      return;
+    }
+    setAnswer(activeTab, label);
+    setFreeform(activeTab, "");
+    // 单选即代表该题完成，自动进入下一个 Tab，减少逐题确认操作。
+    requestAnimationFrame(() =>
+      setActiveTab((current) => Math.min(current + 1, questions.length)),
+    );
+  };
+  const submit = () => {
+    if (!allQuestionsAnswered) return;
+    const resolvedAnswers = questions.map((question, index) => {
+      const freeform = freeforms[index]?.trim();
+      const answer = answers[index];
+      if (!freeform) return answer;
+      if (question.allowMultiple) {
+        const selected = Array.isArray(answer) ? answer : [];
+        return [...selected, freeform];
+      }
+      return freeform;
+    });
+    onRespond(request, {
+      answers: resolvedAnswers,
+      ...(supplement.trim() ? { supplement: supplement.trim() } : {}),
+    });
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="false"
+      style={{
+        width: "100%",
+        maxWidth: 560,
+        margin: "10px 0 4px",
+        borderRadius: 12,
+        border: "1px solid var(--border)",
+        background: "var(--bg)",
+        boxShadow: "0 6px 24px rgba(0,0,0,0.10)",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ color: "var(--accent)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          {t("chat.promptCardLabel")}
+        </div>
+        <div style={{ marginTop: 4, color: "var(--text)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          {request.title}
+        </div>
+      </div>
+
+      <div
+        role="tablist"
+        aria-label={t("chat.promptCardQuestions")}
+        style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 16px 0" }}
+      >
+        {questions.map((question, index) => (
+          <button
+            key={`${index}:${question.question}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === index}
+            onClick={() => setActiveTab(index)}
+            style={{
+              minWidth: 30,
+              height: 28,
+              padding: "0 9px",
+              borderRadius: 6,
+              border: `1px solid ${activeTab === index ? "var(--accent)" : "var(--border)"}`,
+              background: activeTab === index ? "var(--bg-selected)" : "var(--bg-panel)",
+              color: activeTab === index ? "var(--accent)" : "var(--text-muted)",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {question.tab?.trim() ||
+              t("chat.promptCardQuestionTab", { number: index + 1 })}
+          </button>
+        ))}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isSupplementTab}
+          onClick={() => setActiveTab(questions.length)}
+          style={{
+            height: 28,
+            padding: "0 9px",
+            borderRadius: 6,
+            border: `1px solid ${isSupplementTab ? "var(--accent)" : "var(--border)"}`,
+            background: isSupplementTab ? "var(--bg-selected)" : "var(--bg-panel)",
+            color: isSupplementTab ? "var(--accent)" : "var(--text-muted)",
+            cursor: "pointer",
+            fontSize: 12,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {t("chat.promptCardAdditionalTab")}
+        </button>
+      </div>
+
+      <div style={{ padding: "14px 16px" }}>
+        {currentQuestion && (
+          <div>
+            <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+              {currentQuestion.question}
+            </div>
+            {currentQuestion.context && (
+              <div style={{ marginTop: 4, color: "var(--text-muted)", fontSize: 12, lineHeight: 1.6 }}>
+                {currentQuestion.context}
+              </div>
+            )}
+            {currentOptions.length > 0 ? (
+              <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
+                {currentOptions.map((option) => {
+                  const checked = isMulti
+                    ? Array.isArray(currentAnswer) && currentAnswer.includes(option.label)
+                    : currentAnswer === option.label;
+                  return (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => selectOption(option.label)}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        width: "100%",
+                        padding: isMobile ? "11px 12px" : "9px 11px",
+                        borderRadius: 8,
+                        border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                        background: checked ? "color-mix(in srgb, var(--accent) 8%, var(--bg-panel))" : "var(--bg-panel)",
+                        color: "var(--text)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        fontSize: 13,
+                      }}
+                    >
+                      {radioMark(checked, isMulti)}
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: "block", lineHeight: 1.45 }}>{option.label}</span>
+                        {option.description && <span style={{ display: "block", marginTop: 2, color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5 }}>{option.description}</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+                {currentQuestion.allowFreeform !== false && (
+                  <input
+                    value={currentFreeform}
+                    onChange={(event) => setFreeform(activeTab, event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        advance();
+                      }
+                    }}
+                    placeholder={t("chat.promptCardOtherPlaceholder")}
+                    style={{ width: "100%", padding: isMobile ? "10px 12px" : "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text)", outline: "none", fontSize: 13 }}
+                  />
+                )}
+              </div>
+            ) : (
+              <input
+                autoFocus
+                value={typeof currentAnswer === "string" ? currentAnswer : ""}
+                onChange={(event) => setAnswer(activeTab, event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    advance();
+                  }
+                }}
+                style={{ width: "100%", marginTop: 12, padding: isMobile ? "11px 12px" : "9px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text)", outline: "none", fontSize: 13 }}
+              />
+            )}
+          </div>
+        )}
+        {isSupplementTab && (
+          <div>
+            <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+              {t("chat.promptCardAdditionalTitle")}
+            </div>
+            <textarea
+              autoFocus
+              value={supplement}
+              onChange={(event) => setSupplement(event.target.value)}
+              placeholder={t("chat.promptCardAdditionalPlaceholder")}
+              style={{ width: "100%", minHeight: 120, marginTop: 12, padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text)", outline: "none", resize: "vertical", fontSize: 13, lineHeight: 1.55, fontFamily: "var(--font-mono)" }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "10px 16px", borderTop: "1px solid var(--border)", background: "var(--bg-panel)" }}>
+        <button type="button" onClick={() => onRespond(request, { cancelled: true })} style={{ padding: isMobile ? "9px 14px" : "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
+          {t("chat.cancel")}
+        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {!isSupplementTab && activeTab > 0 && (
+            <button type="button" onClick={() => setActiveTab((current) => current - 1)} style={{ padding: isMobile ? "9px 14px" : "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
+              {t("chat.promptCardBack")}
+            </button>
+          )}
+          {isSupplementTab ? (
+            <button type="button" onClick={submit} disabled={!allQuestionsAnswered} style={{ padding: isMobile ? "9px 16px" : "6px 14px", borderRadius: 7, border: "none", background: "var(--accent)", color: "#fff", cursor: allQuestionsAnswered ? "pointer" : "not-allowed", opacity: allQuestionsAnswered ? 1 : 0.45, fontSize: 13, fontWeight: 600 }}>
+              {t("chat.submit")}
+            </button>
+          ) : (
+            <button type="button" onClick={advance} disabled={!canAdvance} style={{ padding: isMobile ? "9px 16px" : "6px 14px", borderRadius: 7, border: "none", background: "var(--accent)", color: "#fff", cursor: canAdvance ? "pointer" : "not-allowed", opacity: canAdvance ? 1 : 0.45, fontSize: 13, fontWeight: 600 }}>
+              {t("chat.promptCardNext")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Codex 风格的内联提问卡片，渲染在消息流底部（不遮挡历史消息）。
  *
- * 支持四种形态：
+ * 支持五种形态：
  * - select：选项卡片（单选圆点 / 多选方块）+ 搜索过滤（选项超过 6 个时
  *   显示）+ "其他"自由输入 + 提交/取消按钮；
  * - confirm：确认卡片（是/否按钮）；
  * - input：单行输入（Enter 提交）；
- * - editor：多行输入（Ctrl/Cmd+Enter 提交）。
+ * - editor：多行输入（Ctrl/Cmd+Enter 提交）；
+ * - ask_user：批量问题 Tab；单选后自动进入下一题，末尾补充 Tab 可为空。
  *
  * 交互约定：单选与多选都需要点"提交"或按 Enter 快捷键；"其他"是固定
  * 入口，点击展开为输入框；多选时"其他"内容追加到结果里。
  *
- * @param request 扩展 UI 请求（select/confirm/input/editor）
+ * @param request 扩展 UI 请求（select/confirm/input/editor/ask_user）
  * @param onRespond 提交/取消回调
  */
 export function ExtensionPromptCard({
@@ -247,6 +556,10 @@ export function ExtensionPromptCard({
   };
 
   const isFreeformActive = allowFreeform && activeIndex === filtered.length;
+
+  if (request.method === "ask_user") {
+    return <BatchAskUserPromptCard request={request} onRespond={onRespond} />;
+  }
 
   return (
     <div

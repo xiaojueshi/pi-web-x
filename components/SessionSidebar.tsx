@@ -9,6 +9,7 @@ import {
   useRef,
   type CSSProperties,
   type ReactNode,
+  type Ref,
 } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { APP_VERSION, PI_VERSION } from "@/src/version";
@@ -507,6 +508,7 @@ export function SessionSidebar({
     null,
   );
   const fileExplorerRef = useRef<FileExplorerHandle>(null);
+  const selectedSessionRowRef = useRef<HTMLDivElement>(null);
 
   const loadSessions = useCallback(
     async (showLoading = false, force = false) => {
@@ -1196,6 +1198,19 @@ export function SessionSidebar({
       : null);
 
   const sessionFamilies = listSessionFamilies(filteredSessions);
+
+  // 切换或新建会话后，确保当前会话行进入侧边栏可视区域；后台刷新列表
+  // 时也会重试，避免异步加载导致首次定位早于目标行挂载。
+  useLayoutEffect(() => {
+    if (!selectedSessionId || sessionSearchOpen) return;
+    const frame = requestAnimationFrame(() => {
+      selectedSessionRowRef.current?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [allSessions, selectedProject?.key, selectedSessionId, sessionSearchOpen]);
 
   return (
     <div
@@ -2311,6 +2326,9 @@ export function SessionSidebar({
           )}
           {sessionFamilies.map((family) => {
             const familySessions = [family.root, ...family.subagents];
+            const isFamilySelected = familySessions.some(
+              (session) => session.id === selectedSessionId,
+            );
             const displaySession =
               family.latestModified === family.root.modified
                 ? family.root
@@ -2319,9 +2337,10 @@ export function SessionSidebar({
               <SessionItem
                 key={family.root.id}
                 session={displaySession}
-                isSelected={familySessions.some(
-                  (session) => session.id === selectedSessionId,
-                )}
+                isSelected={isFamilySelected}
+                sessionRowRef={
+                  isFamilySelected ? selectedSessionRowRef : undefined
+                }
                 isRunning={familySessions.some((session) =>
                   runningSessionIds.has(session.id),
                 )}
@@ -2738,6 +2757,7 @@ function SessionItem({
   isSelected,
   isRunning,
   isUnread,
+  sessionRowRef,
   onClick,
   onRenamed,
   onDeleted,
@@ -2750,6 +2770,7 @@ function SessionItem({
   isSelected: boolean;
   isRunning?: boolean;
   isUnread?: boolean;
+  sessionRowRef?: Ref<HTMLDivElement>;
   onClick: () => void;
   onRenamed?: () => void;
   onDeleted?: (id: string) => void;
@@ -2881,6 +2902,7 @@ function SessionItem({
 
   return (
     <div
+      ref={sessionRowRef}
       onClick={confirmDelete || renaming ? undefined : onClick}
       onContextMenu={confirmDelete || renaming ? undefined : handleContextMenu}
       onMouseEnter={() => setHovered(true)}

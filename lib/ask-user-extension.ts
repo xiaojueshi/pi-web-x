@@ -7,6 +7,7 @@ import type {
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { ExtensionUiContextLike } from "./pi-types";
+import type { AskUserAnswer, AskUserQuestion } from "./types";
 
 /** 内置提问工具名（与第三方同名 ask_user 扩展冲突时以内置为准）。 */
 export const ASK_USER_TOOL_NAME = "ask_user";
@@ -18,10 +19,27 @@ export const HOST_ASK_EXTENSION_PATH = `<inline:${HOST_ASK_EXTENSION_NAME}>`;
 /** 用户关闭提问时返回给模型的提示文本。 */
 const DISMISSED_MESSAGE = "User dismissed the question (no answer provided)";
 
-const askUserParameters = Type.Object({
+/**
+ * 注入每轮 system prompt 的提问策略。
+ *
+ * 工具描述本身不足以让部分模型主动澄清需求；将这条策略置于系统提示词末尾，
+ * 让模型在需要用户决定时优先调用 ask_user，而不是擅自假设。
+ */
+const ASK_USER_SYSTEM_GUIDANCE = `## User clarification
+- Proactively call the ask_user tool before proceeding whenever information from the user is genuinely needed to resolve an ambiguity, select between materially different options, or avoid an irreversible or high-impact assumption.
+- Do not silently choose or guess in those cases. Ask one focused question and use the answer before continuing.
+- When several independent clarifications are needed, call ask_user once with questions so the user can answer them in one tabbed flow.
+- Do not call ask_user for information you can infer safely, for routine status updates, or merely to request confirmation.`;
+
+const askUserQuestionParameters = Type.Object({
   question: Type.String({
     description: "The question to ask the user, concise and clear.",
   }),
+  tab: Type.Optional(
+    Type.String({
+      description: "Short label for this question's tab. Omit to use the localized question number.",
+    }),
+  ),
   context: Type.Optional(
     Type.String({
       description: "Background: why this information is needed and how it will be used.",
@@ -50,6 +68,22 @@ const askUserParameters = Type.Object({
   ),
 });
 
+const askUserParameters = Type.Object({
+  question: Type.Optional(askUserQuestionParameters.properties.question),
+  context: Type.Optional(askUserQuestionParameters.properties.context),
+  options: Type.Optional(askUserQuestionParameters.properties.options),
+  allowMultiple: Type.Optional(askUserQuestionParameters.properties.allowMultiple),
+  allowFreeform: Type.Optional(askUserQuestionParameters.properties.allowFreeform),
+  questions: Type.Optional(
+    Type.Array(askUserQuestionParameters, {
+      minItems: 2,
+      maxItems: 8,
+      description:
+        "Ask multiple independent questions in one tabbed flow. Use instead of calling ask_user repeatedly.",
+    }),
+  ),
+});
+
 type AskUserParameters = Static<typeof askUserParameters>;
 
 /** 构造纯文本工具结果。 */
@@ -57,13 +91,34 @@ function textResult(text: string): AgentToolResult<unknown> {
   return { content: [{ type: "text", text }], details: {} };
 }
 
+/** 将单选或多选答案整理为适合返回给模型的文本。 */
+function formatAnswer(answer: AskUserAnswer): string {
+  return (Array.isArray(answer) ? answer : [answer])
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .join(", ");
+}
+
+/**
+ * 为启用了 ask_user 的会话追加主动澄清策略。
+ *
+ * @param systemPrompt 当前轮已组装的 system prompt
+ * @returns 包含主动澄清策略的 system prompt
+ */
+function appendAskUserSystemGuidance(systemPrompt: string): string {
+  return systemPrompt.includes(ASK_USER_SYSTEM_GUIDANCE)
+    ? systemPrompt
+    : `${systemPrompt}\n\n${ASK_USER_SYSTEM_GUIDANCE}`;
+}
+
 /**
  * 创建内置 ask_user 工具定义。
  *
  * 工具通过 pi-web 的内置扩展 UI 通道向用户提问：提供 options 时走增强
- * 选择（多选、自定义答案、上下文说明），否则走纯文本输入。它是 pi-web
- * 内置能力，无需安装第三方插件；同名冲突时 preferHostAskExtension()
- * 会保留内置版本（因为 UI 实现在内置侧）。
+ * 选择（多选、自定义答案、上下文说明），否则走纯文本输入。需要多个独立
+ * 澄清项时传入 questions（2–8 题），前端会用单个 Tab 流依次收集回答，
+ * 最后提供一个可选补充文本框。它是 pi-web 内置能力，无需安装第三方插件；
+ * 同名冲突时 preferHostAskExtension() 会保留内置版本（因为 UI 实现在内置侧）。
  *
  * @returns 注册进扩展运行时的工具定义
  */
@@ -74,26 +129,42 @@ export function createAskUserToolDefinition(): ToolDefinition<
     name: ASK_USER_TOOL_NAME,
     label: "Ask user",
     description:
-      "Ask the user a question when clarification, a choice, or preference/context gathering is needed. "
-      + "Supports single/multi-choice, custom answers, and plain-text questions. "
+      "Ask the user when clarification, a choice, or preference/context gathering is needed. "
+      + "Use question for one question, or questions (2–8) to collect independent answers in one tabbed flow with an optional final supplement. "
+      + "Each batch question supports tab (a short custom tab label), single/multi-choice, custom answers, or plain-text input. "
       + "Use only when user input is genuinely required; never for confirmations you could infer yourself.",
     promptSnippet:
-      "Ask the user one focused question with optional multiple-choice answers to gather information interactively.",
+      "Proactively ask the user focused questions when required decisions or clarifications are unavailable; batch independent questions with questions.",
+    promptGuidelines: [
+      "Use ask_user instead of guessing when a required user decision or clarification would materially change the result. Batch independent clarifications in one questions call rather than asking one at a time.",
+    ],
     parameters: askUserParameters,
     executionMode: "sequential",
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const {
-        question,
-        context,
-        options = [],
-        allowMultiple = false,
-        allowFreeform = true,
-      } = params as AskUserParameters;
+      const input = params as AskUserParameters;
       // SAFETY: ctx.ui 在运行时由 rpc-manager 的 createExtensionUiContext()
       // 提供，实际形态与 ExtensionUiContextLike 兼容；SDK 的扩展 UI 上下文
       // 类型较宽，此处断言只做收窄，不改运行时行为。
       const ui = ctx.ui as unknown as ExtensionUiContextLike;
+      const questions = input.questions as AskUserQuestion[] | undefined;
 
+      if (questions && questions.length > 0) {
+        const response = await ui.askUser(questions, { signal });
+        if (!response) {
+          return textResult("User dismissed the questions (no answers provided)");
+        }
+        const answers = questions.map((item, index) => {
+          const answer = response.answers[index];
+          return `User answer to "${item.question}": ${answer ? formatAnswer(answer) : "(no answer)"}`;
+        });
+        if (response.supplement)
+          answers.push(`User additional context: ${response.supplement}`);
+        return textResult(answers.join("\n"));
+      }
+
+      const question = input.question;
+      if (!question) return textResult("Error: question or questions is required");
+      const { context, options = [], allowMultiple = false, allowFreeform = true } = input;
       if (options.length === 0) {
         const answer = await ui.input(question, undefined, { signal });
         if (answer === undefined || answer.trim() === "") {
@@ -108,16 +179,10 @@ export function createAskUserToolDefinition(): ToolDefinition<
         allowFreeform,
         ...(context !== undefined ? { context } : {}),
       });
-      if (selected === undefined) {
+      if (selected === undefined || formatAnswer(selected) === "") {
         return textResult(`${DISMISSED_MESSAGE} Original question: ${question}`);
       }
-      const answers = (Array.isArray(selected) ? selected : [selected])
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0);
-      if (answers.length === 0) {
-        return textResult(`${DISMISSED_MESSAGE} Original question: ${question}`);
-      }
-      return textResult(`User answer to "${question}": ${answers.join(", ")}`);
+      return textResult(`User answer to "${question}": ${formatAnswer(selected)}`);
     },
   };
 }
@@ -136,6 +201,12 @@ export function createAskUserExtension(): InlineExtension {
     hidden: true,
     factory: (pi) => {
       pi.registerTool(createAskUserToolDefinition());
+      pi.on("before_agent_start", (event) => {
+        if (!pi.getActiveTools().includes(ASK_USER_TOOL_NAME)) return;
+        return {
+          systemPrompt: appendAskUserSystemGuidance(event.systemPrompt),
+        };
+      });
     },
   };
 }

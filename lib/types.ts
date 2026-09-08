@@ -135,6 +135,24 @@ export interface SelectOptionLike {
  */
 export type SelectOptionsLike = string[] | SelectOptionLike[];
 
+/** ask_user 批量提问中单个问题的展示与回答约束。 */
+export interface AskUserQuestion {
+  question: string;
+  /** Tab 上显示的短名称；缺省时由客户端使用本地化的题号。 */
+  tab?: string;
+  /** 问题下方展示的背景说明。 */
+  context?: string;
+  /** 可选项；缺省时渲染为文本输入。 */
+  options?: SelectOptionsLike;
+  /** 允许多选，默认 false。 */
+  allowMultiple?: boolean;
+  /** 允许在选项外填写答案，默认 true。 */
+  allowFreeform?: boolean;
+}
+
+/** ask_user 单题或批量题的结构化答案。 */
+export type AskUserAnswer = string | string[];
+
 export type ExtensionUiRequest =
       | {
               type: "extension_ui_request";
@@ -149,6 +167,16 @@ export type ExtensionUiRequest =
               allowFreeform?: boolean;
               /** 标题下方展示的可选上下文/背景说明。 */
               context?: string;
+              timeout?: number;
+              expiresAt?: number;
+        }
+      | {
+              type: "extension_ui_request";
+              id: string;
+              /** 批量 ask_user：每题一个 Tab，末尾提供可选补充文本框。 */
+              method: "ask_user";
+              title: string;
+              questions: AskUserQuestion[];
               timeout?: number;
               expiresAt?: number;
         }
@@ -223,10 +251,16 @@ export type ExtensionUiRequest =
 
 export type BlockingExtensionUiRequest = Extract<
       ExtensionUiRequest,
-      { method: "select" | "confirm" | "input" | "editor" | "custom" }
+      { method: "select" | "confirm" | "input" | "editor" | "ask_user" | "custom" }
 >;
 
 export type ExtensionUiResponse =
+      | {
+              type: "extension_ui_response";
+              id: string;
+              answers: AskUserAnswer[];
+              supplement?: string;
+        }
       | { type: "extension_ui_response"; id: string; value: string | string[] }
       | { type: "extension_ui_response"; id: string; confirmed: boolean }
       | { type: "extension_ui_response"; id: string; cancelled: true };

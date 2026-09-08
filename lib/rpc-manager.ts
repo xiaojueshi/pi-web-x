@@ -48,6 +48,8 @@ import type {
   ToolInfo,
 } from "./pi-types";
 import type {
+  AskUserAnswer,
+  AskUserQuestion,
   ExtensionUiRequest,
   ExtensionUiResponse,
   ExtensionWidgetItem,
@@ -1627,6 +1629,27 @@ export class AgentSessionWrapper {
 
   private createExtensionUiContext(): ExtensionUiContextLike {
     return {
+      askUser: (questions: AskUserQuestion[], opts) =>
+        this.requestExtensionUi(
+          {
+            method: "ask_user",
+            title: "Answer the following questions",
+            questions,
+            ...(opts?.timeout ? { timeout: opts.timeout } : {}),
+          },
+          undefined,
+          (response) => {
+            if (!("answers" in response)) return undefined;
+            return {
+              answers: response.answers as AskUserAnswer[],
+              ...(response.supplement?.trim()
+                ? { supplement: response.supplement.trim() }
+                : {}),
+            };
+          },
+          opts?.timeout,
+          opts?.signal,
+        ),
       select: (title, options, opts) =>
         this.requestExtensionUi(
           {

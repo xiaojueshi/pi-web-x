@@ -811,7 +811,7 @@ test("重复投递的 extension_ui_request 不会重置提问卡片状态", () =
   // 重置副作用清掉用户已选选项/正在输入的内容。
   const dialogCaseSource = source.slice(
     source.indexOf(
-      'case "select":\n        case "confirm":\n        case "input":\n        case "editor": {',
+      'case "select":\n        case "confirm":\n        case "input":\n        case "editor":\n        case "ask_user": {',
     ),
     source.indexOf('case "notify": {'),
   );

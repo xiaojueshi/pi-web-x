@@ -12,7 +12,11 @@ import type {
   PrepareNextTurnContext,
 } from "@earendil-works/pi-agent-core";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
-import type { SelectOptionsLike } from "./types";
+import type {
+  AskUserAnswer,
+  AskUserQuestion,
+  SelectOptionsLike,
+} from "./types";
 
 export interface ContextUsage {
   percent: number | null;
@@ -107,6 +111,10 @@ type WidgetOptionsLike = {
 };
 
 export interface ExtensionUiContextLike {
+  askUser(
+    questions: AskUserQuestion[],
+    opts?: Pick<DialogOptionsLike, "signal" | "timeout">,
+  ): Promise<{ answers: AskUserAnswer[]; supplement?: string } | undefined>;
   select(
     title: string,
     options: SelectOptionsLike,
