@@ -1685,8 +1685,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setCompactResult(null);
           break;
         case "auto_compaction_end":
-        case "compaction_end":
+        case "compaction_end": {
           setIsCompacting(false);
+          const sid = sessionIdRef.current;
           if (event.errorMessage) {
             setCompactError(event.errorMessage as string);
             setCompactResult(null);
@@ -1697,9 +1698,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
                 (event.reason as string | undefined) ?? "auto",
               ),
             );
-            if (sessionIdRef.current) loadSession(sessionIdRef.current);
+            if (sid) loadSession(sid);
           }
+          if (sid) scheduleEventStreamClose(sid);
           break;
+        }
         case "extension_ui_request":
           handleExtensionUiRequest(event as ExtensionUiRequest);
           break;
@@ -2067,19 +2070,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setIsCompacting(true);
     setCompactError(null);
     setCompactResult(null);
+    let compactionStarted = false;
     try {
-      const result = await sendAgentCommand<CompactCommandResult>(sid, {
-        type: "compact",
-      });
-      setCompactResult(readCompactResult(result, "manual"));
-      await loadSession(sid, true);
+      await ensureEventsConnected(sid);
+      await sendAgentCommand(sid, { type: "compact" });
+      // 压缩结果和错误由 SSE 的 compaction_end 事件更新，避免等待长时间请求。
+      compactionStarted = true;
     } catch (e) {
       setCompactError(e instanceof Error ? e.message : String(e));
       setCompactResult(null);
     } finally {
-      setIsCompacting(false);
+      if (!compactionStarted) setIsCompacting(false);
     }
-  }, [isCompacting, loadSession]);
+  }, [ensureEventsConnected, isCompacting]);
 
   const loadModels = useCallback(
     async (signal?: AbortSignal) => {
@@ -2135,6 +2138,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const [, commandName, rawArgs = ""] = match;
       const args = rawArgs.trim();
       const sid = sessionIdRef.current ?? (await ensureNewSession());
+      let compactionStarted = false;
       const complete = (
         result: BuiltinSlashCommandResult,
       ): BuiltinSlashCommandResult => {
@@ -2161,13 +2165,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             setIsCompacting(true);
             setCompactError(null);
             setCompactResult(null);
-            const result = await sendAgentCommand<CompactCommandResult>(sid, {
+            await ensureEventsConnected(sid);
+            await sendAgentCommand(sid, {
               type: "compact",
               ...(args ? { customInstructions: args } : {}),
             });
-            setCompactResult(readCompactResult(result, "manual"));
-            if (await loadSession(sid, true)) promoteNewSession();
-            return complete({ handled: true, message: "Compacted context" });
+            compactionStarted = true;
+            return complete({
+              handled: true,
+              message: "Started context compaction",
+            });
           }
 
           case "reload": {
@@ -2283,7 +2290,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           error: e instanceof Error ? e.message : String(e),
         });
       } finally {
-        if (commandName === "compact") setIsCompacting(false);
+        if (commandName === "compact" && !compactionStarted)
+          setIsCompacting(false);
       }
     },
     [
@@ -2296,6 +2304,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       loadSlashCommands,
       loadTools,
       promoteNewSession,
+      ensureEventsConnected,
       onSessionForked,
       onSessionStatsPanelOpen,
     ],

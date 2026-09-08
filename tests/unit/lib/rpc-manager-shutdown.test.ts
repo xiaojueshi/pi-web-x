@@ -100,6 +100,35 @@ test("prompt commands wait for SDK preflight acceptance before acknowledging", a
   );
 });
 
+test("manual compaction confirms before the background task finishes", async (t) => {
+  let resolveCompaction;
+  let compactStarted = false;
+  let customInstructions;
+  const inner = makePromptInner(() => Promise.resolve());
+  inner.compact = (instructions) =>
+    new Promise((resolve) => {
+      compactStarted = true;
+      customInstructions = instructions;
+      resolveCompaction = resolve;
+    });
+
+  const wrapper = new AgentSessionWrapper(inner);
+  t.after(() => wrapper.destroy());
+
+  const result = await Promise.race([
+    wrapper.send({ type: "compact", customInstructions: "保留接口变更" }),
+    nextTurn().then(() => {
+      throw new Error("manual compaction command did not acknowledge");
+    }),
+  ]);
+
+  assert.deepEqual(result, { started: true });
+  assert.equal(compactStarted, true);
+  assert.equal(customInstructions, "保留接口变更");
+  resolveCompaction();
+  await nextTurn();
+});
+
 test("completion notification waits for an accepted agent run to become idle", async (t) => {
   let finishPrompt;
   let sdkListener;

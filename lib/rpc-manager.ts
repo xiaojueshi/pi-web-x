@@ -929,15 +929,21 @@ export class AgentSessionWrapper {
         }
 
         case "compact": {
-          try {
-            return await this.withFinalIdleReset(() =>
-              this.inner.compact(
-                command.customInstructions as string | undefined,
-              ),
-            );
-          } finally {
-            invalidateSessionListCache();
-          }
+          // 压缩调用可能持续数分钟。立即确认命令，避免等待 HTTP 响应的链路超时；
+          // 完成结果和错误仍由 SDK 的 compaction_end 事件经 SSE 发送给客户端。
+          void this.withFinalIdleReset(() =>
+            this.inner.compact(
+              command.customInstructions as string | undefined,
+            ),
+          )
+            .catch((error) => {
+              console.error(
+                "[pi-web-x] manual compaction failed:",
+                error instanceof Error ? error.message : error,
+              );
+            })
+            .finally(invalidateSessionListCache);
+          return { started: true };
         }
 
         case "set_session_name": {
