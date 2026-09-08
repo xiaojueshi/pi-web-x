@@ -189,14 +189,13 @@ test("skill scope group labels are localized", () => {
 
 test("all subpanel detail panes share one content hierarchy", () => {
   const sources = Object.fromEntries(configSources);
-  assert.match(
-    cssSource,
-    /\.config-detail-stack \{[\s\S]*?gap: 16px[\s\S]*?width: 100%/,
-  );
-  assert.doesNotMatch(
-    cssSource,
-    /\.config-detail-stack \{[\s\S]*?max-width: 720px/,
-  );
+  // 只截取 .config-detail-stack 规则块本身断言；[\s\S]*? 会跨规则块边界，
+  // 误匹配文件后文（如 .settings-subagents-form）的 max-width: 720px。
+  const detailStackBlock =
+    cssSource.match(/\.config-detail-stack \{[^}]*\}/)?.[0] ?? "";
+  assert.match(detailStackBlock, /gap: 16px/);
+  assert.match(detailStackBlock, /width: 100%/);
+  assert.doesNotMatch(detailStackBlock, /max-width: 720px/);
   assert.match(cssSource, /\.config-field-label \{[\s\S]*?font-size: 11px/);
   assert.match(cssSource, /\.config-empty-state \{[\s\S]*?font-size: 12px/);
   for (const source of Object.values(sources)) {

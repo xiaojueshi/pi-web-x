@@ -9,6 +9,12 @@ const testAgentDir = await mkdtemp(join(tmpdir(), "pi-web-x-sessions-search-"));
 process.env.PI_CODING_AGENT_DIR = testAgentDir;
 
 const { GET } = await import("../../../../../app/api/sessions/search/route.ts");
+// bun test 所有文件共享 globalThis：listAllSessions 的 30s TTL 缓存
+// 可能被先跑的其他测试文件填充，导致本路由拿到别的临时目录的会话。
+// 请求前主动失效，保证路由针对本文件的 agent 目录重新扫描。
+const { invalidateSessionListCache } = await import(
+  "../../../../../lib/session-reader.ts"
+);
 
 // 会话文件须位于 <agentDir>/sessions/<project>/ 且带 session 头，SDK 才可发现。
 const projectDir = join(testAgentDir, "sessions", "project");
@@ -33,12 +39,15 @@ await writeFile(
 );
 
 afterAll(async () => {
+  // 同理，不把本文件临时目录的缓存留给后续测试文件。
+  invalidateSessionListCache();
   if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
   else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
   await rm(testAgentDir, { recursive: true, force: true });
 });
 
 test("search route returns literal matches with entry/block context", async () => {
+  invalidateSessionListCache();
   const res = await GET(
     new Request(
       `http://localhost/api/sessions/search?q=${encodeURIComponent("needle")}`,
