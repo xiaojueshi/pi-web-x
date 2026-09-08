@@ -13,16 +13,26 @@ async function loadTools(
 ) {
   const tools = new Map();
   const sent = [];
+  let beforeAgentStart:
+    | ((event: { systemPrompt: string }) => unknown)
+    | undefined;
   const extension = createSubagentExtension(runtime, getProfiles, isEnabled);
   await extension.factory({
     registerTool(tool) {
       tools.set(tool.name, tool);
     },
+    getActiveTools() {
+      return ["Agent"];
+    },
+    on(event, handler) {
+      if (event === "before_agent_start")
+        beforeAgentStart = handler as (event: { systemPrompt: string }) => unknown;
+    },
     sendMessage(message, options) {
       sent.push({ message, options });
     },
   });
-  return { tools, sent };
+  return { tools, sent, beforeAgentStart };
 }
 
 function run(overrides = {}) {
@@ -80,6 +90,10 @@ test("integrated extension exposes the legacy-compatible tool names", async () =
     registerTool(tool) {
       tools.set(tool.name, tool);
     },
+    getActiveTools() {
+      return ["Agent"];
+    },
+    on() {},
     sendMessage() {},
   });
 
@@ -126,6 +140,10 @@ test("integrated extension registers no tools while its feature is disabled", as
     registerTool(tool) {
       disabledTools.set(tool.name, tool);
     },
+    getActiveTools() {
+      return ["Agent"];
+    },
+    on() {},
   });
   assert.deepEqual([...disabledTools], []);
 
@@ -135,11 +153,47 @@ test("integrated extension registers no tools while its feature is disabled", as
     registerTool(tool) {
       enabledTools.set(tool.name, tool);
     },
+    getActiveTools() {
+      return ["Agent"];
+    },
+    on() {},
   });
   assert.deepEqual(
     [...enabledTools.keys()],
     ["Agent", "get_subagent_result", "steer_subagent"],
   );
+});
+
+test("内置 Agent 打开时才注入主动委派策略", async () => {
+  const runtime = {
+    async start() {
+      throw new Error("unused");
+    },
+    async get() {
+      return null;
+    },
+    async steer() {},
+    async notifyParent() {},
+  };
+  const enabled = await loadTools(runtime, () => [], () => true);
+  const injectGuidance = enabled.beforeAgentStart;
+  assert.equal(typeof injectGuidance, "function");
+  if (typeof injectGuidance !== "function")
+    throw new Error("未注册 before_agent_start 钩子");
+  assert.deepEqual(
+    injectGuidance({ systemPrompt: "base prompt" }),
+    {
+      systemPrompt: `base prompt
+
+## Subagent delegation
+- Proactively call the Agent tool when a focused task benefits from an isolated context, specialized profile, or independent parallel work.
+- Use background Agent calls for independent work and wait for foreground results only when they are needed to continue.
+- Do not delegate trivial work that you can complete directly, and do not duplicate work already delegated to a running subagent.`,
+    },
+  );
+
+  const disabled = await loadTools(runtime, () => [], () => false);
+  assert.equal(disabled.beforeAgentStart, undefined);
 });
 
 test("Agent tool description lists enabled effective profiles and refreshes when its factory reloads", async () => {
@@ -185,6 +239,10 @@ test("Agent tool description lists enabled effective profiles and refreshes when
     registerTool(tool) {
       firstTools.set(tool.name, tool);
     },
+    getActiveTools() {
+      return ["Agent"];
+    },
+    on() {},
     sendMessage() {},
   });
   const first = firstTools.get("Agent");
@@ -217,6 +275,10 @@ test("Agent tool description lists enabled effective profiles and refreshes when
     registerTool(tool) {
       reloadedTools.set(tool.name, tool);
     },
+    getActiveTools() {
+      return ["Agent"];
+    },
+    on() {},
     sendMessage() {},
   });
   const reloaded = reloadedTools.get("Agent");

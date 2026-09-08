@@ -14,7 +14,21 @@ import { MAX_SUBAGENT_INPUT_FILES } from "./subagent-input";
 
 export const HOST_SUBAGENT_EXTENSION_NAME = "pi-web-x-subagents";
 const HOST_SUBAGENT_EXTENSION_PATH = `<inline:${HOST_SUBAGENT_EXTENSION_NAME}>`;
+const SUBAGENT_TOOL_NAME = "Agent";
 const SUBAGENT_TOOL_NAMES = new Set<string>(SUBAGENT_CONTROL_TOOL_NAMES);
+
+/** 内置 Agent 启用时追加到每轮 system prompt 的主动委派策略。 */
+const SUBAGENT_SYSTEM_GUIDANCE = `## Subagent delegation
+- Proactively call the Agent tool when a focused task benefits from an isolated context, specialized profile, or independent parallel work.
+- Use background Agent calls for independent work and wait for foreground results only when they are needed to continue.
+- Do not delegate trivial work that you can complete directly, and do not duplicate work already delegated to a running subagent.`;
+
+/** 为当前轮 system prompt 追加主动委派策略，避免重复注入。 */
+function appendSubagentSystemGuidance(systemPrompt: string): string {
+  return systemPrompt.includes(SUBAGENT_SYSTEM_GUIDANCE)
+    ? systemPrompt
+    : `${systemPrompt}\n\n${SUBAGENT_SYSTEM_GUIDANCE}`;
+}
 const LEGACY_SUBAGENT_PACKAGE_NAME = "pi-subagents";
 
 export interface SubagentToolDetails {
@@ -111,13 +125,21 @@ export function createSubagentExtension(
     hidden: true,
     factory: (pi) => {
       if (!isEnabled()) return;
+      pi.on("before_agent_start", (event) => {
+        // 内置 Agent 关闭或当前会话未启用 Agent 工具时，不改变用户的 system prompt。
+        if (!isEnabled() || !pi.getActiveTools().includes(SUBAGENT_TOOL_NAME))
+          return;
+        return {
+          systemPrompt: appendSubagentSystemGuidance(event.systemPrompt),
+        };
+      });
       const profiles = getProfiles().filter((profile) => profile.enabled);
       const profileNames = profiles.map((profile) => profile.name);
       const availableTypes =
         profileNames.length > 0 ? profileNames.join(", ") : "none";
       pi.registerTool(
         defineTool({
-          name: "Agent",
+          name: SUBAGENT_TOOL_NAME,
           label: "Agent",
           description: `Delegate a focused task to a configured subagent. Each subagent runs as a full, inspectable Pi session. Use background mode for independent work and foreground mode when the result is needed immediately.\n\nAvailable agent types:\n${agentTypeDescription(profiles)}`,
           promptSnippet:
