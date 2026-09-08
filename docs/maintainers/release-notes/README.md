@@ -6,7 +6,7 @@ Release notes are the complete, reviewable source text for GitHub Releases. `CHA
 
 | Version | Status | Notes |
 | --- | --- | --- |
-| [v0.11.0](./v0.11.0.md) | Draft | Built-in subagents, batch ask_user, system prompt editor, session search |
+| [v0.11.0](./v0.11.0.md) | Released | Built-in subagents, batch ask_user, system prompt editor, session search |
 | [v0.10.0](./v0.10.0.md) | Released | Built-in ask_user and todo tools, SDK 0.85.0 |
 | [v0.9.4](./v0.9.4.md) | Released | Auth keepalive, session persistence, test isolation |
 | [v0.9.3](./v0.9.3.md) | Released | Update-check fallback |
