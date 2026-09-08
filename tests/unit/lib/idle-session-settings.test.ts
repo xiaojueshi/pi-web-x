@@ -20,9 +20,10 @@ test("idle session reaping defaults to ten enabled minutes", async () => {
     enabled: true,
     timeoutMinutes: DEFAULT_IDLE_SESSION_REAPING_MINUTES,
   });
+  // 期望路径与实现同用 node:path.join 构造，兼容 Windows 反斜杠分隔符
   assert.equal(
     getIdleSessionSettingsPath("/home/test"),
-    "/home/test/.pi-web-x/settings.json",
+    join("/home/test", ".pi-web-x", "settings.json"),
   );
 });
 
