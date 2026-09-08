@@ -12,68 +12,24 @@ import {
   setLastSettingsSection,
   type SettingsSection,
 } from "@/lib/settings-navigation";
+type SystemPromptSource = "system" | "agents" | "claude" | "none";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
 import { SubagentsConfig } from "./SubagentsConfig";
 import { PasswordChangeForm } from "./PasswordChangeForm";
-import { ConfigSwitch } from "./SettingsUi";
-
-/** 设置中心 Security 分区：访问密码修改与登出。 */
-function SecuritySettings({
-  onLogout,
-  onPasswordChanged,
-}: {
-  /** 登出回调。 */
-  onLogout?: () => void;
-  /** 改密成功后的回调。 */
-  onPasswordChanged?: () => void;
-}) {
-  const { t } = useI18n();
-  const [logoutBusy, setLogoutBusy] = useState(false);
-
-  const handleLogout = async () => {
-    setLogoutBusy(true);
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      onLogout?.();
-    } finally {
-      setLogoutBusy(false);
-    }
-  };
-
-  return (
-    <div className="settings-general settings-security">
-      <h2 className="settings-general-title">{t("settings.security")}</h2>
-
-      <section className="settings-general-section">
-        <h3 className="settings-general-heading">{t("auth.changePassword")}</h3>
-        <p className="settings-general-description">
-          {t("auth.changePasswordDescription")}
-        </p>
-        <PasswordChangeForm onSuccess={() => onPasswordChanged?.()} />
-      </section>
-      <section className="settings-general-section">
-        <h3 className="settings-general-heading">{t("auth.logout")}</h3>
-        <p className="settings-general-description">
-          {t("auth.logoutDescription")}
-        </p>
-        <button
-          type="button"
-          className="auth-form-submit is-danger"
-          disabled={logoutBusy}
-          onClick={() => void handleLogout()}
-        >
-          {logoutBusy ? t("auth.processing") : t("auth.logout")}
-        </button>
-      </section>
-    </div>
-  );
-}
+import {
+  ConfigButton,
+  ConfigDetail,
+  ConfigDetailStack,
+  ConfigSidebar,
+  ConfigSidebarGroupLabel,
+  ConfigSidebarItem,
+  ConfigSidebarList,
+  ConfigSidebarText,
+  ConfigSplitView,
+  ConfigSwitch,
+} from "./SettingsUi";
 
 interface Props {
   cwd: string | null;
@@ -87,6 +43,12 @@ interface Props {
   onLogout?: () => void;
 }
 
+/**
+ * 渲染设置入口使用的分类图标。
+ *
+ * @param props 分类标识及可选尺寸、描边宽度。
+ * @returns 对应分类的 SVG 图标。
+ */
 export function SettingsSectionIcon({
   section,
   size = 16,
@@ -207,12 +169,34 @@ function ThemeIcon({ preference }: { preference: ThemePreference }) {
   );
 }
 
+type GeneralCategory =
+  | "appearance"
+  | "language"
+  | "sessions"
+  | "system-prompt"
+  | "security";
+
+function isSystemPromptSource(value: unknown): value is SystemPromptSource {
+  return (
+    value === "system" ||
+    value === "agents" ||
+    value === "claude" ||
+    value === "none"
+  );
+}
+
+/** 渲染常规与安全设置的共享主从视图。 */
 function GeneralSettings({
   sessionId,
   onSessionReloaded,
-}: Pick<Props, "sessionId" | "onSessionReloaded">) {
+  onLogout,
+  initialCategory = "appearance",
+}: Pick<Props, "sessionId" | "onSessionReloaded" | "onLogout"> & {
+  initialCategory?: GeneralCategory;
+}) {
   const { locale, setLocale, supportedLocales, t } = useI18n();
   const { preference, setThemePreference } = useTheme();
+  const [category, setCategory] = useState<GeneralCategory>(initialCategory);
   const [shellSettings, setShellSettings] =
     useState<ShellToolSettingsResponse | null>(null);
   const [shellSaving, setShellSaving] = useState(false);
@@ -220,11 +204,47 @@ function GeneralSettings({
   const [idleSaving, setIdleSaving] = useState(false);
   const [idleError, setIdleError] = useState<string | null>(null);
   const [idleTimeoutInput, setIdleTimeoutInput] = useState("10");
+  const [prompt, setPrompt] = useState("");
+  const [promptSource, setPromptSource] = useState<SystemPromptSource>("none");
+  const [promptLoaded, setPromptLoaded] = useState(false);
+  const [promptSaving, setPromptSaving] = useState(false);
+  const [promptError, setPromptError] = useState<string | null>(null);
+  const [promptStatus, setPromptStatus] = useState<string | null>(null);
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const themeOptions: { id: ThemePreference; label: string }[] = [
     { id: "light", label: t("settings.themeLight") },
     { id: "dark", label: t("settings.themeDark") },
     { id: "auto", label: t("settings.themeSystem") },
   ];
+  const categories: { id: GeneralCategory; label: string; group: string }[] = [
+    {
+      id: "appearance",
+      label: t("settings.appearance"),
+      group: t("settings.general"),
+    },
+    {
+      id: "language",
+      label: t("common.language"),
+      group: t("settings.general"),
+    },
+    {
+      id: "sessions",
+      label: t("settings.sessions"),
+      group: t("settings.general"),
+    },
+    {
+      id: "system-prompt",
+      label: t("settings.systemPrompt"),
+      group: t("settings.general"),
+    },
+    {
+      id: "security",
+      label: t("settings.security"),
+      group: t("settings.security"),
+    },
+  ];
+
+  useEffect(() => setCategory(initialCategory), [initialCategory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,6 +263,42 @@ function GeneralSettings({
       .catch((cause) => {
         if (!cancelled)
           setShellError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/system-prompt")
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          prompt?: unknown;
+          source?: unknown;
+          error?: string;
+        };
+        if (
+          !response.ok ||
+          data.error ||
+          typeof data.prompt !== "string" ||
+          !isSystemPromptSource(data.source)
+        ) {
+          throw new Error(data.error ?? `HTTP ${response.status}`);
+        }
+        if (!cancelled) {
+          setPrompt(data.prompt);
+          setPromptSource(data.source);
+        }
+      })
+      .catch((cause) => {
+        if (!cancelled)
+          setPromptError(
+            cause instanceof Error ? cause.message : String(cause),
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setPromptLoaded(true);
       });
     return () => {
       cancelled = true;
@@ -309,146 +365,326 @@ function GeneralSettings({
     }
   };
 
+  const handleLogout = async () => {
+    setLogoutBusy(true);
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      onLogout?.();
+    } finally {
+      setLogoutBusy(false);
+    }
+  };
+
+  const saveSystemPrompt = async () => {
+    setPromptSaving(true);
+    setPromptError(null);
+    setPromptStatus(null);
+    try {
+      const response = await fetch("/api/system-prompt", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, source: promptSource }),
+      });
+      const data = (await response.json()) as {
+        prompt?: unknown;
+        source?: unknown;
+        error?: string;
+      };
+      if (
+        !response.ok ||
+        data.error ||
+        typeof data.prompt !== "string" ||
+        !isSystemPromptSource(data.source)
+      ) {
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      }
+      setPrompt(data.prompt);
+      setPromptSource(data.source);
+      if (sessionId) {
+        await sendAgentCommand(sessionId, { type: "reload" });
+        onSessionReloaded();
+        setPromptStatus(t("settings.systemPromptReloaded"));
+      } else {
+        setPromptStatus(t("settings.systemPromptSaved"));
+      }
+    } catch (cause) {
+      setPromptError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setPromptSaving(false);
+    }
+  };
+
+  const content = (() => {
+    if (category === "appearance") {
+      return (
+        <>
+          <h2 className="settings-general-title">{t("settings.appearance")}</h2>
+          <p className="settings-general-description">
+            {t("settings.appearanceDescription")}
+          </p>
+          <div
+            role="radiogroup"
+            aria-label={t("settings.appearance")}
+            className="settings-theme-options"
+          >
+            {themeOptions.map((option) => {
+              const selected = preference === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setThemePreference(option.id)}
+                  className="settings-theme-option"
+                >
+                  <ThemeIcon preference={option.id} />
+                  <span className="settings-theme-option-label">
+                    {option.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      );
+    }
+    if (category === "language") {
+      return (
+        <>
+          <h2 className="settings-general-title">{t("common.language")}</h2>
+          <p className="settings-general-description">
+            {t("settings.languageDescription")}
+          </p>
+          <div
+            role="radiogroup"
+            aria-label={t("common.language")}
+            className="settings-language-options"
+          >
+            {supportedLocales.map((plugin) => {
+              const selected = locale === plugin.id;
+              return (
+                <button
+                  key={plugin.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setLocale(plugin.id as typeof locale)}
+                  className="settings-language-option"
+                >
+                  <span className="settings-language-radio">
+                    {selected && (
+                      <span className="settings-language-radio-dot" />
+                    )}
+                  </span>
+                  <span className="settings-language-label">
+                    {plugin.label}
+                  </span>
+                  <span className="settings-language-code">{plugin.id}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      );
+    }
+    if (category === "sessions") {
+      return (
+        <>
+          <h2 className="settings-general-title">{t("settings.sessions")}</h2>
+          <section className="settings-general-section">
+            <h3 className="settings-general-heading">
+              {t("settings.idleReaping")}
+            </h3>
+            <p className="settings-general-description">
+              {t("settings.idleReapingDescription")}
+            </p>
+            {shellSettings && (
+              <>
+                <div className="settings-shell-option">
+                  <span>{t("settings.idleReapingEnabled")}</span>
+                  <ConfigSwitch
+                    checked={shellSettings.idleSessionReaping.enabled}
+                    loading={idleSaving}
+                    label={t("settings.idleReapingEnabled")}
+                    onChange={(enabled) => void saveIdleSessionReaping(enabled)}
+                  />
+                </div>
+                <label className="settings-idle-timeout">
+                  <span>{t("settings.idleReapingTimeout")}</span>
+                  <input
+                    type="number"
+                    min={5}
+                    max={1_440}
+                    step={1}
+                    inputMode="numeric"
+                    disabled={
+                      !shellSettings.idleSessionReaping.enabled || idleSaving
+                    }
+                    value={idleTimeoutInput}
+                    aria-label={t("settings.idleReapingTimeout")}
+                    onChange={(event) =>
+                      setIdleTimeoutInput(event.target.value)
+                    }
+                    onBlur={() => {
+                      if (shellSettings.idleSessionReaping.enabled)
+                        void saveIdleSessionReaping(true);
+                    }}
+                  />
+                  <span>{t("settings.minutes")}</span>
+                </label>
+              </>
+            )}
+            {idleError && (
+              <p role="alert" className="settings-general-error">
+                {idleError}
+              </p>
+            )}
+          </section>
+          {shellSettings?.isWindows && (
+            <section className="settings-general-section">
+              <h3 className="settings-general-heading">
+                {t("settings.shellTool")}
+              </h3>
+              <p className="settings-general-description">
+                {t("settings.shellToolDescription")}
+              </p>
+              <div className="settings-shell-option">
+                <span>{t("settings.usePowerShell")}</span>
+                <ConfigSwitch
+                  checked={shellSettings.powerShellEnabled}
+                  loading={shellSaving}
+                  label={t("settings.usePowerShell")}
+                  onChange={(enabled) => void togglePowerShell(enabled)}
+                />
+              </div>
+              {shellError && (
+                <p role="alert" className="settings-general-error">
+                  {shellError}
+                </p>
+              )}
+            </section>
+          )}
+        </>
+      );
+    }
+    if (category === "system-prompt") {
+      return (
+        <>
+          <h2 className="settings-general-title">
+            {t("settings.systemPrompt")}
+          </h2>
+          <p className="settings-general-description">
+            {t("settings.systemPromptDescription")}
+          </p>
+          <textarea
+            className="settings-system-prompt"
+            value={prompt}
+            disabled={!promptLoaded || promptSaving}
+            onChange={(event) => setPrompt(event.target.value)}
+            aria-label={t("settings.systemPrompt")}
+            rows={16}
+            spellCheck={false}
+          />
+          <p className="settings-general-description">
+            {t("settings.systemPromptEmptyHint")}
+          </p>
+          {promptError && (
+            <p role="alert" className="settings-general-error">
+              {promptError}
+            </p>
+          )}
+          {promptStatus && (
+            <p role="status" className="settings-general-status">
+              {promptStatus}
+            </p>
+          )}
+          <ConfigButton
+            variant="primary"
+            disabled={!promptLoaded || promptSaving}
+            onClick={() => void saveSystemPrompt()}
+          >
+            {promptSaving
+              ? t("settings.systemPromptSaving")
+              : sessionId
+                ? t("settings.systemPromptSaveReload")
+                : t("i18n.save")}
+          </ConfigButton>
+        </>
+      );
+    }
+    return (
+      <div className="settings-security">
+        <h2 className="settings-general-title">{t("settings.security")}</h2>
+        <section className="settings-general-section">
+          <h3 className="settings-general-heading">
+            {t("auth.changePassword")}
+          </h3>
+          <p className="settings-general-description">
+            {t("auth.changePasswordDescription")}
+          </p>
+          <PasswordChangeForm onSuccess={() => onLogout?.()} />
+        </section>
+        <section className="settings-general-section">
+          <h3 className="settings-general-heading">{t("auth.logout")}</h3>
+          <p className="settings-general-description">
+            {t("auth.logoutDescription")}
+          </p>
+          <button
+            type="button"
+            className="auth-form-submit is-danger"
+            disabled={logoutBusy}
+            onClick={() => void handleLogout()}
+          >
+            {logoutBusy ? t("auth.processing") : t("auth.logout")}
+          </button>
+        </section>
+      </div>
+    );
+  })();
+
   return (
-    <div className="settings-general">
-      <h2 className="settings-general-title">{t("settings.general")}</h2>
-
-      <section className="settings-general-section">
-        <h3 className="settings-general-heading">{t("settings.appearance")}</h3>
-        <p className="settings-general-description">
-          {t("settings.appearanceDescription")}
-        </p>
-        <div
-          role="radiogroup"
-          aria-label={t("settings.appearance")}
-          className="settings-theme-options"
-        >
-          {themeOptions.map((option) => {
-            const selected = preference === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setThemePreference(option.id)}
-                className="settings-theme-option"
-              >
-                <ThemeIcon preference={option.id} />
-                <span className="settings-theme-option-label">
-                  {option.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {shellSettings && (
-        <section className="settings-general-section">
-          <h3 className="settings-general-heading">
-            {t("settings.idleReaping")}
-          </h3>
-          <p className="settings-general-description">
-            {t("settings.idleReapingDescription")}
-          </p>
-          <div className="settings-shell-option">
-            <span>{t("settings.idleReapingEnabled")}</span>
-            <ConfigSwitch
-              checked={shellSettings.idleSessionReaping.enabled}
-              loading={idleSaving}
-              label={t("settings.idleReapingEnabled")}
-              onChange={(enabled) => void saveIdleSessionReaping(enabled)}
-            />
-          </div>
-          <label className="settings-idle-timeout">
-            <span>{t("settings.idleReapingTimeout")}</span>
-            <input
-              type="number"
-              min={5}
-              max={1_440}
-              step={1}
-              inputMode="numeric"
-              disabled={!shellSettings.idleSessionReaping.enabled || idleSaving}
-              value={idleTimeoutInput}
-              aria-label={t("settings.idleReapingTimeout")}
-              onChange={(event) => setIdleTimeoutInput(event.target.value)}
-              onBlur={() => {
-                if (shellSettings.idleSessionReaping.enabled) {
-                  void saveIdleSessionReaping(true);
-                }
-              }}
-            />
-            <span>{t("settings.minutes")}</span>
-          </label>
-          {idleError && (
-            <p role="alert" className="settings-general-error">
-              {idleError}
-            </p>
-          )}
-        </section>
-      )}
-
-      {shellSettings?.isWindows && (
-        <section className="settings-general-section">
-          <h3 className="settings-general-heading">
-            {t("settings.shellTool")}
-          </h3>
-          <p className="settings-general-description">
-            {t("settings.shellToolDescription")}
-          </p>
-          <div className="settings-shell-option">
-            <span>{t("settings.usePowerShell")}</span>
-            <ConfigSwitch
-              checked={shellSettings.powerShellEnabled}
-              loading={shellSaving}
-              label={t("settings.usePowerShell")}
-              onChange={(enabled) => void togglePowerShell(enabled)}
-            />
-          </div>
-          {shellError && (
-            <p role="alert" className="settings-general-error">
-              {shellError}
-            </p>
-          )}
-        </section>
-      )}
-
-      <section className="settings-general-section">
-        <h3 className="settings-general-heading">{t("common.language")}</h3>
-        <p className="settings-general-description">
-          {t("settings.languageDescription")}
-        </p>
-        <div
-          role="radiogroup"
-          aria-label={t("common.language")}
-          className="settings-language-options"
-        >
-          {supportedLocales.map((plugin) => {
-            const selected = locale === plugin.id;
-            return (
-              <button
-                key={plugin.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setLocale(plugin.id as typeof locale)}
-                className="settings-language-option"
-              >
-                <span className="settings-language-radio">
-                  {selected && <span className="settings-language-radio-dot" />}
-                </span>
-                <span className="settings-language-label">{plugin.label}</span>
-                <span className="settings-language-code">{plugin.id}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-    </div>
+    <ConfigSplitView>
+      <ConfigSidebar>
+        <ConfigSidebarList>
+          {[t("settings.general"), t("settings.security")].map((group) => (
+            <div key={group} className="config-sidebar-group">
+              <ConfigSidebarGroupLabel>{group}</ConfigSidebarGroupLabel>
+              {categories
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <ConfigSidebarItem
+                    key={item.id}
+                    active={category === item.id}
+                    onClick={() => setCategory(item.id)}
+                  >
+                    <ConfigSidebarText className="is-grow">
+                      {item.label}
+                    </ConfigSidebarText>
+                  </ConfigSidebarItem>
+                ))}
+            </div>
+          ))}
+        </ConfigSidebarList>
+      </ConfigSidebar>
+      <ConfigDetail>
+        <ConfigDetailStack>{content}</ConfigDetailStack>
+      </ConfigDetail>
+    </ConfigSplitView>
   );
 }
 
+/**
+ * 渲染设置对话框，并在其中承载所有配置分区。
+ *
+ * @param props 当前工作区、会话与外层回调。
+ * @returns 设置对话框元素。
+ */
 export function SettingsPanel({
   cwd,
   sessionId,
@@ -460,7 +696,9 @@ export function SettingsPanel({
   onLogout,
 }: Props) {
   const { t } = useI18n();
-  const [section, setSection] = useState<SettingsSection>(initialSection);
+  const [section, setSection] = useState<SettingsSection>(
+    initialSection === "security" ? "general" : initialSection,
+  );
   const [mountedSections, setMountedSections] = useState<
     ReadonlySet<SettingsSection>
   >(() => new Set([section]));
@@ -474,10 +712,15 @@ export function SettingsPanel({
     { id: "agents", label: t("settings.subagents"), requiresProject: false },
     { id: "skills", label: t("common.skills"), requiresProject: true },
     { id: "plugins", label: t("common.plugins"), requiresProject: true },
-    { id: "security", label: t("settings.security"), requiresProject: false },
   ];
 
-  useEffect(() => setLastSettingsSection(initialSection), [initialSection]);
+  useEffect(
+    () =>
+      setLastSettingsSection(
+        initialSection === "security" ? "general" : initialSection,
+      ),
+    [initialSection],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -582,6 +825,10 @@ export function SettingsPanel({
             <GeneralSettings
               sessionId={sessionId}
               onSessionReloaded={onSessionReloaded}
+              onLogout={onLogout}
+              initialCategory={
+                initialSection === "security" ? "security" : "appearance"
+              }
             />,
           )}
           {sectionHost("models", <ModelsConfig embedded onClose={onClose} />)}
@@ -610,13 +857,6 @@ export function SettingsPanel({
                 onReloaded={onSessionReloaded}
               />,
             )}
-          {sectionHost(
-            "security",
-            <SecuritySettings
-              onLogout={onLogout}
-              onPasswordChanged={onLogout}
-            />,
-          )}
         </main>
       </div>
     </div>

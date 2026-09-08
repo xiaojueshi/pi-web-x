@@ -56,18 +56,21 @@ test("opens one settings panel from direct sidebar shortcuts", () => {
 
 test("keeps enabled configuration surfaces inside the settings panel", () => {
   for (const section of ["general", "models", "agents", "skills", "plugins"]) {
-    assert.match(panelSource, new RegExp(`id: "${section}"`));
+    assert.ok(panelSource.includes(`id: "${section}"`));
   }
-  for (const component of ["ModelsConfig", "SkillsConfig", "PluginsConfig"]) {
-    assert.match(panelSource, new RegExp(`<${component}[\\s\\S]*?embedded`));
-  }
+  assert.match(panelSource, /<ModelsConfig[\s\S]*?embedded/);
+  assert.match(panelSource, /<SkillsConfig[\s\S]*?embedded/);
+  assert.match(panelSource, /<PluginsConfig[\s\S]*?embedded/);
   assert.match(panelSource, /<SubagentsConfig[\s\S]*?projectTrust=/);
   assert.doesNotMatch(panelSource, /<AgentsConfig embedded/);
 });
 
 test("restores the settings section and each list detail selection", async () => {
   assert.match(shellSource, /getLastSettingsSection\(projectTrustCwd\)/);
-  assert.match(panelSource, /setLastSettingsSection\(initialSection\)/);
+  assert.match(
+    panelSource,
+    /setLastSettingsSection\(\s*initialSection === "security" \? "general" : initialSection,?\s*\)/,
+  );
   assert.match(panelSource, /setLastSettingsSection\(nextSection\)/);
   for (const name of ["ModelsConfig", "SkillsConfig", "PluginsConfig"]) {
     assert.match(
@@ -96,7 +99,7 @@ test("keeps visited settings sections mounted and contains nested Escape handlin
 
 test("offers direct light, dark, and system theme selection", () => {
   for (const preference of ["light", "dark", "auto"]) {
-    assert.match(panelSource, new RegExp(`id: "${preference}"`));
+    assert.ok(panelSource.includes(`id: "${preference}"`));
   }
   assert.match(panelSource, /setThemePreference\(option\.id\)/);
   assert.match(themeSource, /const setThemePreference = useCallback/);
@@ -116,37 +119,17 @@ test("keeps General free of divider rows", () => {
   assert.doesNotMatch(panelSource, /borderLeft: index > 0/);
 });
 
-test("uses top navigation on desktop and one compact section picker on mobile", () => {
-  assert.match(panelSource, /className="settings-mobile-section-picker"/);
-  assert.match(panelSource, /className="settings-section-tabs"/);
-  assert.match(panelSource, /className="settings-section-tab"/);
-  assert.match(cssSource, /\.settings-section-tab \{[\s\S]*?width: 96px/);
-  assert.match(cssSource, /\.settings-section-icon \{[\s\S]*?flex-shrink: 0/);
+test("将常规与安全设置放入模型风格的左侧分类菜单", () => {
+  assert.match(panelSource, /<ConfigSplitView>/);
+  assert.match(panelSource, /<ConfigSidebar>/);
+  assert.match(panelSource, /<ConfigSidebarList>/);
+  assert.match(panelSource, /<ConfigSidebarGroupLabel>/);
+  assert.match(panelSource, /id: "security"/);
   assert.match(
-    cssSource,
-    /\.settings-section-tab::after \{[\s\S]*?width: 24px/,
+    panelSource,
+    /initialSection === "security" \? "general" : initialSection/,
   );
-  assert.match(
-    cssSource,
-    /\.settings-section-tab\[aria-current="page"\]::after/,
-  );
-  assert.match(
-    cssSource,
-    /\.settings-section-tab:focus-visible:not\(\[aria-current="page"\]\)/,
-  );
-  assert.match(
-    cssSource,
-    /\.settings-section-tab:focus-visible\[aria-current="page"\][\s\S]*?outline: none/,
-  );
-  assert.match(
-    cssSource,
-    /@media \(max-width: 640px\)[\s\S]*?\.settings-section-tabs \{[\s\S]*?display: none/,
-  );
-  assert.match(
-    cssSource,
-    /@media \(max-width: 640px\)[\s\S]*?\.settings-mobile-section-picker \{[\s\S]*?display: block/,
-  );
-  assert.doesNotMatch(panelSource, /width: isMobile \? "100%" : 188/);
+  assert.match(cssSource, /\.settings-section-host > \.config-split-view \{/);
   assert.match(panelSource, /<main className="settings-dialog-main">/);
   assert.doesNotMatch(panelSource, /<style>/);
   assert.doesNotMatch(panelSource, /style=\{\{/);
@@ -174,20 +157,14 @@ test("uses the child-session robot glyph for the sub-agents tab", () => {
   );
 });
 
-test("uses the shared General layout for security actions", () => {
+test("将安全操作放入常规设置的安全分类", () => {
   assert.match(
     panelSource,
-    /<div className="settings-general settings-security">[\s\S]*?<h2 className="settings-general-title">\{t\("settings\.security"\)\}<\/h2>/,
+    /id: "security"[\s\S]*?label: t\("settings\.security"\)[\s\S]*?group: t\("settings\.security"\)/,
   );
-  assert.match(
-    panelSource,
-    /<section className="settings-general-section">[\s\S]*?t\("auth\.changePassword"\)/,
-  );
-  assert.match(
-    panelSource,
-    /<section className="settings-general-section">[\s\S]*?t\("auth\.logout"\)/,
-  );
-  assert.doesNotMatch(panelSource, /settings-security-card/);
+  assert.match(panelSource, /t\("auth\.changePassword"\)/);
+  assert.match(panelSource, /t\("auth\.logout"\)/);
+  assert.doesNotMatch(panelSource, /SecuritySettings/);
   assert.doesNotMatch(cssSource, /\.settings-security-card/);
 });
 
@@ -199,6 +176,18 @@ test("exposes global idle session reaping controls in General", () => {
   assert.match(panelSource, /method: "PUT"/);
   assert.match(panelSource, /settings\.idleReapingInvalidTimeout/);
   assert.match(cssSource, /\.settings-idle-timeout \{/);
+});
+
+test("保存系统提示词后重载当前会话", () => {
+  assert.match(panelSource, /fetch\("\/api\/system-prompt"/);
+  assert.match(panelSource, /method: "PUT"/);
+  assert.match(
+    panelSource,
+    /sendAgentCommand\(sessionId, \{ type: "reload" \}\)/,
+  );
+  assert.match(panelSource, /settings\.systemPromptSaveReload/);
+  assert.match(panelSource, /settings\.systemPromptEmptyHint/);
+  assert.match(cssSource, /\.settings-system-prompt \{/);
 });
 
 test("uses the compact controls glyph for General", () => {

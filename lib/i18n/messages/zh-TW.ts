@@ -35,6 +35,16 @@ export const zhTWLocale: LocalePlugin = {
     "settings.idleReapingInvalidTimeout":
       "請輸入 5 到 1,440 之間的整數分鐘數。",
     "settings.minutes": "分鐘",
+    "settings.sessions": "工作階段",
+    "settings.systemPrompt": "系統提示詞",
+    "settings.systemPromptDescription":
+      "編輯使用者層級系統提示詞。儲存後會重新載入目前工作階段，後續對話將使用新提示詞。",
+    "settings.systemPromptEmptyHint":
+      "留空後儲存即可恢復 Pi 的預設系統提示詞。",
+    "settings.systemPromptSaveReload": "儲存並重新載入工作階段",
+    "settings.systemPromptSaving": "正在儲存並重新載入…",
+    "settings.systemPromptReloaded": "已儲存並重新載入目前工作階段。",
+    "settings.systemPromptSaved": "已儲存；新建或重新載入工作階段後生效。",
     "settings.subagents": "內建 subagent",
     "settings.subagentsDescription":
       "啟用內建 Agent 工具，讓模型可以把子任務委派給子工作階段。",
@@ -77,11 +87,16 @@ export const zhTWLocale: LocalePlugin = {
       "繼承父上下文會向子工作階段提供目前對話；載入 extensions 會執行擴充能力。確定啟用嗎？",
     "settings.subagentsDeleteConfirm": "確定刪除 {name}（{scope}）嗎？",
     "settings.subagentsEnabledProfile": "{name} 已啟用",
-    "settings.subagentsOptionEnabledDescription": "是否允許此 profile 被排程執行。",
-    "settings.subagentsOptionSkillsDescription": "啟動時載入可用 skills，並將其說明提供給 subagent。",
-    "settings.subagentsOptionExtensionsDescription": "啟動時載入 extensions；擴充程式碼可能會被執行。",
-    "settings.subagentsOptionContextDescription": "將父工作階段目前的對話上下文傳遞給 subagent。",
-    "settings.subagentsOptionBackgroundDescription": "在背景執行，不阻塞父工作階段繼續處理其他任務。",
+    "settings.subagentsOptionEnabledDescription":
+      "是否允許此 profile 被排程執行。",
+    "settings.subagentsOptionSkillsDescription":
+      "啟動時載入可用 skills，並將其說明提供給 subagent。",
+    "settings.subagentsOptionExtensionsDescription":
+      "啟動時載入 extensions；擴充程式碼可能會被執行。",
+    "settings.subagentsOptionContextDescription":
+      "將父工作階段目前的對話上下文傳遞給 subagent。",
+    "settings.subagentsOptionBackgroundDescription":
+      "在背景執行，不阻塞父工作階段繼續處理其他任務。",
     "settings.subagentReadOnly":
       "此子工作階段為唯讀執行記錄；請在父工作階段中繼續編排任務。",
     "settings.subagentWaiting":

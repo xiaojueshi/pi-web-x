@@ -37,6 +37,17 @@ export const enLocale: LocalePlugin = {
     "settings.idleReapingInvalidTimeout":
       "Enter a whole number between 5 and 1,440 minutes.",
     "settings.minutes": "minutes",
+    "settings.sessions": "Sessions",
+    "settings.systemPrompt": "System prompt",
+    "settings.systemPromptDescription":
+      "Edit the user-level system prompt. Saving reloads the current session so future turns use the new prompt.",
+    "settings.systemPromptEmptyHint":
+      "Save an empty value to restore Pi's default system prompt.",
+    "settings.systemPromptSaveReload": "Save and reload session",
+    "settings.systemPromptSaving": "Saving and reloading…",
+    "settings.systemPromptReloaded": "Saved and reloaded the current session.",
+    "settings.systemPromptSaved":
+      "Saved; it applies to new or reloaded sessions.",
     "settings.subagents": "Built-in subagents",
     "settings.subagentsDescription":
       "Enable the built-in Agent tool so the model can delegate sub-tasks to sub-sessions.",
@@ -80,11 +91,16 @@ export const enLocale: LocalePlugin = {
       "Inheriting parent context gives the subagent the current conversation; loading extensions runs extension capabilities. Enable this?",
     "settings.subagentsDeleteConfirm": "Delete {name} ({scope})?",
     "settings.subagentsEnabledProfile": "{name} enabled",
-    "settings.subagentsOptionEnabledDescription": "Allow this profile to be scheduled and run.",
-    "settings.subagentsOptionSkillsDescription": "Load available skills and provide their instructions to the subagent.",
-    "settings.subagentsOptionExtensionsDescription": "Load extensions at startup; extension code may be executed.",
-    "settings.subagentsOptionContextDescription": "Pass the parent sessions current conversation context to the subagent.",
-    "settings.subagentsOptionBackgroundDescription": "Run in the background without blocking the parent session.",
+    "settings.subagentsOptionEnabledDescription":
+      "Allow this profile to be scheduled and run.",
+    "settings.subagentsOptionSkillsDescription":
+      "Load available skills and provide their instructions to the subagent.",
+    "settings.subagentsOptionExtensionsDescription":
+      "Load extensions at startup; extension code may be executed.",
+    "settings.subagentsOptionContextDescription":
+      "Pass the parent sessions current conversation context to the subagent.",
+    "settings.subagentsOptionBackgroundDescription":
+      "Run in the background without blocking the parent session.",
     "settings.subagentReadOnly":
       "This subagent is a read-only run record; continue orchestration in its parent session.",
     "settings.subagentWaiting":
@@ -420,7 +436,8 @@ export const enLocale: LocalePlugin = {
     "chat.promptCardQuestionTab": "Question {number}",
     "chat.promptCardAdditionalTab": "Additional",
     "chat.promptCardAdditionalTitle": "Additional context (optional)",
-    "chat.promptCardAdditionalPlaceholder": "Anything else the assistant should know?",
+    "chat.promptCardAdditionalPlaceholder":
+      "Anything else the assistant should know?",
     "chat.promptCardBack": "Back",
     "chat.promptCardNext": "Next",
     "chat.todoProgress": "{done}/{total} completed",

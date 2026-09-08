@@ -35,6 +35,15 @@ export const zhCNLocale: LocalePlugin = {
     "settings.idleReapingInvalidTimeout":
       "请输入 5 到 1,440 之间的整数分钟数。",
     "settings.minutes": "分钟",
+    "settings.sessions": "会话",
+    "settings.systemPrompt": "系统提示词",
+    "settings.systemPromptDescription":
+      "编辑用户级系统提示词。保存后将重载当前会话，使后续对话使用新提示词。",
+    "settings.systemPromptEmptyHint": "留空并保存将恢复 Pi 的默认系统提示词。",
+    "settings.systemPromptSaveReload": "保存并重载会话",
+    "settings.systemPromptSaving": "正在保存并重载…",
+    "settings.systemPromptReloaded": "已保存并重载当前会话。",
+    "settings.systemPromptSaved": "已保存；新建或重载会话后生效。",
     "settings.subagents": "内置 subagent",
     "settings.subagentsDescription":
       "启用内置 Agent 工具，让模型可以把子任务委派给子会话。",
@@ -77,11 +86,16 @@ export const zhCNLocale: LocalePlugin = {
       "继承父上下文会向子会话提供当前对话；加载 extensions 会运行扩展能力。确定启用吗？",
     "settings.subagentsDeleteConfirm": "确定删除 {name}（{scope}）吗？",
     "settings.subagentsEnabledProfile": "{name} 已启用",
-    "settings.subagentsOptionEnabledDescription": "是否允许此 profile 被调度运行。",
-    "settings.subagentsOptionSkillsDescription": "启动时加载可用 skills，并将其说明提供给 subagent。",
-    "settings.subagentsOptionExtensionsDescription": "启动时加载 extensions；扩展代码可能会被执行。",
-    "settings.subagentsOptionContextDescription": "将父会话的当前对话上下文传递给 subagent。",
-    "settings.subagentsOptionBackgroundDescription": "在后台运行，不阻塞父会话继续处理其他任务。",
+    "settings.subagentsOptionEnabledDescription":
+      "是否允许此 profile 被调度运行。",
+    "settings.subagentsOptionSkillsDescription":
+      "启动时加载可用 skills，并将其说明提供给 subagent。",
+    "settings.subagentsOptionExtensionsDescription":
+      "启动时加载 extensions；扩展代码可能会被执行。",
+    "settings.subagentsOptionContextDescription":
+      "将父会话的当前对话上下文传递给 subagent。",
+    "settings.subagentsOptionBackgroundDescription":
+      "在后台运行，不阻塞父会话继续处理其他任务。",
     "settings.subagentReadOnly":
       "此子会话为只读运行记录；请在父会话中继续编排任务。",
     "settings.subagentWaiting":

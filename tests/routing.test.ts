@@ -9,6 +9,7 @@ test("matches dynamic and catch-all API routes", () => {
   const file = findRoute("/api/files/a%20directory/notes.md");
   expect(file?.params).toEqual({ path: ["a directory", "notes.md"] });
 
+  expect(findRoute("/api/system-prompt")?.params).toEqual({});
   expect(findRoute("/api/does-not-exist")).toBeNull();
 });
 

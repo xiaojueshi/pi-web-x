@@ -1627,12 +1627,14 @@
   padding: 18px 16px;
 }
 
-.settings-subagents-page > .settings-general-section:nth-of-type(2):not(:last-of-type) {
+.settings-subagents-page
+  > .settings-general-section:nth-of-type(2):not(:last-of-type) {
   grid-column: 1;
   padding: 16px;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row) {
   display: flex;
   grid-column: 1;
   grid-row: 3;
@@ -1661,7 +1663,8 @@
   margin-top: 9px;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-form) {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-form) {
   grid-column: 2;
   grid-row: 1 / -1;
   padding: 28px 32px 48px;
@@ -1698,7 +1701,8 @@
     border-right: 0;
   }
 
-  .settings-subagents-page > .settings-general-section:has(.settings-subagents-form) {
+  .settings-subagents-page
+    > .settings-general-section:has(.settings-subagents-form) {
     padding: 20px 14px 36px;
   }
 
@@ -1724,31 +1728,44 @@
   padding: 12px 14px;
 }
 
-.settings-subagents-page > .settings-general-section:first-of-type .settings-general-heading {
+.settings-subagents-page
+  > .settings-general-section:first-of-type
+  .settings-general-heading {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
 }
 
-.settings-subagents-page > .settings-general-section:first-of-type .settings-shell-option {
+.settings-subagents-page
+  > .settings-general-section:first-of-type
+  .settings-shell-option {
   display: contents;
 }
 
-.settings-subagents-page > .settings-general-section:first-of-type .settings-shell-option > span {
+.settings-subagents-page
+  > .settings-general-section:first-of-type
+  .settings-shell-option
+  > span {
   color: var(--text-muted);
   font-size: 11px;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row) {
   position: relative;
   padding: 8px 6px 44px;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row)
+  > .settings-shell-option {
   display: contents;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option .settings-general-heading {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row)
+  > .settings-shell-option
+  .settings-general-heading {
   order: -3;
   padding: 4px 8px 3px;
   color: var(--text-dim);
@@ -1757,7 +1774,10 @@
   text-transform: uppercase;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option .auth-form-submit {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row)
+  > .settings-shell-option
+  .auth-form-submit {
   position: absolute;
   right: 6px;
   bottom: 6px;
@@ -1774,7 +1794,10 @@
   text-align: left;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option .auth-form-submit:hover {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row)
+  > .settings-shell-option
+  .auth-form-submit:hover {
   background: var(--bg-hover);
   color: var(--accent);
 }
@@ -1819,7 +1842,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(-3px);
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
 .settings-info-tooltip:hover::after,
@@ -1844,7 +1869,9 @@
 
 .settings-subagents-page .settings-subagents-profile-description,
 .settings-subagents-page .settings-subagents-profile-actions,
-.settings-subagents-page .settings-subagents-profile-row > .settings-subagents-profile-meta {
+.settings-subagents-page
+  .settings-subagents-profile-row
+  > .settings-subagents-profile-meta {
   display: none;
 }
 
@@ -1943,7 +1970,9 @@
   justify-content: space-between;
 }
 
-.settings-subagents-page > .settings-general-section:first-of-type > .settings-shell-option {
+.settings-subagents-page
+  > .settings-general-section:first-of-type
+  > .settings-shell-option {
   display: flex;
   width: 100%;
   min-height: 28px;
@@ -2016,7 +2045,8 @@
   background: transparent;
 }
 
-.settings-general:not(.settings-subagents-page) > .settings-general-section:first-of-type {
+.settings-general:not(.settings-subagents-page)
+  > .settings-general-section:first-of-type {
   padding-top: 0;
 }
 
@@ -2036,6 +2066,42 @@
   max-width: 620px;
 }
 
+/* General and Security share the Models-style master-detail shell. */
+.settings-section-host > .config-split-view {
+  height: 100%;
+}
+
+.settings-system-prompt {
+  box-sizing: border-box;
+  width: min(100%, 760px);
+  min-height: 280px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.settings-system-prompt:focus {
+  border-color: var(--accent);
+}
+
+.settings-system-prompt:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.settings-general-status {
+  margin: 0;
+  color: #16a34a;
+  font-size: 12px;
+}
+
 @media (max-width: 720px) {
   .settings-subagents-tool-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2043,12 +2109,18 @@
 }
 
 /* Keep sidebar help bubbles inside the clipped scrolling column. */
-.settings-subagents-page > .settings-general-section .settings-heading-with-info > .settings-info-tooltip::after {
+.settings-subagents-page
+  > .settings-general-section
+  .settings-heading-with-info
+  > .settings-info-tooltip::after {
   left: -22px;
   width: 180px;
   box-sizing: border-box;
 }
 
-.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) .settings-heading-with-info > .settings-info-tooltip::after {
+.settings-subagents-page
+  > .settings-general-section:has(.settings-subagents-profile-row)
+  .settings-heading-with-info
+  > .settings-info-tooltip::after {
   left: -64px;
 }
