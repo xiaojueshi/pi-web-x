@@ -10,7 +10,7 @@ Pi Web X — локальный веб-интерфейс для [pi coding agen
 
 - Один нативный файл для macOS, Linux (glibc/musl) и Windows на x64/arm64.
 - React 19 CSR выполняется в браузере; сервер не использует Next.js, RSC, SSR или runtime Node.js.
-- Сессии, потоковая работа Agent, файлы, Git/worktree, модели и учётные данные, plugins, skills, prompts, themes, subagents и PWA.
+- Сессии с полнотекстовым поиском, потоковая работа Agent, управляемые встроенные subagents (границы доверия и наблюдение только для чтения), файлы, Git/worktree, модели и учётные данные, plugins с проверкой обновлений, skills, prompts, редактор глобального системного промпта, themes и PWA.
 - По умолчанию сервер слушает только loopback и проверяет Host/Origin, а браузерный доступ защищён паролем.
 - Общие данные pi хранятся в `~/.pi/agent`, собственные данные Pi Web X — в `~/.pi-web-x`.
 

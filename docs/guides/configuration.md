@@ -72,6 +72,8 @@ Mirror endpoints must be protected with the same integrity and access controls a
 | Browser password-verification state | `~/.pi-web-x/auth/pi-web-auth.json` |
 | Persisted browser session hashes/metadata | `~/.pi-web-x/auth/pi-web-sessions.json` |
 | Global idle session reaping setting | `~/.pi-web-x/settings.json` |
+| Built-in subagent activation | `~/.pi/agent/agents/settings.json` |
+| Global system prompt | `~/.pi/agent/SYSTEM.md` |
 | Linux systemd environment snapshot | `~/.pi-web-x/env` |
 | macOS service logs | `~/Library/Logs/pi-web-x.{out,err}.log` |
 | Windows service log | `%USERPROFILE%\.pi-web-x\service.log` |
@@ -90,6 +92,8 @@ This means server passwords and mirror configuration should not appear in `git`,
 - `service install` snapshots port, hostname, and Basic Auth configuration at installation time; changing the current shell later does not alter an installed service.
 - Browser settings are stored by the application and are separate from process environment variables.
 - Idle session reaping is configured in **Settings → General**. It is a global service setting: disable it or select a whole-minute timeout from 5 to 1,440 minutes; the default is 10 minutes. It has no environment-variable override, and extension-owned background work prevents reaping while it remains active.
+- Built-in subagents are enabled in **Settings → General** (default off; stored in `~/.pi/agent/agents/settings.json`). The Subagents settings area manages profiles: built-in and workspace profiles are read-only, global and trusted-project profiles are editable, and repository-scoped profiles stay unavailable until the project is trusted.
+- The global system prompt is edited in the settings panel and stored as `~/.pi/agent/SYSTEM.md`. Discovery follows Pi's global-resource order (`SYSTEM.md` → global `AGENTS.md` → `CLAUDE.md`); clearing the editor only removes `SYSTEM.md`, never the context files.
 - Pi Web X does not read legacy `PI_WEB_*` variables or `pi-web:*` browser storage.
 
 See [system service registration](./system-service.md) for platform-specific persistence.

@@ -2,6 +2,43 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.11.0] - 2026-09-08
+
+### 新增
+
+- 内置 Subagent 正式启用，配套完整的管理与观察界面（详见 ADR 0009）：
+  - 设置 → 通用 新增「内置 subagent」开关：此前内置 subagent 被硬编码禁用（即使手动写入 `~/.pi/agent/agents/settings.json` 也无法生效），现在默认仍关闭，但可在设置中打开，保存即生效、无需重载会话；设置损坏时 fail closed 保持关闭。
+  - 设置面板新增 Subagents 管理区：内置与 workspace 级 profile 只读展示，全局与已信任项目的 profile 可完整编辑；同名 profile 按 project → workspace → global → built-in 优先级解析，被遮蔽的来源保持可见；敏感能力授权与删除均需显式确认。
+  - 项目信任边界：仓库级（workspace/project）profile 属于仓库受控输入，项目被信任前不可用；首次在浏览器访问中选择未信任项目的会话时弹出一次性信任确认，拒绝后保留受限功能提示与后续信任入口，不再重复弹窗。
+  - Agents 观察视图：仅限当前父会话范围，显示子 agent 运行中/总数、状态、消息与工具结果；子会话在 UI 与 API 两层均严格只读，直接写请求会被拒绝。
+  - 生命周期：停止父 Agent 会级联中止其所有活动的内置子 agent 并保留历史供观察；前台委派在同一父回合内等待结果并继续；后台完成仍会向父会话回报。
+- Agent 主动委派策略：启用 Agent 工具的会话在每轮 system prompt 末尾注入委派策略（何时应后台/前台委派、不重复委派琐碎任务）；未启用 Agent 工具时不修改用户的 system prompt。
+- 批量 `ask_user` 问答：内置提问工具新增 `questions` 参数（2–8 个问题），一次调用以标签页流呈现多个独立问题（tab 支持自定义标签，缺省用本地化序号），取代反复逐个提问；单个问题的原有用法不变。同时每轮注入「主动澄清」策略，让模型在真正需要用户决定时优先提问而不是擅自假设。
+- 全局系统提示词设置：设置面板新增系统提示词编辑器与 `GET/PUT /api/system-prompt`。读写与 Pi 全局资源发现一致：`~/.pi/agent/SYSTEM.md` 优先，未配置时回显全局 `AGENTS.md`、再次 `CLAUDE.md`；首次保存创建 `SYSTEM.md`，清空仅删除 `SYSTEM.md`，不会误删用户的全局规则文件；写回当前来源文件，避免复制进 `SYSTEM.md` 后被 SDK 重复注入。
+- 会话全文搜索：新增 `GET /api/sessions/search` 与侧边栏搜索面板。无索引字面搜索，单次 3 秒预算 / 最多 500 个文件 / 30 条结果上限；结果防抖展示，点击命中跳转到对应会话并高亮定位；`sessionListVersion` 支持跨窗口会话列表同步。
+- 插件更新检查与确认式更新：新增 `POST /api/plugins/check`（npm registry 版本/范围比较 + git HEAD/远端 ref 比较，识别 `PI_OFFLINE`，锁定来源返回 unsupported，只读不落盘）；主页加载、项目切换与插件面板打开时后台静默检查（`lib/plugin-update-store` 全局共享，错误状态仅手动检查时展示）；插件面板单项与批量更新都需显式确认，批量更新先展示完整清单二次确认。
+- 空闲会话回收改为设置面板管理：设置 → 通用 中开关并选择 5–1440 分钟超时（默认 10 分钟），持久化到 `~/.pi-web-x/settings.json`，无环境变量覆盖（ADR 0008）；rpc-manager 与 subagent-runtime 的后台任务接入保活语义，扩展后台工作活跃时阻止回收。
+- 小型改进：Mermaid 图渲染就绪后默认展开预览并支持 SVG 下载；会话阅读位置按会话记忆（切回会话不再跳回底部，锚点翻页后正确恢复）；文件面板支持视频内联预览（webm 归类为视频，Range 流式播放）。
+
+### 变更
+
+- 选择性移植上游 pi-web v0.9.0（`0d1df12`）的插件管理增强与会话搜索，保留 `pi-web-x` 命名、Bun 单文件编译与 Host/Project 环境隔离等本地不变量。
+- pi SDK（`@earendil-works/pi-agent-core`、`pi-ai`、`pi-coding-agent`、`pi-tui`）从 0.85.0 升级至 0.85.1（新增 GPT-6 Astra 模型、修复 GPT-5.6+ prompt cache TTL）；UPSTREAM-001 补丁逐项复核维持生效。
+- 发布构建启用 minify 并移除未使用的 `@earendil-works/pi-server` 依赖：二进制 JS 部分 25.0MB → 14.4MB（−42%），单二进制约 103.7MB → 93.2MB，八平台制品普遍缩小约 10MB。
+
+### 修复
+
+- 编译二进制下 HTML 历史导出失败：导出 API fallback 硬编码 npm 包内 `dist/core/export-html` 路径并动态 import 磁盘文件，二进制部署下报 `Cannot find module .../export-html/index.js` 并整体失败。现在 `exportFromFile` 在编译期内嵌进二进制（`src/export-html-entry.ts`），移除磁盘布局依赖，纯二进制部署的 HTML 导出恢复正常。
+- 手动上下文压缩不再等待超时：压缩可能持续数分钟，HTTP 响应链路等待会超时且无法判断结果。现在命令立即确认返回 `{started:true}`，完成结果与错误仍经 SDK `compaction_end` 事件通过 SSE 送达客户端，失败在服务端日志可见。
+- 稳定性加固：15 处 API 路由直连 `new URL(req.url)` 的参数解析统一改为安全解析（解析失败返回空集合而不是抛 500）；request-security 的 Origin 解析失败改为 fail closed；markdown 数学块与会话 cookie 等逐行/逐请求构造的正则预构建为模块常量；登录 client-input 令牌从 `Math.random` 改为 `crypto.randomUUID`。
+- CI 加固：三个工作流 checkout 显式 `persist-credentials: false`，ci/e2e 增加 `permissions: {}` 最小权限。
+- 测试修复：Windows 平台路径分隔符断言（idle-session-settings）、SettingsUi 正则断言跨规则块误匹配、会话搜索测试的 globalThis 缓存跨文件污染。
+
+### 测试与工程化
+
+- 新增约 90 项单元测试：插件更新检查与存储、会话搜索（lib 与路由）、subagent 只读观察路由、system-prompt 路由与设置、批量提问卡片与问答语义、subagent 开关门禁、阅读位置、空闲回收设置、rpc-manager 关闭语义等。
+- 全量单测 1023 项通过（`bun run test`）；`bun run typecheck`、`bun run lint` 通过。
+
 ## [0.10.1] - 2026-09-05
 
 ### 修复
@@ -152,6 +189,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.11.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.0
 [0.10.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.1
 [0.10.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.0
 [0.9.4]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.9.4

@@ -10,7 +10,7 @@ Pi Web X 是 [pi coding agent](https://github.com/earendil-works/pi) 的 Bun 原
 
 - 为 macOS、Linux（glibc/musl）和 Windows 的 x64/arm64 提供单个原生可执行文件。
 - 浏览器内运行 React 19 CSR；不使用 Next.js、RSC、SSR 或 Node.js 服务端运行时。
-- 支持会话浏览、Agent 流式输出、文件、Git/worktree、模型与凭据设置、plugins、skills、prompts、themes、subagents 和 PWA。
+- 支持会话浏览与全文搜索、Agent 流式输出、可管理的内置 subagents（含信任边界与只读观察）、文件、Git/worktree、模型与凭据设置、plugins（含更新检查）、skills、prompts、全局系统提示词编辑、themes 和 PWA。
 - 默认仅监听 loopback，并执行 Host/Origin 校验与浏览器密码认证。
 - Pi 通用数据位于 `~/.pi/agent`，Pi Web X 自有数据位于 `~/.pi-web-x`。
 

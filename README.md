@@ -10,7 +10,7 @@ Pi Web X is a Bun-native local web interface for the [pi coding agent](https://g
 
 - One native executable for macOS, Linux (glibc and musl), and Windows on x64/arm64.
 - React 19 client rendered in the browser; no Next.js, RSC, SSR, or Node.js server runtime.
-- Session browsing, Agent streaming, files, Git/worktrees, model and credential settings, plugins, skills, prompts, themes, subagents, and PWA support.
+- Session browsing with full-text session search, Agent streaming with managed built-in subagents (trust boundaries and read-only observation), files, Git/worktrees, model and credential settings, plugins with update checks, skills, prompts, a global system prompt editor, themes, and PWA support.
 - Loopback-only by default, with Host/Origin checks and browser password authentication.
 - Uses `~/.pi/agent` for shared pi data and `~/.pi-web-x` for Pi Web X-owned data.
 
