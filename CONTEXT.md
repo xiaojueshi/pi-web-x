@@ -52,6 +52,50 @@ _Avoid_: session deletion, timeout logout, garbage collection
 The declaration that extension-owned background work for a Web Session remains active and must prevent Idle Session Reaping.
 _Avoid_: browser keepalive, SSE heartbeat, agent streaming
 
+**Built-in Inline Subagent**:
+The Pi Web X-operated subagent extension whose lifecycle and child sessions are part of Pi Web X.
+_Avoid_: SDK built-in subagent, user-installed subagent
+
+**External Subagent Extension**:
+A subagent implementation installed and managed by the user through the plugin system, independently of the Built-in Inline Subagent.
+_Avoid_: built-in subagent, Pi Web X subagent
+
+**Subagent Profile**:
+A named delegation configuration that defines a subagent's instructions, permitted tools, and execution defaults. Profiles have a source scope; built-in and workspace profiles are read-only, while global and project profiles are user-managed.
+_Avoid_: plugin, session, model preset
+
+**Subagent Observation View**:
+A parent-session-scoped view of Built-in Inline Subagent sessions that reports their running and total counts, status, messages, and tool results.
+_Avoid_: global job queue, external plugin dashboard
+
+**Subagent Settings**:
+An always-available settings area for the Built-in Inline Subagent, its activation choice, and its profiles. Project-scoped sources become available when a project is open.
+_Avoid_: external plugin settings, project-only settings
+
+**Subagent Profile Precedence**:
+The rule that resolves same-named profiles by source priority: project, workspace, global, then built-in. The effective profile and every shadowed source remain visible.
+_Avoid_: merge, duplicate profile error
+
+**Read-only Subagent Observation**:
+The rule that a human user may inspect a Built-in Inline Subagent session but cannot send messages or otherwise mutate it. Direct write requests are rejected; parent-agent orchestration remains separate.
+_Avoid_: inactive session, user-controlled subagent
+
+**Parent Abort Cascade**:
+The rule that stopping a parent Agent stops every active Built-in Inline Subagent belonging to that parent, while preserving their aborted histories for observation.
+_Avoid_: session deletion, completed-session removal
+
+**Repository-scoped Subagent Profile**:
+A workspace or project profile supplied by the opened repository. It is visible but unavailable to the Built-in Inline Subagent until that project is trusted.
+_Avoid_: global profile, user profile
+
+**Project Trust Prompt**:
+The one-time confirmation shown when a session from an untrusted project is first selected during a browser visit. Declining leaves a persistent restricted-functionality notice and a way to trust the project later.
+_Avoid_: per-session trust, repeated modal
+
+**Foreground Subagent Delegation**:
+A delegation mode in which the parent Agent waits for the subagent result and continues the same Agent turn from that tool result.
+_Avoid_: background delegation, parent termination
+
 ## Mobile Experience
 
 **Mobile Companion**:

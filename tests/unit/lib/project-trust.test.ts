@@ -41,6 +41,29 @@ test("clean projects stay on the normal trusted load path", async () => {
   assert.equal(projectTrustReloadOptions(cwd, agentDir), undefined);
 });
 
+test("repository subagent profiles require explicit project trust", async () => {
+  const { cwd, agentDir } = await createProjectFixture();
+  await mkdir(join(cwd, ".pi", "agents"), { recursive: true });
+  await writeFile(
+    join(cwd, ".pi", "agents", "review.md"),
+    "---\ndescription: Review\n---\nInspect the change.",
+  );
+
+  assert.deepEqual(getProjectTrustStatus(cwd, agentDir), {
+    requiresTrust: true,
+    trusted: false,
+  });
+  assert.equal(
+    await projectTrustReloadOptions(cwd, agentDir)?.resolveProjectTrust(),
+    false,
+  );
+
+  assert.deepEqual(trustProject(cwd, agentDir), {
+    requiresTrust: true,
+    trusted: true,
+  });
+});
+
 test("project extensions execute only after the project is trusted", async () => {
   const { root, cwd, agentDir } = await createProjectFixture();
   const extensionDir = join(cwd, ".pi", "extensions");

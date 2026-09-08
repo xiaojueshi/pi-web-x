@@ -5,9 +5,7 @@ import { join } from "node:path";
 import { test } from "bun:test";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-const { AgentSessionWrapper } = await import(
-  "../../../lib/rpc-manager.ts",
-);
+const { AgentSessionWrapper } = await import("../../../lib/rpc-manager.ts");
 
 test("get_tools preserves the SDK tool definition fields", async () => {
   const source = await readFile(
@@ -96,7 +94,7 @@ test("built-in subagents persist their selected resource policy", async () => {
   );
   assert.match(
     startupSource,
-    /createSubagentExtension\([\s\S]*?SUBAGENT_CONTROLLER\.extensionRuntime,[\s\S]*?\(\) => listSubagentProfiles\(sessionCwd\),[\s\S]*?isBuiltInSubagentsEnabled/,
+    /createSubagentExtension\([\s\S]*?SUBAGENT_CONTROLLER\.extensionRuntime,[\s\S]*?\(\) => listRunnableSubagentProfiles\(sessionCwd\),[\s\S]*?isBuiltInSubagentsEnabled/,
   );
   assert.match(startupSource, /preferPiWebSubagentExtension\(base\)/);
 });

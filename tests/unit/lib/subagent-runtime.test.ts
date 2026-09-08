@@ -65,6 +65,99 @@ test("completion notification reopens an idle parent and uses its current sessio
   });
 });
 
+test("parent abort cascades only to its active subagents", async () => {
+  const previousRuns = globalThis.__piSubagentRuns;
+  const aborts: string[] = [];
+  globalThis.__piSubagentRuns = new Map([
+    [
+      "child-running",
+      {
+        run: {
+          sessionId: "child-running",
+          parentSessionId: "parent",
+          status: "running",
+        },
+        completion: Promise.resolve(),
+        abortRequested: false,
+        suppressParentNotification: false,
+      },
+    ],
+    [
+      "child-starting",
+      {
+        run: {
+          sessionId: "child-starting",
+          parentSessionId: "parent",
+          status: "starting",
+        },
+        completion: Promise.resolve(),
+        abortRequested: false,
+        suppressParentNotification: false,
+      },
+    ],
+    [
+      "child-other-parent",
+      {
+        run: {
+          sessionId: "child-other-parent",
+          parentSessionId: "other",
+          status: "running",
+        },
+        completion: Promise.resolve(),
+        abortRequested: false,
+        suppressParentNotification: false,
+      },
+    ],
+    [
+      "child-completed",
+      {
+        run: {
+          sessionId: "child-completed",
+          parentSessionId: "parent",
+          status: "completed",
+        },
+        completion: Promise.resolve(),
+        abortRequested: false,
+        suppressParentNotification: false,
+      },
+    ],
+  ]);
+  try {
+    const controller = createSubagentController({
+      getSession: (sessionId) => ({
+        isAlive: () => true,
+        isRunning: () => sessionId !== "child-completed",
+        inner: { abort: async () => void aborts.push(sessionId) },
+      }),
+      registerSession: () => {},
+      reopenSession: async () => {
+        throw new Error("unused");
+      },
+      resolveSessionPath: async () => null,
+      invalidateSessionList: () => {},
+    });
+
+    await controller.abortForParent("parent");
+
+    assert.deepEqual(aborts.sort(), ["child-running", "child-starting"]);
+    for (const sessionId of ["child-running", "child-starting"]) {
+      const stored = globalThis.__piSubagentRuns.get(sessionId);
+      assert.equal(stored.abortRequested, true);
+      assert.equal(stored.suppressParentNotification, true);
+    }
+    assert.equal(
+      globalThis.__piSubagentRuns.get("child-other-parent").abortRequested,
+      false,
+    );
+    assert.equal(
+      globalThis.__piSubagentRuns.get("child-completed").abortRequested,
+      false,
+    );
+  } finally {
+    globalThis.__piSubagentRuns = previousRuns;
+  }
+});
+
 test("disabled built-in subagents reject stale Agent calls before starting", async () => {
   const controller = createSubagentController({
     getSession: () => {

@@ -1,10 +1,30 @@
 import { HttpResponse } from "@/src/server/http";
-import { resolveSessionPath } from "@/lib/session-reader";
+import { getSessionEntries, resolveSessionPath } from "@/lib/session-reader";
+import { readSubagentRun } from "@/lib/subagents";
 import {
   startRpcSession,
   getRpcSession,
   setRpcSessionTools,
 } from "@/lib/rpc-manager";
+
+const SUBAGENT_READ_COMMANDS = new Set([
+  "get_state",
+  "get_tools",
+  "get_commands",
+  "get_last_assistant_text",
+  "get_session_stats",
+  "navigate_tree",
+]);
+
+function isSubagentSession(sessionId: string, sessionFile: string): boolean {
+  try {
+    return Boolean(
+      readSubagentRun(getSessionEntries(sessionFile), sessionId, sessionFile),
+    );
+  } catch {
+    return false;
+  }
+}
 
 // POST /api/agent/[id] - Send a command to an existing session
 export async function POST(
@@ -28,18 +48,34 @@ export async function POST(
     }
     const toolNames = requestedToolNames as string[] | undefined;
 
-    // Fast path: already-running session
+    // 先从持久化元数据识别子会话，避免旧客户端绕过只读 UI 直接写入。
     const existing = getRpcSession(id);
+    const filePath = existing?.sessionFile || (await resolveSessionPath(id));
+    if (
+      filePath &&
+      isSubagentSession(id, filePath) &&
+      !SUBAGENT_READ_COMMANDS.has(body.type)
+    ) {
+      return HttpResponse.json(
+        {
+          error: "Subagent sessions are read-only",
+          code: "subagent_read_only",
+        },
+        { status: 403 },
+      );
+    }
     if (body.type === "set_tools") {
-      const filePath =
-        existing?.sessionFile || (await resolveSessionPath(id)) || undefined;
       if (!existing?.isAlive() && !filePath) {
         return HttpResponse.json(
           { error: "Session not found" },
           { status: 404 },
         );
       }
-      const changed = await setRpcSessionTools(id, filePath, toolNames);
+      const changed = await setRpcSessionTools(
+        id,
+        filePath || undefined,
+        toolNames,
+      );
       return HttpResponse.json({
         success: true,
         data: { sessionId: changed.sessionId, recreated: changed.recreated },
@@ -51,7 +87,6 @@ export async function POST(
       return HttpResponse.json({ success: true, data: result });
     }
 
-    const filePath = await resolveSessionPath(id);
     if (!filePath) {
       return HttpResponse.json(
         {

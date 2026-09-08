@@ -88,6 +88,8 @@ interface Props {
     position: ChatScrollPosition,
   ) => void;
   sessionRunning?: boolean;
+  /** 当前父会话正在运行的内置子会话数量；子会话本身始终传 0。 */
+  runningSubagentCount?: number;
   newSessionCwd: string | null;
   newSessionDraftKey: string | null;
   onAgentEnd?: () => void;
@@ -416,6 +418,7 @@ export function ChatWindow({
   initialScrollPosition,
   onScrollPositionChange,
   sessionRunning,
+  runningSubagentCount = 0,
   newSessionCwd,
   newSessionDraftKey,
   onAgentEnd,
@@ -441,7 +444,8 @@ export function ChatWindow({
 }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
-  const completionNotificationsEnabled = session?.relation?.kind !== "subagent";
+  const isReadOnlySubagent = session?.relation?.kind === "subagent";
+  const completionNotificationsEnabled = !isReadOnlySubagent;
 
   // Wrap onAgentEnd to play the completion sound. This is more reliable than
   // wrapping handleAgentEventRef because useAgentSession overwrites that ref
@@ -593,8 +597,10 @@ export function ChatWindow({
 
   // Register the abort handler for the global Esc shortcut
   useEffect(() => {
-    registerAbortHandler(sessionBusy ? handleAbort : null);
-  }, [sessionBusy, handleAbort]);
+    registerAbortHandler(
+      !isReadOnlySubagent && sessionBusy ? handleAbort : null,
+    );
+  }, [isReadOnlySubagent, sessionBusy, handleAbort]);
 
   // --- Lazy-load historical messages ---
   // Only render the last N messages initially. When the user scrolls to the
@@ -974,9 +980,9 @@ export function ChatWindow({
 
   const onDrop = useCallback(
     (files: File[]) => {
-      chatInputRef?.current?.addImages(files);
+      if (!isReadOnlySubagent) chatInputRef?.current?.addImages(files);
     },
-    [chatInputRef],
+    [chatInputRef, isReadOnlySubagent],
   );
 
   const {
@@ -1153,8 +1159,14 @@ export function ChatWindow({
         `${displayModelValue.provider}:${displayModelValue.modelId}`
       ] ?? null)
     : null;
-
-  const chatInputElement = (
+  const chatInputElement = isReadOnlySubagent ? (
+    <div
+      role="status"
+      className="border-t border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text-muted)]"
+    >
+      {t("settings.subagentReadOnly")}
+    </div>
+  ) : (
     <ChatInput
       ref={chatInputRef}
       onSend={handleSend}
@@ -1222,12 +1234,12 @@ export function ChatWindow({
     <div
       className="relative flex h-full min-w-0 flex-col overflow-hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDragEnter={isReadOnlySubagent ? undefined : handleDragEnter}
+      onDragOver={isReadOnlySubagent ? undefined : handleDragOver}
+      onDragLeave={isReadOnlySubagent ? undefined : handleDragLeave}
+      onDrop={isReadOnlySubagent ? undefined : handleDrop}
     >
-      {isDragOver && (
+      {!isReadOnlySubagent && isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center bg-[rgba(37,99,235,0.06)] backdrop-blur-[1px]">
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             {[0, 0.8, 1.6].map((delay) => (
@@ -1292,7 +1304,7 @@ export function ChatWindow({
         </div>
       )}
 
-      {extensionCustomUi && (
+      {!isReadOnlySubagent && extensionCustomUi && (
         <ExtensionCustomPanel
           request={extensionCustomUi}
           onInput={sendExtensionCustomInput}
@@ -1796,6 +1808,16 @@ export function ChatWindow({
                     </div>
                   )}
 
+                  {agentRunning && runningSubagentCount > 0 && (
+                    <div className="break-words py-2 text-[13px] text-text-muted">
+                      <span className="animate-[pulse_1.5s_infinite]">
+                        {t("settings.subagentWaiting", {
+                          count: runningSubagentCount,
+                        })}
+                      </span>
+                    </div>
+                  )}
+
                   {bashRunning && !pendingBash && (
                     <div className="py-2 text-[13px] text-text-muted">
                       <span className="animate-[pulse_1.5s_infinite]">
@@ -1821,7 +1843,7 @@ export function ChatWindow({
                     />
                   )}
 
-                  {extensionDialog && (
+                  {!isReadOnlySubagent && extensionDialog && (
                     <ExtensionPromptCard
                       request={extensionDialog}
                       onRespond={respondToExtensionUi}

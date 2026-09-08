@@ -3,9 +3,11 @@ import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import { generateSessionTitle } from "@/lib/session-title";
 import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
 import {
+  getSessionEntries,
   invalidateSessionListCache,
   resolveSessionPath,
 } from "@/lib/session-reader";
+import { readSubagentRun } from "@/lib/subagents";
 
 export async function POST(
   _req: Request,
@@ -17,6 +19,15 @@ export async function POST(
     const filePath = await resolveSessionPath(id);
     if (!filePath) {
       return HttpResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    if (readSubagentRun(getSessionEntries(filePath), id, filePath)) {
+      return HttpResponse.json(
+        {
+          error: "Subagent sessions are read-only",
+          code: "subagent_read_only",
+        },
+        { status: 403 },
+      );
     }
 
     const existing = getRpcSession(id);

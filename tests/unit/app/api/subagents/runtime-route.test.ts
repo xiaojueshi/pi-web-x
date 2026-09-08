@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 const { GET, POST } = await import(
-  "../../../../../app/api/subagents/[id]/route.ts",
+  "../../../../../app/api/subagents/[id]/route.ts"
 );
 
 const id = "subagent-route-test";
@@ -87,7 +87,7 @@ function installRunningSubagent() {
   };
 }
 
-test("subagent route reads live state and accepts steer and abort actions", async () => {
+test("subagent route reads live state and rejects every human write action", async () => {
   const state = installRunningSubagent();
 
   const getResponse = await GET(
@@ -99,33 +99,20 @@ test("subagent route reads live state and accepts steer and abort actions", asyn
   assert.equal(getBody.run.status, "running");
   assert.equal(getBody.run.profile, "Explore");
 
-  const steerResponse = await POST(
-    request({ action: "steer", message: "  focus on tests  " }),
-    context,
-  );
-  assert.equal(steerResponse.status, 200);
-  assert.deepEqual(state.steered, ["focus on tests"]);
-
-  const abortResponse = await POST(request({ action: "abort" }), context);
-  assert.equal(abortResponse.status, 200);
-  assert.equal(state.aborts, 1);
-});
-
-test("subagent route validates actions and rejects commands after completion", async () => {
-  const state = installRunningSubagent();
-
-  let response = await POST(
-    request({ action: "steer", message: "  " }),
-    context,
-  );
-  assert.equal(response.status, 400);
-  response = await POST(request({ action: "unknown" }), context);
-  assert.equal(response.status, 400);
-
-  state.stop();
-  response = await POST(request({ action: "abort" }), context);
-  assert.equal(response.status, 409);
-  assert.match((await response.json()).error, /not running/);
+  for (const body of [
+    { action: "steer", message: "focus on tests" },
+    { action: "abort" },
+    { action: "unknown" },
+  ]) {
+    const response = await POST(request(body), context);
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), {
+      error: "Subagent sessions are read-only",
+      code: "subagent_read_only",
+    });
+  }
+  assert.deepEqual(state.steered, []);
+  assert.equal(state.aborts, 0);
 });
 
 test("subagent GET returns 404 for an unknown session", async () => {

@@ -4,7 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useTheme, type ThemePreference } from "@/hooks/useTheme";
 import { sendAgentCommand } from "@/lib/agent-client";
-import type { ShellToolSettingsResponse } from "@/lib/api-types";
+import type {
+  ProjectTrustStatus,
+  ShellToolSettingsResponse,
+} from "@/lib/api-types";
 import {
   setLastSettingsSection,
   type SettingsSection,
@@ -12,6 +15,7 @@ import {
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { PluginsConfig } from "./PluginsConfig";
+import { SubagentsConfig } from "./SubagentsConfig";
 import { PasswordChangeForm } from "./PasswordChangeForm";
 import { ConfigSwitch } from "./SettingsUi";
 
@@ -77,6 +81,8 @@ interface Props {
   initialSection: SettingsSection;
   onClose: () => void;
   onSessionReloaded: () => void;
+  projectTrust: ProjectTrustStatus | null;
+  onTrustProject?: () => void;
   /** 登出回调：由外层触发认证状态重查并回到登录墙。 */
   onLogout?: () => void;
 }
@@ -214,9 +220,6 @@ function GeneralSettings({
   const [idleSaving, setIdleSaving] = useState(false);
   const [idleError, setIdleError] = useState<string | null>(null);
   const [idleTimeoutInput, setIdleTimeoutInput] = useState("10");
-  const [subagentEnabled, setSubagentEnabled] = useState(false);
-  const [subagentSaving, setSubagentSaving] = useState(false);
-  const [subagentError, setSubagentError] = useState<string | null>(null);
   const themeOptions: { id: ThemePreference; label: string }[] = [
     { id: "light", label: t("settings.themeLight") },
     { id: "dark", label: t("settings.themeDark") },
@@ -306,53 +309,6 @@ function GeneralSettings({
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/subagents/settings")
-      .then(async (response) => {
-        const data = (await response.json()) as {
-          enabled?: boolean;
-          error?: string;
-        };
-        if (!response.ok || data.error)
-          throw new Error(data.error ?? `HTTP ${response.status}`);
-        if (!cancelled && typeof data.enabled === "boolean")
-          setSubagentEnabled(data.enabled);
-      })
-      .catch((cause) => {
-        if (!cancelled)
-          setSubagentError(
-            cause instanceof Error ? cause.message : String(cause),
-          );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const saveSubagentEnabled = async (enabled: boolean) => {
-    setSubagentSaving(true);
-    setSubagentError(null);
-    try {
-      const response = await fetch("/api/subagents/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
-      const data = (await response.json()) as {
-        enabled?: boolean;
-        error?: string;
-      };
-      if (!response.ok || data.error)
-        throw new Error(data.error ?? `HTTP ${response.status}`);
-      if (typeof data.enabled === "boolean") setSubagentEnabled(data.enabled);
-    } catch (cause) {
-      setSubagentError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setSubagentSaving(false);
-    }
-  };
-
   return (
     <div className="settings-general">
       <h2 className="settings-general-title">{t("settings.general")}</h2>
@@ -433,27 +389,6 @@ function GeneralSettings({
         </section>
       )}
 
-      <section className="settings-general-section">
-        <h3 className="settings-general-heading">{t("settings.subagents")}</h3>
-        <p className="settings-general-description">
-          {t("settings.subagentsDescription")}
-        </p>
-        <div className="settings-shell-option">
-          <span>{t("settings.subagentsEnabled")}</span>
-          <ConfigSwitch
-            checked={subagentEnabled}
-            loading={subagentSaving}
-            label={t("settings.subagentsEnabled")}
-            onChange={(enabled) => void saveSubagentEnabled(enabled)}
-          />
-        </div>
-        {subagentError && (
-          <p role="alert" className="settings-general-error">
-            {subagentError}
-          </p>
-        )}
-      </section>
-
       {shellSettings?.isWindows && (
         <section className="settings-general-section">
           <h3 className="settings-general-heading">
@@ -520,6 +455,8 @@ export function SettingsPanel({
   initialSection,
   onClose,
   onSessionReloaded,
+  projectTrust,
+  onTrustProject,
   onLogout,
 }: Props) {
   const { t } = useI18n();
@@ -534,6 +471,7 @@ export function SettingsPanel({
   }[] = [
     { id: "general", label: t("settings.general"), requiresProject: false },
     { id: "models", label: t("common.models"), requiresProject: false },
+    { id: "agents", label: t("settings.subagents"), requiresProject: false },
     { id: "skills", label: t("common.skills"), requiresProject: true },
     { id: "plugins", label: t("common.plugins"), requiresProject: true },
     { id: "security", label: t("settings.security"), requiresProject: false },
@@ -647,6 +585,14 @@ export function SettingsPanel({
             />,
           )}
           {sectionHost("models", <ModelsConfig embedded onClose={onClose} />)}
+          {sectionHost(
+            "agents",
+            <SubagentsConfig
+              cwd={cwd}
+              projectTrust={projectTrust}
+              onTrustProject={onTrustProject}
+            />,
+          )}
           {cwd &&
             sectionHost(
               "skills",

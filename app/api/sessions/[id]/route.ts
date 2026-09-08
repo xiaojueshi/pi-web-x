@@ -31,6 +31,27 @@ import {
 } from "@/lib/subagents";
 import { readSessionToolSelection } from "@/lib/session-tool-selection";
 
+function isReadOnlySubagentSession(
+  filePath: string,
+  sessionId: string,
+): boolean {
+  try {
+    const session = SessionManager.open(filePath);
+    return Boolean(
+      readSubagentRun(session.getEntries() as never, sessionId, filePath),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function subagentReadOnlyResponse() {
+  return HttpResponse.json(
+    { error: "Subagent sessions are read-only", code: "subagent_read_only" },
+    { status: 403 },
+  );
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -179,6 +200,8 @@ export async function PATCH(
     if (!filePath) {
       return HttpResponse.json({ error: "Session not found" }, { status: 404 });
     }
+    if (isReadOnlySubagentSession(filePath, id))
+      return subagentReadOnlyResponse();
     const sm = SessionManager.open(filePath);
     sm.appendSessionInfo(name.trim());
     invalidateSessionListCache();
@@ -199,6 +222,8 @@ export async function DELETE(
     if (!filePath) {
       return HttpResponse.json({ error: "Session not found" }, { status: 404 });
     }
+    if (isReadOnlySubagentSession(filePath, id))
+      return subagentReadOnlyResponse();
 
     // Read only the bounded header before deleting.
     const parentSessionPath = readSessionHeader(filePath)?.parentSession;

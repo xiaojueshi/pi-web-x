@@ -46,6 +46,34 @@ test("compiled binary serves the React UI, API, and PWA manifest", async ({
     .toBeTruthy();
 });
 
+test("Subagents settings remain available without an opened project", async ({
+  page,
+}) => {
+  await loginE2eBrowser(page);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Built-in subagents", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Built-in subagents", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Profiles", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "New profile", exact: true }).click();
+
+  const form = page.locator(".settings-subagents-form");
+  await expect(form).toBeVisible();
+  await expect(form).toHaveCSS("display", "grid");
+  await expect(form.locator("textarea")).toHaveCSS("width", /\d+px/);
+  await expect(form.locator("select[multiple]")).toHaveCSS(
+    "min-height",
+    "126px",
+  );
+});
+
 test("service worker serves the offline fallback after activation", async ({
   page,
   context,

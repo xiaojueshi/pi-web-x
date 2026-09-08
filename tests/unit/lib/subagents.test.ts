@@ -31,9 +31,11 @@ const {
   deleteSubagentProfile,
   deleteProjectSubagentProfile,
   listSubagentProfileSources,
+  listRunnableSubagentProfiles,
   listSubagentProfiles,
   readSubagentRun,
   readSubagentSessionResources,
+  resolveRunnableSubagentProfile,
   resolveSubagentProfile,
   saveSubagentProfile,
   saveProjectSubagentProfile,
@@ -42,7 +44,7 @@ const {
   withSubagentExtensionTools,
 } = await import("../../../lib/subagents.ts");
 const { isSubagentProfileOverridden } = await import(
-  "../../../lib/subagent-profile-precedence.ts",
+  "../../../lib/subagent-profile-precedence.ts"
 );
 
 afterAll(async () => {
@@ -137,6 +139,37 @@ test("project profiles override built-ins and round-trip their runtime settings"
     assert.match(source, /load_skills: true/);
     assert.match(source, /load_extensions: true/);
     assert.match(source, /Read carefully and report findings\./);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("untrusted repository profiles remain visible but cannot enter runtime resolution", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagents-untrusted-"));
+  try {
+    await mkdir(join(cwd, ".pi", "agents"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", "agents", "review.md"),
+      "---\ndescription: Repository review\n---\nInspect the repository.",
+    );
+
+    assert.equal(
+      listSubagentProfileSources(cwd).some(
+        (profile) => profile.name === "review",
+      ),
+      true,
+    );
+    assert.equal(
+      listSubagentProfiles(cwd).some((profile) => profile.name === "review"),
+      true,
+    );
+    assert.equal(resolveRunnableSubagentProfile(cwd, "review"), undefined);
+    assert.equal(
+      listRunnableSubagentProfiles(cwd).some(
+        (profile) => profile.name === "review",
+      ),
+      false,
+    );
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }

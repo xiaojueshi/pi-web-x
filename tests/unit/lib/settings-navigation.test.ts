@@ -32,7 +32,8 @@ test("restores the last settings section and falls back without a project", () =
   assert.equal(getLastSettingsSection(null, storage), "general");
 
   setLastSettingsSection("agents", storage);
-  assert.equal(getLastSettingsSection("/project", storage), "general");
+  assert.equal(getLastSettingsSection("/project", storage), "agents");
+  assert.equal(getLastSettingsSection(null, storage), "agents");
 });
 
 test("keeps project settings selections isolated by cwd", () => {

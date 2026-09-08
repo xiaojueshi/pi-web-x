@@ -10,6 +10,7 @@ import {
 } from "fs";
 import { basename, dirname, join, resolve } from "path";
 import { parseFrontmatter } from "./frontmatter";
+import { getProjectTrustStatus } from "./project-trust";
 import { writePrivateFileAtomicSync } from "./atomic-file";
 import { isExistingPathWithinRoots } from "./path-security";
 import { PRESET_READ_ONLY } from "./tool-presets";
@@ -98,6 +99,8 @@ export interface SubagentRunInfo {
   completedAt?: string;
   result?: string;
   error?: string;
+  /** 父会话停止级联造成的终止不得再次唤醒父 Agent。 */
+  suppressParentNotification?: boolean;
 }
 
 const DEFAULT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"];
@@ -261,7 +264,10 @@ export function listSubagentProfileSources(cwd: string): SubagentProfile[] {
   return profiles.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
-export function listSubagentProfiles(cwd: string): SubagentProfile[] {
+function listResolvedSubagentProfiles(
+  cwd: string,
+  includeRepositoryProfiles: boolean,
+): SubagentProfile[] {
   const byName = new Map(
     BUILTIN_PROFILES.map((profile) => [
       profile.name.toLowerCase(),
@@ -269,6 +275,11 @@ export function listSubagentProfiles(cwd: string): SubagentProfile[] {
     ]),
   );
   for (const [dir, scope] of profileDirectories(cwd)) {
+    if (
+      !includeRepositoryProfiles &&
+      (scope === "workspace" || scope === "project")
+    )
+      continue;
     for (const profile of readProfileDirectory(dir, scope, cwd))
       byName.set(profile.name.toLowerCase(), profile);
   }
@@ -277,11 +288,50 @@ export function listSubagentProfiles(cwd: string): SubagentProfile[] {
   );
 }
 
+export function listSubagentProfiles(cwd: string): SubagentProfile[] {
+  return listResolvedSubagentProfiles(cwd, true);
+}
+
+/** 供运行时注册 Agent 工具使用，未信任项目不贡献仓库 profile。 */
+/**
+ * 返回当前项目中允许进入内置 Agent 工具的有效 profile。
+ *
+ * 未信任项目的工作区与项目 profile 不参与解析，但内置和全局 profile 仍可用。
+ *
+ * @param cwd 项目工作目录。
+ * @returns 按来源优先级去重后的可运行 profile。
+ */
+export function listRunnableSubagentProfiles(cwd: string): SubagentProfile[] {
+  return listResolvedSubagentProfiles(
+    cwd,
+    getProjectTrustStatus(cwd, getAgentDir()).trusted,
+  );
+}
+
 export function resolveSubagentProfile(
   cwd: string,
   name: string,
 ): SubagentProfile | undefined {
   return listSubagentProfiles(cwd).find(
+    (profile) =>
+      profile.name.toLowerCase() === name.trim().toLowerCase() &&
+      profile.enabled,
+  );
+}
+
+/** 运行时解析版本，显式拒绝未信任仓库提供的 profile。 */
+/**
+ * 按名称解析一个允许执行的 profile。
+ *
+ * @param cwd 项目工作目录。
+ * @param name Agent 工具请求的 profile 名称，不区分大小写。
+ * @returns 已启用且满足项目可信边界的 profile；无法解析时返回 `undefined`。
+ */
+export function resolveRunnableSubagentProfile(
+  cwd: string,
+  name: string,
+): SubagentProfile | undefined {
+  return listRunnableSubagentProfiles(cwd).find(
     (profile) =>
       profile.name.toLowerCase() === name.trim().toLowerCase() &&
       profile.enabled,

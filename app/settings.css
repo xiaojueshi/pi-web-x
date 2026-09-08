@@ -1092,6 +1092,178 @@
   font-size: 11px;
 }
 
+.settings-subagents-profile-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 620px;
+  min-height: 62px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.settings-subagents-profile-summary {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.settings-subagents-profile-meta,
+.settings-subagents-profile-description {
+  color: var(--text-dim);
+}
+
+.settings-subagents-profile-meta {
+  font-size: 11px;
+}
+
+.settings-subagents-profile-description {
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.settings-subagents-profile-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-subagents-action {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.settings-subagents-action:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.settings-subagents-action.is-danger:hover:not(:disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.settings-subagents-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.settings-subagents-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 620px;
+  margin-top: 12px;
+}
+
+.settings-subagents-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.settings-subagents-form input:not([type="checkbox"]),
+.settings-subagents-form select,
+.settings-subagents-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.settings-subagents-form textarea {
+  min-height: 128px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.settings-subagents-form select[multiple] {
+  min-height: 126px;
+  padding: 4px;
+}
+
+.settings-subagents-form input:focus,
+.settings-subagents-form select:focus,
+.settings-subagents-form textarea:focus {
+  border-color: var(--accent);
+}
+
+.settings-subagents-field.is-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-subagents-switches {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--bg-panel);
+}
+
+.settings-subagents-form label.settings-subagents-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.settings-subagents-checkbox input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.settings-subagents-form-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.settings-subagents-form-actions > button:not(.auth-form-submit) {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
 @media (max-width: 640px) {
   .config-panel-root.is-modal > .config-panel-surface {
     width: calc(100vw - 16px);
@@ -1313,4 +1485,570 @@
 
 .auth-form-submit.is-danger {
   background: color-mix(in srgb, #dc2626 80%, var(--accent));
+}
+
+/* Settings information architecture refresh. */
+.settings-section-host {
+  overflow: hidden;
+}
+
+.settings-general {
+  box-sizing: border-box;
+  height: 100%;
+  max-width: none;
+  padding: 28px clamp(24px, 4vw, 48px) 48px;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+.settings-general::-webkit-scrollbar,
+.config-sidebar-list::-webkit-scrollbar,
+.config-detail::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-general::-webkit-scrollbar-thumb,
+.config-sidebar-list::-webkit-scrollbar-thumb,
+.config-detail::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: var(--border);
+  background-clip: padding-box;
+}
+
+.settings-general-title {
+  margin-bottom: 20px;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.settings-general-section {
+  box-sizing: border-box;
+  width: min(100%, 760px);
+  margin-top: 14px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+}
+
+.settings-general-section:first-of-type {
+  margin-top: 0;
+}
+
+.settings-general-heading {
+  font-size: 14px;
+}
+
+.settings-general-description {
+  max-width: 620px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.settings-theme-options,
+.settings-shell-option,
+.settings-idle-timeout,
+.settings-language-options {
+  max-width: none;
+}
+
+.settings-theme-options,
+.settings-shell-option,
+.settings-idle-timeout {
+  background: var(--bg);
+}
+
+.settings-theme-option {
+  height: 46px;
+}
+
+.settings-language-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-language-option {
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.settings-language-option[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.settings-security .settings-general-section {
+  width: min(100%, 680px);
+}
+
+.settings-security .auth-form {
+  gap: 14px;
+}
+
+.settings-security .auth-form input {
+  min-height: 40px;
+  background: var(--bg);
+}
+
+.settings-security .auth-form-submit {
+  align-self: flex-start;
+  min-width: 180px;
+}
+
+/* Subagent settings borrow the model page's master-detail rhythm. */
+.settings-subagents-page {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-subagents-page > .settings-general-title {
+  display: none;
+}
+
+.settings-subagents-page > .settings-general-section {
+  width: auto;
+  margin: 0;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg-panel);
+}
+
+.settings-subagents-page > .settings-general-section:first-of-type {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 18px 16px;
+}
+
+.settings-subagents-page > .settings-general-section:nth-of-type(2):not(:last-of-type) {
+  grid-column: 1;
+  padding: 16px;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) {
+  display: flex;
+  grid-column: 1;
+  grid-row: 3;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 8px;
+  overflow-y: auto;
+  border-bottom: 0;
+}
+
+.settings-subagents-page .settings-subagents-profile-row {
+  display: block;
+  min-height: 0;
+  margin: 3px 0;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+}
+
+.settings-subagents-page .settings-subagents-profile-row:hover {
+  background: var(--bg-hover);
+}
+
+.settings-subagents-page .settings-subagents-profile-actions {
+  justify-content: flex-end;
+  margin-top: 9px;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-form) {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  padding: 28px 32px 48px;
+  overflow-y: auto;
+  border: 0;
+  background: var(--bg);
+}
+
+.settings-subagents-page .settings-subagents-form {
+  max-width: 720px;
+}
+
+.settings-subagents-page > .settings-general-error {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+}
+
+@media (max-width: 720px) {
+  .settings-general {
+    padding: 20px 14px 36px;
+  }
+
+  .settings-language-options {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-subagents-page {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .settings-subagents-page > .settings-general-section {
+    border-right: 0;
+  }
+
+  .settings-subagents-page > .settings-general-section:has(.settings-subagents-form) {
+    padding: 20px 14px 36px;
+  }
+
+  .settings-subagents-form {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-subagents-field.is-wide,
+  .settings-subagents-switches,
+  .settings-subagents-form-actions {
+    grid-column: 1;
+  }
+}
+
+/* Subagent master-detail refinements: match Models and Skills. */
+.settings-subagents-page > .settings-general-section:first-of-type {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 70px;
+  padding: 12px 14px;
+}
+
+.settings-subagents-page > .settings-general-section:first-of-type .settings-general-heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings-subagents-page > .settings-general-section:first-of-type .settings-shell-option {
+  display: contents;
+}
+
+.settings-subagents-page > .settings-general-section:first-of-type .settings-shell-option > span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) {
+  position: relative;
+  padding: 8px 6px 44px;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option {
+  display: contents;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option .settings-general-heading {
+  order: -3;
+  padding: 4px 8px 3px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option .auth-form-submit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) > .settings-shell-option .auth-form-submit:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.settings-info-tooltip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: transparent;
+  cursor: help;
+  font-size: 0;
+}
+
+.settings-info-tooltip::before {
+  color: var(--text-dim);
+  content: "i";
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.settings-info-tooltip::after {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  width: 230px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  color: var(--text-muted);
+  content: attr(data-tooltip);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.settings-info-tooltip:hover::after,
+.settings-info-tooltip:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.settings-subagents-page .settings-subagents-profile-row {
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.settings-subagents-page .settings-subagents-profile-row.is-selected {
+  background: var(--bg-selected);
+}
+
+.settings-subagents-page .settings-subagents-profile-summary strong {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.settings-subagents-page .settings-subagents-profile-description,
+.settings-subagents-page .settings-subagents-profile-actions,
+.settings-subagents-page .settings-subagents-profile-row > .settings-subagents-profile-meta {
+  display: none;
+}
+
+.settings-subagents-page .settings-subagents-profile-meta {
+  font-size: 10px;
+}
+
+.settings-subagents-readonly-detail {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.settings-subagents-detail-description {
+  margin: 4px 0 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.settings-subagents-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+
+.settings-subagents-detail-grid > div {
+  min-width: 0;
+}
+
+.settings-subagents-detail-grid > .is-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-subagents-detail-grid dt {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.settings-subagents-detail-grid dd {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.settings-subagents-prompt-preview {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.settings-subagents-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 720px) {
+  .settings-subagents-readonly-detail {
+    padding: 20px 14px 36px;
+  }
+
+  .settings-subagents-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-subagents-detail-grid > .is-wide {
+    grid-column: 1;
+  }
+}
+
+.settings-heading-with-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-width: 0;
+}
+
+.settings-subagents-page > .settings-general-section:first-of-type {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: space-between;
+}
+
+.settings-subagents-page > .settings-general-section:first-of-type > .settings-shell-option {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  background: transparent;
+}
+
+.settings-subagents-page .settings-profile-list-heading {
+  display: contents;
+}
+
+.settings-subagents-tool-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+}
+
+.settings-subagents-tool-options .settings-subagents-checkbox {
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 4px;
+}
+
+.settings-subagents-tool-options .settings-subagents-checkbox:hover {
+  background: var(--bg-hover);
+}
+
+.settings-subagents-switches {
+  gap: 4px 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.settings-subagents-switches .settings-subagents-checkbox {
+  min-width: 0;
+  padding: 3px 5px;
+}
+
+.settings-subagents-switches .settings-info-tooltip {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+}
+
+/* General and Security use the same flat detail language as Models and Skills. */
+.settings-general:not(.settings-subagents-page) {
+  max-width: 820px;
+  padding: 20px;
+}
+
+.settings-general:not(.settings-subagents-page) > .settings-general-title {
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-general:not(.settings-subagents-page) > .settings-general-section {
+  width: 100%;
+  margin: 0;
+  padding: 18px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-general:not(.settings-subagents-page) > .settings-general-section:first-of-type {
+  padding-top: 0;
+}
+
+.settings-general:not(.settings-subagents-page) .settings-general-heading {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.settings-general:not(.settings-subagents-page) .settings-general-description {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.settings-security .auth-form {
+  max-width: 620px;
+}
+
+@media (max-width: 720px) {
+  .settings-subagents-tool-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Keep sidebar help bubbles inside the clipped scrolling column. */
+.settings-subagents-page > .settings-general-section .settings-heading-with-info > .settings-info-tooltip::after {
+  left: -22px;
+  width: 180px;
+  box-sizing: border-box;
+}
+
+.settings-subagents-page > .settings-general-section:has(.settings-subagents-profile-row) .settings-heading-with-info > .settings-info-tooltip::after {
+  left: -64px;
 }

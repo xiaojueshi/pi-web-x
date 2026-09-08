@@ -65,7 +65,7 @@ import {
   preferPiWebSubagentExtension,
 } from "./subagent-extension";
 import {
-  listSubagentProfiles,
+  listRunnableSubagentProfiles,
   readSubagentRun,
   readSubagentSessionResources,
   SUBAGENT_CONTROL_TOOL_NAMES,
@@ -739,6 +739,7 @@ export class AgentSessionWrapper {
         case "abort":
           this.forceShutdownOnIdle = true;
           try {
+            await abortSubagentsForParent(this.sessionId);
             await this.withFinalIdleReset(() => this.inner.abort());
             return null;
           } finally {
@@ -1906,6 +1907,11 @@ export function abortSubagent(sessionId: string) {
   return SUBAGENT_CONTROLLER.abort(sessionId);
 }
 
+/** 中止一个父 Agent 名下所有仍在运行的内置子会话。 */
+export function abortSubagentsForParent(parentSessionId: string) {
+  return SUBAGENT_CONTROLLER.abortForParent(parentSessionId);
+}
+
 function getLocks(): Map<
   string,
   Promise<{ session: AgentSessionWrapper; realSessionId: string }>
@@ -2317,7 +2323,7 @@ export async function startRpcSession(
                 }),
                 createSubagentExtension(
                   SUBAGENT_CONTROLLER.extensionRuntime,
-                  () => listSubagentProfiles(sessionCwd),
+                  () => listRunnableSubagentProfiles(sessionCwd),
                   isBuiltInSubagentsEnabled,
                 ),
                 createAskUserExtension(),

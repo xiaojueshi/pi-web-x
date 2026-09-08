@@ -18,7 +18,7 @@ import {
 } from "./subagent-extension";
 import {
   readSubagentRun,
-  resolveSubagentProfile,
+  resolveRunnableSubagentProfile,
   SUBAGENT_CONTROL_TOOL_NAMES,
   SUBAGENT_META_TYPE,
   SUBAGENT_RESULT_TYPE,
@@ -64,12 +64,14 @@ export interface SubagentController {
   get(sessionId: string): Promise<SubagentRunInfo | null>;
   steer(sessionId: string, message: string): Promise<void>;
   abort(sessionId: string): Promise<void>;
+  abortForParent(parentSessionId: string): Promise<void>;
 }
 
 type StoredSubagentExecution = {
   run: SubagentRunInfo;
   completion: Promise<SubagentRunInfo>;
   abortRequested: boolean;
+  suppressParentNotification: boolean;
 };
 
 declare global {
@@ -169,7 +171,10 @@ export function createSubagentController(
 
     const releaseSlot = reserveSubagentSlot(parentSessionId);
     try {
-      const profile = resolveSubagentProfile(parent.cwd, request.profile);
+      const profile = resolveRunnableSubagentProfile(
+        parent.cwd,
+        request.profile,
+      );
       if (!profile)
         throw new Error(
           `Unknown or disabled subagent profile: ${request.profile}`,
@@ -341,6 +346,7 @@ export function createSubagentController(
         run: initialRun,
         completion: Promise.resolve(initialRun),
         abortRequested: false,
+        suppressParentNotification: false,
       };
       getSubagentRuns().set(initialRun.sessionId, stored);
       // 后台 subagent 的完成通知仍需回到父会话；父会话在此期间不得被
@@ -389,6 +395,9 @@ export function createSubagentController(
             status: aborted ? "aborted" : "completed",
             completedAt: new Date().toISOString(),
             ...(text ? { result: text } : {}),
+            ...(stored.suppressParentNotification
+              ? { suppressParentNotification: true }
+              : {}),
           };
         } catch (error) {
           const text = inner.getLastAssistantText()?.trim();
@@ -402,6 +411,9 @@ export function createSubagentController(
                 : "failed",
             completedAt: new Date().toISOString(),
             ...(text ? { result: text } : {}),
+            ...(stored.suppressParentNotification
+              ? { suppressParentNotification: true }
+              : {}),
             ...(!aborted && !maxTurnsReached
               ? {
                   error: error instanceof Error ? error.message : String(error),
@@ -507,10 +519,28 @@ export function createSubagentController(
     await wrapper.inner.abort();
   }
 
+  async function abortForParent(parentSessionId: string): Promise<void> {
+    const active = [...getSubagentRuns().values()].filter(
+      (stored) =>
+        stored.run.parentSessionId === parentSessionId &&
+        (stored.run.status === "starting" || stored.run.status === "running"),
+    );
+    const aborts: Promise<void>[] = [];
+    for (const stored of active) {
+      stored.abortRequested = true;
+      stored.suppressParentNotification = true;
+      const wrapper = dependencies.getSession(stored.run.sessionId);
+      if (wrapper?.isAlive() && wrapper.isRunning())
+        aborts.push(wrapper.inner.abort());
+    }
+    await Promise.allSettled(aborts);
+  }
+
   return {
     extensionRuntime: { start, get, steer, notifyParent },
     get,
     steer,
     abort,
+    abortForParent,
   };
 }

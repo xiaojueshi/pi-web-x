@@ -21,11 +21,10 @@ const testAgentDir = await mkdtemp(
 process.env.PI_CODING_AGENT_DIR = testAgentDir;
 
 const { GET, PUT, PATCH, DELETE } = await import(
-  "../../../../../../app/api/subagents/profiles/route.ts",
+  "../../../../../../app/api/subagents/profiles/route.ts"
 );
-const { allowFileRoot } = await import(
-  "../../../../../../lib/file-access.ts",
-);
+const { allowFileRoot } = await import("../../../../../../lib/file-access.ts");
+const { trustProject } = await import("../../../../../../lib/project-trust.ts");
 
 afterAll(async () => {
   if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
@@ -93,6 +92,7 @@ test("profiles route creates, lists, and deletes a project profile", async () =>
   assert.equal(listedProfile.loadSkills, true);
   assert.equal(listedProfile.loadExtensions, true);
 
+  trustProject(cwd, testAgentDir);
   const deleteResponse = await DELETE(
     jsonRequest("DELETE", { cwd, scope: "project", name: "api-test-agent" }),
   );
@@ -195,6 +195,7 @@ test("profiles route keeps same-name global and project profiles independently e
     true,
   );
 
+  trustProject(cwd, testAgentDir);
   response = await DELETE(
     jsonRequest("DELETE", { cwd, scope: "project", name: "api-test-agent" }),
   );
@@ -217,6 +218,35 @@ test("profiles route keeps same-name global and project profiles independently e
   assert.equal(response.status, 200);
 });
 
+test("profiles route manages global profiles without an opened project", async () => {
+  let response = await PUT(
+    jsonRequest("PUT", {
+      scope: "global",
+      profile: profile({ name: "global-without-cwd" }),
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).profile.scope, "global");
+
+  response = await PATCH(
+    jsonRequest("PATCH", {
+      scope: "global",
+      name: "global-without-cwd",
+      enabled: false,
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).profile.enabled, false);
+
+  response = await DELETE(
+    jsonRequest("DELETE", {
+      scope: "global",
+      name: "global-without-cwd",
+    }),
+  );
+  assert.equal(response.status, 200);
+});
+
 test("profiles route rejects missing paths, malformed profiles, and unsafe names", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagent-route-"));
   allowFileRoot(cwd);
@@ -225,7 +255,13 @@ test("profiles route rejects missing paths, malformed profiles, and unsafe names
   let response = await GET(
     new Request("http://localhost/api/subagents/profiles"),
   );
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 200);
+  assert.equal(
+    (await response.json()).profiles.every(
+      (item) => item.scope !== "project" && item.scope !== "workspace",
+    ),
+    true,
+  );
 
   response = await PUT(jsonRequest("PUT", { cwd, scope: "project" }));
   assert.equal(response.status, 400);

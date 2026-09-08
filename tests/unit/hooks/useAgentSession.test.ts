@@ -521,7 +521,7 @@ test("suppresses sounds and browser attention for the active subagent session", 
 
   assert.match(
     chatWindowSource,
-    /completionNotificationsEnabled = session\?\.relation\?\.kind !== "subagent"/,
+    /isReadOnlySubagent = session\?\.relation\?\.kind === "subagent"[\s\S]*?completionNotificationsEnabled = !isReadOnlySubagent/,
   );
   assert.match(
     chatWindowSource,
@@ -810,8 +810,10 @@ test("重复投递的 extension_ui_request 不会重置提问卡片状态", () =
   // 客户端必须按 id 去重：替换 dialog 对象会让 ExtensionPromptCard 的
   // 重置副作用清掉用户已选选项/正在输入的内容。
   const dialogCaseSource = source.slice(
-    source.indexOf('case "select":\n        case "confirm":\n        case "input":\n        case "editor": {'),
-    source.indexOf("case \"notify\": {"),
+    source.indexOf(
+      'case "select":\n        case "confirm":\n        case "input":\n        case "editor": {',
+    ),
+    source.indexOf('case "notify": {'),
   );
 
   assert.match(
@@ -829,7 +831,7 @@ test("重复投递的 extension_ui_request 不会重置提问卡片状态", () =
   // 只在真正的新请求出现时滚动，重放投递不触发
   assert.match(
     dialogCaseSource,
-    /if \(isNewDialog\)[\s\S]*?requestAnimationFrame/, 
+    /if \(isNewDialog\)[\s\S]*?requestAnimationFrame/,
   );
   // 答复后清除 id 记录，下一次提问视为新请求
   assert.match(

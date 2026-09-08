@@ -163,6 +163,13 @@ export function AppShell() {
   const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const runningSubagentCount = useMemo(
+    () =>
+      activeSessionFamily?.subagents.filter((session) =>
+        runningSessionIds.has(session.id),
+      ).length ?? 0,
+    [activeSessionFamily?.subagents, runningSessionIds],
+  );
   const handleRunningSessionIdsChange = useCallback((ids: Set<string>) => {
     setRunningSessionIds((previous) => {
       if (
@@ -223,6 +230,7 @@ export function AppShell() {
   const [projectTrustError, setProjectTrustError] = useState<string | null>(
     null,
   );
+  const promptedProjectTrustCwdsRef = useRef(new Set<string>());
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
@@ -1243,11 +1251,13 @@ export function AppShell() {
 
   const handleViewFullHistory = useCallback(() => {
     if (!selectedSession) return;
-    window.open(
-      `/api/sessions/${encodeURIComponent(selectedSession.id)}/export?inline=1`,
-      "_blank",
-      "noopener,noreferrer",
+    // 固定同源导出端点，避免会话标识被误解为可重定向的外部 URL。
+    const exportUrl = new URL(
+      `/api/sessions/${encodeURIComponent(selectedSession.id)}/export`,
+      window.location.origin,
     );
+    exportUrl.searchParams.set("inline", "1");
+    window.open(exportUrl.href, "_blank", "noopener,noreferrer");
   }, [selectedSession]);
 
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
@@ -1290,6 +1300,19 @@ export function AppShell() {
       });
     return () => controller.abort();
   }, [projectTrustCwd]);
+
+  useEffect(() => {
+    if (
+      !projectTrustCwd ||
+      !projectTrust?.requiresTrust ||
+      projectTrust.trusted ||
+      promptedProjectTrustCwdsRef.current.has(projectTrustCwd)
+    )
+      return;
+    promptedProjectTrustCwdsRef.current.add(projectTrustCwd);
+    setProjectTrustError(null);
+    setProjectTrustDialogOpen(true);
+  }, [projectTrust, projectTrustCwd]);
 
   const handleTrustProject = useCallback(async () => {
     if (!projectTrustCwd || projectTrustBusy) return;
@@ -1749,6 +1772,7 @@ export function AppShell() {
           );
           const disabled =
             !selectedSession ||
+            selectedSession.relation?.kind === "subagent" ||
             selectedSession.transient ||
             !hasMessages ||
             autoNameStatus.kind === "naming";
@@ -1765,11 +1789,13 @@ export function AppShell() {
           const title =
             !selectedSession || selectedSession.transient
               ? translate("title.unsaved")
-              : !hasMessages
-                ? translate("title.noMessages")
-                : isError
-                  ? autoNameStatus.message
-                  : translate("title.generateSession");
+              : selectedSession.relation?.kind === "subagent"
+                ? translate("settings.subagentReadOnly")
+                : !hasMessages
+                  ? translate("title.noMessages")
+                  : isError
+                    ? autoNameStatus.message
+                    : translate("title.generateSession");
 
           return (
             <button
@@ -1964,7 +1990,7 @@ export function AppShell() {
                   : {}),
               }}
             >
-              {activeSessionFamily!.subagents.length}
+              {runningSubagentCount}
             </span>
           </button>
         )}
@@ -3598,6 +3624,11 @@ export function AppShell() {
                 sessionRunning={Boolean(
                   selectedSession && runningSessionIds.has(selectedSession.id),
                 )}
+                runningSubagentCount={
+                  selectedSession?.relation?.kind === "subagent"
+                    ? 0
+                    : runningSubagentCount
+                }
                 newSessionCwd={effectiveNewSessionCwd}
                 newSessionDraftKey={newSessionDraftKey}
                 initialScrollPosition={
@@ -3928,6 +3959,11 @@ export function AppShell() {
             setModelsRefreshKey((key) => key + 1);
           }}
           onSessionReloaded={() => setSessionKey((key) => key + 1)}
+          projectTrust={projectTrust}
+          onTrustProject={() => {
+            setProjectTrustError(null);
+            setProjectTrustDialogOpen(true);
+          }}
           onLogout={handleSessionChanged}
         />
       )}

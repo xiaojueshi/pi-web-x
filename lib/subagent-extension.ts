@@ -208,7 +208,10 @@ export function createSubagentExtension(
 
               if (execution.run.runInBackground) {
                 void execution.completion
-                  .then((run) => runtime.notifyParent(run))
+                  .then((run) => {
+                    if (!run.suppressParentNotification)
+                      return runtime.notifyParent(run);
+                  })
                   .catch((error) => {
                     console.error(
                       "[pi-web-x] failed to deliver subagent completion:",
