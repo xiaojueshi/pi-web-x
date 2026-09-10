@@ -58,9 +58,11 @@ export async function GET(
   const { provider } = await params;
 
   const encoder = new TextEncoder();
-  const send = (controller: ReadableStreamDefaultController, data: unknown) => {
-    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-  };
+
+  // SSE 注释帧（":" 开头）会被 EventSource 忽略，仅用于保活：Bun.serve
+  // 默认 idleTimeout 为 10 秒，空闲 SSE 连接会被强制断开（客户端表现为
+  // "Connection lost"）。心跳间隔必须小于该超时值。
+  const HEARTBEAT_INTERVAL_MS = 5_000;
 
   // AbortController propagates client disconnect into ModelRuntime.login().
   const abort = new AbortController();
@@ -68,13 +70,51 @@ export async function GET(
 
   const stream = new ReadableStream({
     async start(controller) {
+      let closed = false;
+      let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+      const stopHeartbeat = () => {
+        if (heartbeat !== null) {
+          clearInterval(heartbeat);
+          heartbeat = null;
+        }
+      };
+
+      const enqueueSse = (text: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(text));
+        } catch {
+          // 流已被取消或关闭，停止心跳与后续写入
+          closed = true;
+          stopHeartbeat();
+        }
+      };
+
+      const send = (data: unknown) => {
+        enqueueSse(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      const closeStream = () => {
+        closed = true;
+        stopHeartbeat();
+        try {
+          controller.close();
+        } catch {
+          /* stream already closed */
+        }
+      };
+
+      // 定时发送 SSE 注释帧，防止空闲连接被 Bun 的 idleTimeout 断开
+      heartbeat = setInterval(() => enqueueSse(":\n\n"), HEARTBEAT_INTERVAL_MS);
+
       const modelRuntime = await ModelRuntime.create();
       if (!modelRuntime.getProvider(provider)?.auth.oauth) {
-        send(controller, {
+        send({
           type: "error",
           message: `Unknown provider: ${provider}`,
         });
-        controller.close();
+        closeStream();
         return;
       }
 
@@ -139,14 +179,14 @@ export async function GET(
                 ? getManualInputRequest()
                 : createClientInputRequest();
             if (prompt.type === "select") {
-              send(controller, {
+              send({
                 type: "select_request",
                 message: prompt.message,
                 options: prompt.options,
                 token: request.token,
               });
             } else {
-              send(controller, {
+              send({
                 type: "prompt_request",
                 message: prompt.message,
                 placeholder: prompt.placeholder ?? null,
@@ -158,14 +198,14 @@ export async function GET(
           notify: (event: AuthEvent) => {
             if (event.type === "auth_url") {
               const request = getManualInputRequest();
-              send(controller, {
+              send({
                 type: "auth",
                 url: event.url,
                 instructions: event.instructions ?? null,
                 token: request.token,
               });
             } else if (event.type === "device_code") {
-              send(controller, {
+              send({
                 type: "device_code",
                 userCode: event.userCode,
                 verificationUri: event.verificationUri,
@@ -173,24 +213,24 @@ export async function GET(
                 expiresInSeconds: event.expiresInSeconds ?? null,
               });
             } else {
-              send(controller, { type: "progress", message: event.message });
+              send({ type: "progress", message: event.message });
             }
           },
           signal: abort.signal,
         });
 
         invalidateModelsCache();
-        send(controller, { type: "success" });
+        send({ type: "success" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg !== "Login cancelled") {
-          send(controller, { type: "error", message: msg });
+          send({ type: "error", message: msg });
         } else {
-          send(controller, { type: "cancelled" });
+          send({ type: "cancelled" });
         }
       } finally {
         cleanup();
-        controller.close();
+        closeStream();
       }
     },
     cancel() {

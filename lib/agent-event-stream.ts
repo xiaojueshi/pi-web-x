@@ -10,7 +10,9 @@ export interface AgentEventStreamSession {
   onEvent(listener: (event: AgentEventLike) => void): () => void;
 }
 
-const HEARTBEAT_INTERVAL_MS = 30_000;
+// 心跳间隔必须小于 Bun.serve 默认 idleTimeout（10 秒），否则空闲 SSE
+// 连接会被强制断开；留出余量取 5 秒。
+const HEARTBEAT_INTERVAL_MS = 5_000;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

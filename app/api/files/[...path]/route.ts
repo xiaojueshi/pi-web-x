@@ -744,6 +744,15 @@ export async function GET(
         return HttpResponse.json({ error: "Not a file" }, { status: 400 });
       }
       let watcher: fs.FSWatcher | null = null;
+      // SSE 保活心跳：Bun.serve 默认 idleTimeout 为 10 秒，文件长时间无变更
+      // 时空闲连接会被强制断开；注释帧（":" 开头）会被 EventSource 忽略。
+      let heartbeat: ReturnType<typeof setInterval> | null = null;
+      const stopHeartbeat = () => {
+        if (heartbeat !== null) {
+          clearInterval(heartbeat);
+          heartbeat = null;
+        }
+      };
       let lastMtimeMs = stat?.mtimeMs ?? 0;
       let lastCtimeMs = stat?.ctimeMs ?? 0;
       let lastIno = stat?.ino ?? 0;
@@ -759,6 +768,14 @@ export async function GET(
               // client disconnected
             }
           };
+          // 定时发送 SSE 注释帧，防止空闲连接被 Bun 的 idleTimeout 断开
+          heartbeat = setInterval(() => {
+            try {
+              controller.enqueue(new TextEncoder().encode(":\n\n"));
+            } catch {
+              stopHeartbeat();
+            }
+          }, 5_000);
           try {
             const watchedDirectory = path.dirname(filePath);
             watcher = fs.watch(watchedDirectory, (_eventType, changedName) => {
@@ -795,6 +812,7 @@ export async function GET(
               }
             });
             watcher.on("error", () => {
+              stopHeartbeat();
               try {
                 watcher?.close();
               } catch {
@@ -811,11 +829,13 @@ export async function GET(
             // watcher exists to avoid dropping changes between those steps.
             send("connected", { filePath });
           } catch {
+            stopHeartbeat();
             send("error", { message: "Failed to watch file" });
             controller.close();
           }
         },
         cancel() {
+          stopHeartbeat();
           try {
             watcher?.close();
           } catch {
