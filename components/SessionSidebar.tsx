@@ -484,6 +484,8 @@ export function SessionSidebar({
   );
   const sessionListVersionRef = useRef<number | null>(null);
   const sessionLoadIdRef = useRef(0);
+  // 并发时未结束的 showLoading 请求数，用于可靠关闭加载态。
+  const sessionLoadingCountRef = useRef(0);
   const [explorerRefreshDone, setExplorerRefreshDone] = useState(false);
   const [runningSessionIds, setRunningSessionIds] = useState<Set<string>>(
     () => new Set(),
@@ -515,7 +517,13 @@ export function SessionSidebar({
       // 只接受最后一次加载的结果，避免慢请求覆盖新状态。
       const loadId = ++sessionLoadIdRef.current;
       try {
-        if (showLoading) setLoading(true);
+        // 用计数器管理加载态：并发期间被 loadId 失配跳过 finally 时，
+        // 仍需保证最后一个 showLoading 请求结束时关闭 loading，
+        // 否则初始加载被后台刷新抢占会导致「加载中...」常驻。
+        if (showLoading) {
+          sessionLoadingCountRef.current += 1;
+          setLoading(true);
+        }
         const res = await fetch(
           force ? "/api/sessions?force=1" : "/api/sessions",
           {
@@ -568,8 +576,16 @@ export function SessionSidebar({
       } catch (e) {
         if (loadId === sessionLoadIdRef.current) setError(String(e));
       } finally {
-        if (showLoading && loadId === sessionLoadIdRef.current)
-          setLoading(false);
+        if (showLoading) {
+          sessionLoadingCountRef.current -= 1;
+          if (
+            sessionLoadingCountRef.current <= 0 &&
+            loadId === sessionLoadIdRef.current
+          ) {
+            sessionLoadingCountRef.current = 0;
+            setLoading(false);
+          }
+        }
       }
     },
     [],
