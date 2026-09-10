@@ -24,9 +24,18 @@ test("keeps a newly installed worker waiting until the user applies its update",
     serviceWorkerSource,
     /event\.data\?\.type === "PI_WEB_X_SKIP_WAITING"/,
   );
-  assert.doesNotMatch(serviceWorkerSource, /then\(\(\) => self\.skipWaiting\(\)\)/);
-  assert.match(registrationSource, /registration\.waiting\.postMessage\(\{ type: "PI_WEB_X_SKIP_WAITING" \}\)/);
-  assert.match(registrationSource, /navigator\.serviceWorker\.addEventListener\("controllerchange"/);
+  assert.doesNotMatch(
+    serviceWorkerSource,
+    /then\(\(\) => self\.skipWaiting\(\)\)/,
+  );
+  assert.match(
+    registrationSource,
+    /registration\.waiting\.postMessage\(\{ type: "PI_WEB_X_SKIP_WAITING" \}\)/,
+  );
+  assert.match(
+    registrationSource,
+    /navigator\.serviceWorker\.addEventListener\(\s*"controllerchange"/,
+  );
 });
 
 test("frames the update notice as a finished upgrade needing only a refresh", () => {
@@ -45,9 +54,15 @@ test("frames the update notice as a finished upgrade needing only a refresh", ()
 
 test("offers notifications after a task without requesting browser permission automatically", () => {
   assert.match(appShellSource, /offerPwaNotifications\(\);/);
-  assert.doesNotMatch(appShellSource, /void Notification\.requestPermission\(\)/);
+  assert.doesNotMatch(
+    appShellSource,
+    /void Notification\.requestPermission\(\)/,
+  );
   assert.match(registrationSource, /await Notification\.requestPermission\(\)/);
-  assert.match(registrationSource, /onClick=\{\(\) => void enableNotifications\(\)\}/);
+  assert.match(
+    registrationSource,
+    /onClick=\{\(\) => void enableNotifications\(\)\}/,
+  );
 });
 
 test("shows a fact-based connection warning and keeps notifications private", () => {

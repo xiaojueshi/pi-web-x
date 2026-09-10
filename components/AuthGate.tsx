@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import {
+  SESSION_AUTH_ESTABLISHED_EVENT,
   SESSION_AUTH_STATUS_EVENT,
   type SessionAuthStatus,
 } from "@/lib/session-keepalive";
@@ -117,6 +118,8 @@ export function AuthGate({ children, onSessionChanged }: AuthGateProps) {
         return;
       }
       form.reset();
+      // 首次设置密码成功即建立认证会话，通知认证墙外的兄弟组件刷新状态。
+      window.dispatchEvent(new Event(SESSION_AUTH_ESTABLISHED_EVENT));
       refresh();
     } catch {
       setError(t("auth.error.AUTH_NETWORK_ERROR"));
@@ -146,6 +149,8 @@ export function AuthGate({ children, onSessionChanged }: AuthGateProps) {
         return;
       }
       form.reset();
+      // 登录成功不触发整页刷新，需通知认证墙外的兄弟组件刷新认证状态。
+      window.dispatchEvent(new Event(SESSION_AUTH_ESTABLISHED_EVENT));
       onSessionChanged?.();
       refresh();
     } catch {

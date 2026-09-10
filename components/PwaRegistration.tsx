@@ -5,11 +5,13 @@ import {
   getPwaConnectionStatus,
   type PwaConnectionStatus,
 } from "@/lib/pwa-client";
+import {
+  SESSION_AUTH_ESTABLISHED_EVENT,
+  SESSION_AUTH_STATUS_EVENT,
+  type SessionAuthStatus,
+} from "@/lib/session-keepalive";
 
-type AuthStatus = {
-  initialized: boolean;
-  authenticated: boolean;
-};
+type AuthStatus = SessionAuthStatus;
 
 const NOTIFICATION_OFFER_EVENT = "pi-web-x:offer-notifications";
 
@@ -43,9 +45,10 @@ export function PwaRegistration() {
   );
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
 
-  useEffect(() => {
-    setConnection(getConnectionStatus());
-    void fetch("/api/auth/status")
+  // 以服务端 /api/auth/status 为准刷新认证状态。本组件在认证墙外，
+  // 登录/登出不经过整页刷新，状态必须靠事件驱动更新。
+  const refreshAuthStatus = useCallback(() => {
+    void fetch("/api/auth/status", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return null;
         return (await response.json()) as AuthStatus;
@@ -53,6 +56,33 @@ export function PwaRegistration() {
       .then(setAuthStatus)
       .catch(() => setAuthStatus(null));
   }, []);
+
+  useEffect(() => {
+    setConnection(getConnectionStatus());
+    refreshAuthStatus();
+    // 会话失效广播：更新状态使安全提示随会话过期正确恢复。
+    const onAuthStatus = (event: Event) => {
+      const detail = (event as CustomEvent<SessionAuthStatus>).detail;
+      if (
+        typeof detail?.initialized !== "boolean" ||
+        typeof detail.authenticated !== "boolean"
+      ) {
+        return;
+      }
+      setAuthStatus(detail);
+    };
+    // 登录/首次设置密码成功：重新拉取最新认证状态。
+    const onAuthEstablished = () => refreshAuthStatus();
+    window.addEventListener(SESSION_AUTH_STATUS_EVENT, onAuthStatus);
+    window.addEventListener(SESSION_AUTH_ESTABLISHED_EVENT, onAuthEstablished);
+    return () => {
+      window.removeEventListener(SESSION_AUTH_STATUS_EVENT, onAuthStatus);
+      window.removeEventListener(
+        SESSION_AUTH_ESTABLISHED_EVENT,
+        onAuthEstablished,
+      );
+    };
+  }, [refreshAuthStatus]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -67,7 +97,9 @@ export function PwaRegistration() {
     const handleControllerChange = () => {
       if (reloadAfterControllerChange) window.location.reload();
     };
-    const observeRegistration = (nextRegistration: ServiceWorkerRegistration) => {
+    const observeRegistration = (
+      nextRegistration: ServiceWorkerRegistration,
+    ) => {
       registration = nextRegistration;
       if (nextRegistration.waiting) showWaitingUpdate();
       nextRegistration.addEventListener("updatefound", () => {
@@ -87,7 +119,10 @@ export function PwaRegistration() {
           if (!disposed) observeRegistration(nextRegistration);
         })
         .catch((error: unknown) => {
-          console.error("Failed to register the Pi Web X service worker:", error);
+          console.error(
+            "Failed to register the Pi Web X service worker:",
+            error,
+          );
         });
     };
 
@@ -101,7 +136,10 @@ export function PwaRegistration() {
 
     if (document.readyState === "complete") register();
     else window.addEventListener("load", register, { once: true });
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      handleControllerChange,
+    );
     window.addEventListener("pi-web-x:apply-update", handleApplyUpdate);
 
     return () => {
@@ -159,10 +197,16 @@ export function PwaRegistration() {
     }
   }, [locale]);
 
+  // 连接安全提示仅在真正缺失保护时展示：
+  // - 跨设备访问才有窃听风险，本机回环不提示；
+  // - Web Access Authentication 已初始化（密码已设置）时不再提示——
+  //   「尚未启用认证」只对未设置过密码的连接成立；会话过期/未登录
+  //   由认证墙登录页自行接管，不属于连接安全问题。
   const connectionNotice =
     !connectionNoticeDismissed &&
     connection &&
-    (!connection.pwaCapabilitiesAvailable || !authStatus?.authenticated);
+    connection.kind !== "loopback" &&
+    (!connection.pwaCapabilitiesAvailable || authStatus?.initialized === false);
 
   return (
     <div aria-live="polite" className="pwa-notices">
@@ -237,7 +281,9 @@ export function PwaRegistration() {
               className="pwa-notice-button"
               onClick={() => void enableNotifications()}
             >
-              {notificationBusy ? t("pwa.enabling") : t("pwa.enableNotifications")}
+              {notificationBusy
+                ? t("pwa.enabling")
+                : t("pwa.enableNotifications")}
             </button>
           </div>
         </section>
@@ -269,7 +315,9 @@ export function PwaRegistration() {
             type="button"
             disabled={applyingUpdate}
             className="pwa-notice-button"
-            onClick={() => window.dispatchEvent(new Event("pi-web-x:apply-update"))}
+            onClick={() =>
+              window.dispatchEvent(new Event("pi-web-x:apply-update"))
+            }
           >
             {applyingUpdate ? t("pwa.updating") : t("pwa.applyUpdate")}
           </button>

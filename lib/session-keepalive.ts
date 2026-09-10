@@ -13,12 +13,19 @@ const KEEPALIVE_INTERVAL_MS = 60 * 60 * 1000;
 /** 客户端认证状态事件名。 */
 export const SESSION_AUTH_STATUS_EVENT = "pi-web-x:auth-status";
 
+/** 认证会话建立事件名（登录或首次设置密码成功后派发）。
+ *
+ * 不能复用 SESSION_AUTH_STATUS_EVENT：AppShell 会因它触发认证墙重挂载，
+ * 而成功路径只需兄弟组件（如 PwaRegistration）刷新认证状态，无需重挂载。
+ */
+export const SESSION_AUTH_ESTABLISHED_EVENT = "pi-web-x:auth-established";
+
 /** `/api/auth/status` 暴露给客户端的最小状态。 */
 export interface SessionAuthStatus {
-  /** 是否已完成首次密码设置。 */
-  initialized: boolean;
-  /** 当前浏览器会话是否有效。 */
-  authenticated: boolean;
+ /** 是否已完成首次密码设置。 */
+ initialized: boolean;
+ /** 当前浏览器会话是否有效。 */
+ authenticated: boolean;
 }
 
 /**
@@ -30,28 +37,28 @@ export interface SessionAuthStatus {
  * @returns true 表示已认证，false 表示需重新认证，null 表示无法确认
  */
 export async function checkSessionAuthentication(): Promise<boolean | null> {
-  try {
-    const response = await fetch("/api/auth/status", { cache: "no-store" });
-    if (!response.ok) return null;
-    const status = (await response.json()) as SessionAuthStatus;
-    if (
-      typeof status.initialized !== "boolean" ||
-      typeof status.authenticated !== "boolean"
-    ) {
-      return null;
-    }
-    if (!status.initialized || !status.authenticated) {
-      window.dispatchEvent(
-        new CustomEvent<SessionAuthStatus>(SESSION_AUTH_STATUS_EVENT, {
-          detail: status,
-        }),
-      );
-      return false;
-    }
-    return true;
-  } catch {
-    return null;
+ try {
+  const response = await fetch("/api/auth/status", { cache: "no-store" });
+  if (!response.ok) return null;
+  const status = (await response.json()) as SessionAuthStatus;
+  if (
+   typeof status.initialized !== "boolean" ||
+   typeof status.authenticated !== "boolean"
+  ) {
+   return null;
   }
+  if (!status.initialized || !status.authenticated) {
+   window.dispatchEvent(
+    new CustomEvent<SessionAuthStatus>(SESSION_AUTH_STATUS_EVENT, {
+     detail: status,
+    }),
+   );
+   return false;
+  }
+  return true;
+ } catch {
+  return null;
+ }
 }
 
 /**
@@ -59,17 +66,17 @@ export async function checkSessionAuthentication(): Promise<boolean | null> {
  * @returns 停止保活的清理函数
  */
 export function startSessionKeepAlive(): () => void {
-  const ping = () => {
-    void checkSessionAuthentication();
-  };
-  const onVisibilityChange = () => {
-    if (document.visibilityState === "visible") ping();
-  };
-  document.addEventListener("visibilitychange", onVisibilityChange);
-  ping();
-  const timer = setInterval(ping, KEEPALIVE_INTERVAL_MS);
-  return () => {
-    clearInterval(timer);
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-  };
+ const ping = () => {
+  void checkSessionAuthentication();
+ };
+ const onVisibilityChange = () => {
+  if (document.visibilityState === "visible") ping();
+ };
+ document.addEventListener("visibilitychange", onVisibilityChange);
+ ping();
+ const timer = setInterval(ping, KEEPALIVE_INTERVAL_MS);
+ return () => {
+  clearInterval(timer);
+  document.removeEventListener("visibilitychange", onVisibilityChange);
+ };
 }
