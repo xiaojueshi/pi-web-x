@@ -517,17 +517,19 @@ export function SessionSidebar({
       // 只接受最后一次加载的结果，避免慢请求覆盖新状态。
       const loadId = ++sessionLoadIdRef.current;
       try {
-        // 用计数器管理加载态：并发期间被 loadId 失配跳过 finally 时，
-        // 仍需保证最后一个 showLoading 请求结束时关闭 loading，
-        // 否则初始加载被后台刷新抢占会导致「加载中...」常驻。
+        // 用计数器管理加载态：只有当所有 showLoading 请求都结束后才关闭
+        // loading，否则初始加载被后台刷新抢占 loadId 后，「加载中...」
+        // 会永久卡住（数据已由后续请求写入但加载态无人关闭）。
         if (showLoading) {
           sessionLoadingCountRef.current += 1;
           setLoading(true);
         }
+        // 超时兑底：请求挂死时不能让加载态永久卡住。
         const res = await fetch(
           force ? "/api/sessions?force=1" : "/api/sessions",
           {
             cache: "no-store",
+            signal: AbortSignal.timeout(30_000),
           },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -578,10 +580,9 @@ export function SessionSidebar({
       } finally {
         if (showLoading) {
           sessionLoadingCountRef.current -= 1;
-          if (
-            sessionLoadingCountRef.current <= 0 &&
-            loadId === sessionLoadIdRef.current
-          ) {
+          // setLoading(false) 只关闭加载态、不写数据，无需 loadId 守卫；
+          // 并发中的新 showLoading 请求由计数器 >0 保证加载态不被提前关闭。
+          if (sessionLoadingCountRef.current <= 0) {
             sessionLoadingCountRef.current = 0;
             setLoading(false);
           }
