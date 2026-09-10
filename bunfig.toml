@@ -1,0 +1,6 @@
+# Bun 运行时配置。
+# e2e 目录是 Playwright 测试（bun run test:e2e），bun test 误扫会报
+# "Playwright Test did not expect test() to be called here"，故在测试
+# 发现阶段排除。
+[test]
+pathIgnorePatterns = ["**/e2e/**"]
