@@ -478,6 +478,8 @@ export function getUserMessageDraftImages(
     if (block.type !== "image") return [];
 
     // Support both the current nested image format and older flat pi-ai entries.
+    // SAFETY: 兼容 pi-ai 旧扁平图片格式 {data, mimeType} 与新 {source:{...}}
+    // 结构在磁盘上并存的运行时联合，字段逐一 typeof 校验后才使用。
     const flat = block as unknown as { data?: unknown; mimeType?: unknown };
     const data =
       block.source?.type === "base64" ? block.source.data : flat.data;

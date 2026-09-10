@@ -477,6 +477,8 @@ function UserMessageView({
       {imageBlocks.map((img, i) => {
         // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
         // pi-ai on-disk format uses flat {data, mimeType} — handle both
+        // SAFETY: 磁盘上 pi-ai 旧格式与新 {source:{...}} 结构在运行时并存，
+        // 类型系统无法表达该运行时联合，故经由 unknown 收窄后逐字段判断。
         const flat = img as unknown as { data?: string; mimeType?: string };
         const src = img.source
           ? img.source.type === "base64"
@@ -2430,6 +2432,8 @@ function getMessageImages(
 }
 
 function imageSource(img: ImageContent): string {
+  // SAFETY: 兼容 pi-ai 旧扁平图片格式 {data, mimeType} 与 lib/types.ts 的
+  // {source:{type,data,media_type,url}} 结构在磁盘上并存的运行时联合。
   const flat = img as unknown as { data?: string; mimeType?: string };
   if (img.source) {
     return img.source.type === "base64"

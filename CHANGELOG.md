@@ -2,6 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.11.1] - 2026-09-10
+
+### 修复
+
+- 订阅登录不再因空闲超时断开（"Connection lost"）：`Bun.serve` 默认 `idleTimeout` 为 10 秒，OAuth 订阅登录在用户跳转授权页面期间 SSE 流无数据流动，连接被服务端强制断开，前端报 "Connection lost" 且无法完成授权。auth 登录流新增 5 秒 SSE 注释帧心跳（EventSource 自动忽略，仅保活），并顺带修复客户端断开时重复 `controller.close()` 可能抛异常的问题。
+- 会话事件流与文件 watch 流同样接入 5 秒心跳：agent 事件流原心跳间隔 30 秒同样撑不过 10 秒空闲超时，会话静默（如模型长时间思考、等待授权工具调用）超过 10 秒时事件流会被断开；文件 watch 流此前无心跳，文件 10 秒内无变更即断开。两处均补齐/修正心跳并在关闭路径清理定时器。
+- 侧边栏会话列表「加载中...」常驻：初始加载请求在飞行中被 running 轮询或后台刷新抢占 `sessionLoadIdRef`，`finally` 中 loadId 失配跳过 `setLoading(false)`，导致列表正常但加载态永久卡住。改用并发计数器，仅在所有 showLoading 请求结束后关闭加载态。
+
+### 变更
+
+- 订阅登录打开授权页面前校验外部链接协议：仅允许 http/https，拒绝 `javascript:` 等危险协议；SSE 登录帧 JSON 解析增加容错，畸形帧直接忽略不再中断登录流程。
+
 ## [0.11.0] - 2026-09-08
 
 ### 新增
@@ -189,6 +201,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.11.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.1
 [0.11.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.0
 [0.10.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.1
 [0.10.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.0

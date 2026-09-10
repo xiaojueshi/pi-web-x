@@ -2113,6 +2113,19 @@ function ModelDetail({
 
 // ── OAuth detail ──────────────────────────────────────────────────────────────
 
+// 校验并打开外部链接：仅允许 http/https 协议，防止 javascript: 等危险协议注入；
+// URL 解析失败时不开窗，交由界面上的链接文本兜底。
+const openExternalUrl = (raw: string | undefined) => {
+  if (!raw) return;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return;
+    window.open(parsed.href, "_blank", "noopener,noreferrer");
+  } catch {
+    /* 非法 URL，忽略 */
+  }
+};
+
 function OAuthDetail({
   provider,
   onRefresh,
@@ -2159,7 +2172,7 @@ function OAuthDetail({
     eventSourceRef.current = es;
 
     es.onmessage = (e) => {
-      const data = JSON.parse(e.data) as {
+      let data: {
         type: string;
         url?: string;
         instructions?: string | null;
@@ -2172,6 +2185,12 @@ function OAuthDetail({
         expiresInSeconds?: number | null;
         options?: { id: string; label: string }[];
       };
+      try {
+        data = JSON.parse(e.data) as typeof data;
+      } catch {
+        // 畸形 SSE 帧直接忽略，避免 JSON.parse 抛异常中断登录流程
+        return;
+      }
       if (data.type === "auth") {
         setLoginState({
           phase: "auth",
@@ -2179,7 +2198,7 @@ function OAuthDetail({
           instructions: data.instructions ?? null,
           token: data.token!,
         });
-        window.open(data.url!, "_blank", "noopener,noreferrer");
+        openExternalUrl(data.url);
       } else if (data.type === "device_code") {
         setLoginState({
           phase: "device_code",
@@ -2188,7 +2207,7 @@ function OAuthDetail({
           intervalSeconds: data.intervalSeconds ?? null,
           expiresInSeconds: data.expiresInSeconds ?? null,
         });
-        window.open(data.verificationUri!, "_blank", "noopener,noreferrer");
+        openExternalUrl(data.verificationUri);
       } else if (data.type === "prompt_request") {
         setLoginState({
           phase: "prompt",
@@ -2304,7 +2323,6 @@ function OAuthDetail({
     loginState.phase === "device_code" ||
     loginState.phase === "prompt" ||
     loginState.phase === "select";
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
