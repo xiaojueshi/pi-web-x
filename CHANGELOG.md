@@ -2,6 +2,19 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [0.11.2] - 2026-09-10
+
+### 修复
+
+- 侧边栏「加载中...」仍可能常驻（v0.11.1 修复的遗留竞态）：v0.11.1 的并发计数器在 `finally` 中仍保留了 loadId 守卫，最常见的场景——初始 showLoading 请求被一次后台非 showLoading 刷新抢占 loadId——计数已归零但守卫不成立，加载态照样永久卡住。现在关闭加载态不再受 loadId 守卫（`setLoading(false)` 只关加载态不写数据，并发中的新 showLoading 请求由计数器 >0 保护）；同时为 `/api/sessions` 的 fetch 增加 30 秒超时兑底（`AbortSignal.timeout`），请求挂死时加载态最多持续 30 秒。
+- 连接安全提示误报「此连接尚未启用 Web Access Authentication」：
+  - 已设置密码且已登录仍提示：提示组件（PwaRegistration）在认证墙外，只在挂载时请求一次认证状态；登录成功不触发整页刷新，状态停留在登录前。现在登录/首次设置密码成功时由认证墙派发 `pi-web-x:auth-established` 事件，提示组件监听后重新拉取 `/api/auth/status`；同时监听现有会话失效广播保持状态同步。
+  - 提示条件原为「当前会话未登录」，但「尚未启用认证」只对从未设置过密码的连接成立。改为仅当认证未初始化时提示；本机回环访问不再提示（提示文案本身即针对跨设备访问的建议）。局域网/其他地址在密码未设置或非安全上下文时仍提示。
+
+### 测试与工程化
+
+- 全量单测 1023 项通过（`bun run test`）；`bun run typecheck`、`bun run lint` 通过。放宽 PwaRegistration `controllerchange` 源码断言以兼容多行排版。
+
 ## [0.11.1] - 2026-09-10
 
 ### 修复
@@ -201,6 +214,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.11.2]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.2
 [0.11.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.1
 [0.11.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.0
 [0.10.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.10.1

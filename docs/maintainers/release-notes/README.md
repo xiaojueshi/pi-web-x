@@ -6,6 +6,7 @@ Release notes are the complete, reviewable source text for GitHub Releases. `CHA
 
 | Version | Status | Notes |
 | --- | --- | --- |
+| [v0.11.2](./v0.11.2.md) | Draft | 侧边栏加载态遗留竞态修复补全，连接安全提示不再误报 |
 | [v0.11.1](./v0.11.1.md) | Released | SSE 心跳保活（订阅登录/事件流/文件 watch），侧边栏加载态修复 |
 | [v0.11.0](./v0.11.0.md) | Released | Built-in subagents, batch ask_user, system prompt editor, session search |
 | [v0.10.0](./v0.10.0.md) | Released | Built-in ask_user and todo tools, SDK 0.85.0 |
