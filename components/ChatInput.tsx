@@ -670,6 +670,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   const [toolDropdownOpen, setToolDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [controlsMenuOpen, setControlsMenuOpen] = useState(false);
+  const [builtinCommandRunning, setBuiltinCommandRunning] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() =>
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : [],
   );
@@ -725,6 +726,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   const valueRef = useRef(value);
   const attachedImagesRef = useRef(attachedImages);
   const pendingImageCountRef = useRef(0);
+  // State alone cannot protect two rapid Enter/click events before React
+  // commits, so retain a synchronous admission lock as well.
+  const builtinCommandRunningRef = useRef(false);
   valueRef.current = value;
   attachedImagesRef.current = attachedImages;
 
@@ -1054,18 +1058,26 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     async (msg: string): Promise<boolean> => {
       if (attachedImages.length || !msg.startsWith("/") || !onBuiltinCommand)
         return false;
-      const result = await onBuiltinCommand(msg);
-      if (!result.handled) return false;
-      if (
-        !result.error &&
-        canClearBuiltinCommandInput(
-          valueRef.current,
-          attachedImagesRef.current.length,
-          msg,
+      if (builtinCommandRunningRef.current) return true;
+      builtinCommandRunningRef.current = true;
+      setBuiltinCommandRunning(true);
+      try {
+        const result = await onBuiltinCommand(msg);
+        if (!result.handled) return false;
+        if (
+          !result.error &&
+          canClearBuiltinCommandInput(
+            valueRef.current,
+            attachedImagesRef.current.length,
+            msg,
+          )
         )
-      )
-        clearInput();
-      return true;
+          clearInput();
+        return true;
+      } finally {
+        builtinCommandRunningRef.current = false;
+        setBuiltinCommandRunning(false);
+      }
     },
     [attachedImages.length, clearInput, onBuiltinCommand],
   );
@@ -1839,6 +1851,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
         paddingRight: isMobile ? 16 : 52, // desktop: 16px base + 36px for ChatMinimap alignment
       }}
     >
+      <fieldset
+        disabled={builtinCommandRunning}
+        aria-busy={builtinCommandRunning || undefined}
+        style={{ minWidth: 0, margin: 0, padding: 0, border: "none" }}
+      >
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -3589,6 +3606,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
           </div>
         </div>
       </div>
+      </fieldset>
     </div>
   );
 });

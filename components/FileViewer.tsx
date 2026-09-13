@@ -75,6 +75,9 @@ interface FileData {
   content: string;
   language: string;
   size: number;
+  nextOffset?: number;
+  hasMore?: boolean;
+  mtimeMs?: number;
 }
 
 const SOURCE_HIGHLIGHT_MAX_LINES = 1_000;
@@ -1346,6 +1349,9 @@ function TextFileViewer({
   const [gitDiffLoading, setGitDiffLoading] = useState(false);
   const [gitDiffResolved, setGitDiffResolved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [stale, setStale] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestedInitialDisplayMode = resolveInitialFileDisplayMode(
     initialState,
@@ -1420,18 +1426,37 @@ function TextFileViewer({
   ]);
 
   const fetchContent = useCallback(
-    (filePath: string) => {
+    (targetPath: string, offset = 0, mtimeMs?: number) => {
       const requestId = ++contentRequestRef.current;
-      return fetch(getFileApiUrl(filePath, "read", sourceSessionId))
+      return fetch(
+        getFileApiUrl(targetPath, "read", sourceSessionId, { offset, mtimeMs }),
+      )
         .then((r) => r.json())
-        .then((d: FileData & { error?: string }) => {
+        .then((d: FileData & { error?: string; code?: string }) => {
           if (requestId !== contentRequestRef.current) return null;
           if (d.error) {
+            // A page cursor is pinned to a file version. Keep the old snapshot
+            // visible and offer an explicit refresh instead of mixing versions.
+            if (d.code === "file_changed") {
+              setError(null);
+              setStale(true);
+              return null;
+            }
             setError(d.error);
             return null;
           }
           setError(null);
-          setData(d);
+          setStale(false);
+          setHasMore(Boolean(d.hasMore));
+          if (offset === 0) {
+            setData(d);
+          } else {
+            setData((previous) =>
+              previous
+                ? { ...d, content: previous.content + d.content }
+                : d,
+            );
+          }
           return d;
         })
         .catch((e) => {
@@ -1485,6 +1510,8 @@ function TextFileViewer({
     setLoading(true);
     setError(null);
     setData(null);
+    setHasMore(false);
+    setStale(false);
     setGitDiff(null);
     setGitDiffResolved(false);
     setWatching(false);
@@ -1525,7 +1552,11 @@ function TextFileViewer({
       synchronize();
     });
 
-    es.addEventListener("change", synchronize);
+    // Preserve the displayed snapshot. A changed file may have a different
+    // byte layout, so silently replacing a paged preview is unsafe.
+    es.addEventListener("change", () => {
+      setStale(true);
+    });
 
     const markDisconnected = () => {
       setWatching(false);
@@ -1578,6 +1609,23 @@ function TextFileViewer({
       updateDisplayMode("diff");
     }
   }, [requestedInitialDisplayMode, hasGitDiff, updateDisplayMode]);
+
+  const refreshTextPreview = useCallback(() => {
+    setLoading(true);
+    void Promise.all([fetchContent(filePath), fetchGitDiff(filePath)]).finally(
+      () => setLoading(false),
+    );
+  }, [fetchContent, fetchGitDiff, filePath]);
+
+  const loadMoreTextPreview = useCallback(() => {
+    if (!data?.hasMore || loadingMore || stale) return;
+    setLoadingMore(true);
+    void fetchContent(
+      filePath,
+      data.nextOffset ?? data.content.length,
+      data.mtimeMs,
+    ).finally(() => setLoadingMore(false));
+  }, [data, fetchContent, filePath, loadingMore, stale]);
 
   const markdownPreview = useMemo(
     () =>
@@ -1709,13 +1757,16 @@ function TextFileViewer({
         style={{
           height: "100%",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           color: "#f87171",
           fontSize: 13,
+          gap: 12,
         }}
       >
-        {error}
+        <span>{error}</span>
+        <DownloadLink filePath={filePath} sourceSessionId={sourceSessionId} />
       </div>
     );
   }
@@ -1790,6 +1841,16 @@ function TextFileViewer({
         )}
 
         <div className="file-viewer-controls">
+          {stale && (
+            <button
+              type="button"
+              onClick={refreshTextPreview}
+              className="file-viewer-mode-button"
+              title="File changed; refresh manually"
+            >
+              File changed — Refresh
+            </button>
+          )}
           {displayModes.length > 1 && (
             <div
               className="file-viewer-mode-switch"
@@ -2094,6 +2155,20 @@ function TextFileViewer({
           >
             {content}
           </SyntaxHighlighter>
+        )}
+        {effectiveDisplayMode === "source" && hasMore && !stale && (
+          <div
+            style={{ display: "flex", justifyContent: "center", padding: 12 }}
+          >
+            <button
+              type="button"
+              onClick={loadMoreTextPreview}
+              disabled={loadingMore}
+              className="file-viewer-mode-button"
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          </div>
         )}
       </div>
     </div>

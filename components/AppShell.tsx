@@ -144,6 +144,36 @@ export function AppShell() {
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(
     null,
   );
+  // Selected-chat lease is separate from extension liveness. Renewing is best
+  // effort and the endpoint refuses to cold-start an unloaded session.
+  useEffect(() => {
+    const sessionId = selectedSession?.id;
+    if (!sessionId) return;
+    const leaseId = crypto.randomUUID();
+    const headers = { "x-pi-selected-session-lease": leaseId };
+    const renew = () => {
+      void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/lease`, {
+        method: "POST",
+        headers,
+        cache: "no-store",
+      }).catch(() => {
+        // Network failures simply let the 90 second server TTL expire.
+      });
+    };
+    renew();
+    const timer = window.setInterval(renew, 30_000);
+    return () => {
+      window.clearInterval(timer);
+      void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/lease`, {
+        method: "DELETE",
+        headers,
+        cache: "no-store",
+      }).catch(() => {
+        // TTL remains the fallback when unload or a network error prevents this.
+      });
+    };
+  }, [selectedSession?.id]);
+
   const [sessionCatalog, setSessionCatalog] = useState<SessionInfo[]>([]);
   const handleSessionsChange = useCallback((sessions: SessionInfo[]) => {
     setSessionCatalog(sessions);
@@ -1170,10 +1200,10 @@ export function AppShell() {
   }, []);
 
   const handleSessionDeleted = useCallback(
-    (sessionId: string) => {
+    (deletedSessionIds: string[]) => {
       invalidateWorkspaceRestore();
       setRefreshKey((k) => k + 1);
-      if (selectedSession?.id === sessionId) {
+      if (selectedSession && deletedSessionIds.includes(selectedSession.id)) {
         const cwd = selectedSession.cwd;
         const draftId =
           typeof crypto.randomUUID === "function"
@@ -1257,6 +1287,7 @@ export function AppShell() {
       window.location.origin,
     );
     exportUrl.searchParams.set("inline", "1");
+    if (exportUrl.origin !== window.location.origin) return;
     window.open(exportUrl.href, "_blank", "noopener,noreferrer");
   }, [selectedSession]);
 

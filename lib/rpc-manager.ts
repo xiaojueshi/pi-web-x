@@ -41,6 +41,10 @@ import { persistExplicitStartupPreferences } from "./startup-preferences";
 import { notifySessionComplete } from "./web-push";
 import { getCachedIdleSessionReapingSettings } from "./idle-session-settings";
 import { hasActiveSessionLivenessProvider } from "./session-liveness";
+import {
+  clearSelectedSessionLease,
+  hasSelectedSessionLease,
+} from "./selected-session-lease";
 import type { SlashCommandInfo, Theme } from "@earendil-works/pi-coding-agent";
 import type {
   AgentSessionLike,
@@ -235,6 +239,8 @@ export class AgentSessionWrapper {
   private listeners: EventListener[] = [];
   private pendingUiResponses = new Map<string, PendingUiResponse>();
   private pendingUiRequests = new Map<string, AgentEvent>();
+  /** 运行中的 shell 工具进度；新 SSE listener 订阅时重放，避免恢复后丢失。 */
+  private activeToolExecutionUpdates = new Map<string, AgentEvent>();
   private activeCustomUis = new Map<string, ActiveCustomUi>();
   private extensionStatuses = new Map<string, string>();
   private extensionWidgets = new Map<string, ExtensionWidgetItem>();
@@ -319,6 +325,7 @@ export class AgentSessionWrapper {
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
       if (event.type === "agent_start") this.agentRunNeedsCompletion = true;
+      this.trackActiveToolExecution(event);
       if (event.type === "agent_end") {
         invalidateSessionListCache();
       }
@@ -472,6 +479,19 @@ export class AgentSessionWrapper {
     this.applyExactSystemPrompt();
   }
 
+  private trackActiveToolExecution(event: AgentEvent): void {
+    const toolCallId = event.toolCallId;
+    if (typeof toolCallId !== "string") return;
+    if (
+      event.type === "tool_execution_update" &&
+      (event.toolName === "bash" || event.toolName === "powershell")
+    ) {
+      this.activeToolExecutionUpdates.set(toolCallId, event);
+    } else if (event.type === "tool_execution_end") {
+      this.activeToolExecutionUpdates.delete(toolCallId);
+    }
+  }
+
   private emit(event: AgentEvent): void {
     for (const listener of this.listeners) {
       try {
@@ -513,7 +533,11 @@ export class AgentSessionWrapper {
         sessionId: this.sessionId,
         ...(this.sessionFile ? { sessionFile: this.sessionFile } : {}),
       });
-      if (!this.forceShutdownOnIdle && (this.isRunning() || hasExtensionWork)) {
+      const hasSelectedChatLease = hasSelectedSessionLease(this);
+      if (
+        !this.forceShutdownOnIdle &&
+        (this.isRunning() || hasExtensionWork || hasSelectedChatLease)
+      ) {
         this.resetIdleTimer();
         return;
       }
@@ -550,6 +574,7 @@ export class AgentSessionWrapper {
   onEvent(listener: EventListener): () => void {
     this.listeners.push(listener);
     for (const event of this.pendingUiRequests.values()) listener(event);
+    for (const event of this.activeToolExecutionUpdates.values()) listener(event);
     return () => {
       const i = this.listeners.indexOf(listener);
       if (i !== -1) this.listeners.splice(i, 1);
@@ -828,6 +853,14 @@ export class AgentSessionWrapper {
               );
               newManager.newSession({ parentSession: currentSessionFile });
               newSessionFile = newManager.getSessionFile() as string;
+              // A SessionManager normally defers writing until an assistant
+              // response exists. A fork at the very first user entry has no
+              // copied entries, so persist its header now; otherwise the child
+              // ID is returned but cannot be reopened by the next request.
+              writeFileSync(
+                newSessionFile,
+                `${JSON.stringify(newManager.getHeader())}\n`,
+              );
             } else {
               // Fork after some history: copy path up to (but not including) the fork point
               const sourceManager = SessionManager.open(
@@ -1140,6 +1173,7 @@ export class AgentSessionWrapper {
 
   destroy(): void {
     if (!this._alive) return;
+    clearSelectedSessionLease(this);
     this._alive = false;
     if (this.idleTimer) clearTimeout(this.idleTimer);
     if (this.inner.isBashRunning) this.inner.abortBash();

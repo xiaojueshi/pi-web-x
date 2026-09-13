@@ -46,6 +46,7 @@ import * as route34 from "../../app/api/sessions/[id]/entries/[entryId]/thinking
 import * as route35 from "../../app/api/sessions/[id]/entries/[entryId]/tool-result-image/route.ts";
 import * as route36 from "../../app/api/sessions/[id]/export/route.ts";
 import * as route37 from "../../app/api/sessions/[id]/route.ts";
+import * as route53 from "../../app/api/sessions/[id]/delete-preview/route.ts";
 import * as route38 from "../../app/api/sessions/[id]/state/route.ts";
 import * as route39 from "../../app/api/sessions/route.ts";
 import * as route51 from "../../app/api/sessions/search/route.ts";
@@ -106,6 +107,10 @@ const ROUTES: Array<{ pattern: string; module: RouteModule }> = [
     module: route35 as RouteModule,
   },
   { pattern: "/api/sessions/[id]/export", module: route36 as RouteModule },
+  {
+    pattern: "/api/sessions/[id]/delete-preview",
+    module: route53 as RouteModule,
+  },
   { pattern: "/api/sessions/[id]", module: route37 as RouteModule },
   { pattern: "/api/sessions/[id]/state", module: route38 as RouteModule },
   { pattern: "/api/sessions", module: route39 as RouteModule },

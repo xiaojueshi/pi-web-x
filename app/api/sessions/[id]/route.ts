@@ -1,34 +1,20 @@
 import { HttpResponse, requestSearchParams } from "@/src/server/http";
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-} from "fs";
-import { dirname, join } from "path";
+import { existsSync, statSync } from "fs";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import {
   attachSessionProjectInfo,
   resolveSessionPath,
   resolveSessionIdByPath,
-  invalidateSessionPathCache,
   invalidateSessionListCache,
   buildSessionContext,
-  readSessionHeader,
 } from "@/lib/session-reader";
-import { sessionPathKey } from "@/lib/session-path";
 import { getRpcSession } from "@/lib/rpc-manager";
 import { projectTreeForResponse } from "@/lib/project-tree";
 import { computeSessionTotalActiveMs } from "@/lib/session-timing";
 import { computeSessionStats } from "@/lib/session-stats";
 import type { SessionEntry } from "@/lib/types";
-import {
-  readSubagentRun,
-  readSubagentSessionResources,
-  SUBAGENT_META_TYPE,
-} from "@/lib/subagents";
+import { readSubagentRun, readSubagentSessionResources } from "@/lib/subagents";
+import { deleteSessionWithPreview } from "@/lib/session-deletion";
 import { readSessionToolSelection } from "@/lib/session-tool-selection";
 
 function isReadOnlySubagentSession(
@@ -211,110 +197,28 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/sessions/[id]
+// DELETE /api/sessions/[id] body: { token: string }
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
     const filePath = await resolveSessionPath(id);
-    if (!filePath) {
-      return HttpResponse.json({ error: "Session not found" }, { status: 404 });
-    }
-    if (isReadOnlySubagentSession(filePath, id))
+    if (filePath && isReadOnlySubagentSession(filePath, id))
       return subagentReadOnlyResponse();
-
-    // Read only the bounded header before deleting.
-    const parentSessionPath = readSessionHeader(filePath)?.parentSession;
-    let parentSessionId: string | undefined;
-    if (parentSessionPath) {
-      try {
-        parentSessionId = readSessionHeader(parentSessionPath)?.id;
-      } catch {
-        // 父 JSONL 已被手动删除时仍应允许删除当前会话并去父化子会话。
-        parentSessionId = undefined;
-      }
-    }
-
-    // Re-attach all direct children to this session's parent (cascade re-parent)
-    // Scan sibling files in the same directory
-    const targetPathKey = sessionPathKey(filePath);
-    const dir = dirname(filePath);
-    try {
-      const files = readdirSync(dir).filter(
-        (file) =>
-          file.endsWith(".jsonl") &&
-          sessionPathKey(join(dir, file)) !== targetPathKey,
-      );
-      for (const file of files) {
-        const childPath = join(dir, file);
-        try {
-          const content = readFileSync(childPath, "utf8");
-          const lines = content.split("\n");
-          const header = JSON.parse(lines[0]) as {
-            type?: string;
-            parentSession?: string;
-          };
-          if (
-            header.type === "session" &&
-            header.parentSession &&
-            sessionPathKey(header.parentSession) === targetPathKey
-          ) {
-            // 父会话仍存在时重挂；否则子会话必须去父化，不能留下悬挂路径。
-            if (parentSessionPath && parentSessionId) {
-              header.parentSession = parentSessionPath;
-            } else {
-              delete header.parentSession;
-            }
-            lines[0] = JSON.stringify(header);
-            for (let index = 1; index < lines.length; index += 1) {
-              let entry: {
-                type?: string;
-                customType?: string;
-                data?: unknown;
-              };
-              try {
-                entry = JSON.parse(lines[index]);
-              } catch {
-                continue;
-              }
-              if (
-                entry.type !== "custom" ||
-                entry.customType !== SUBAGENT_META_TYPE ||
-                typeof entry.data !== "object" ||
-                entry.data === null ||
-                Array.isArray(entry.data)
-              )
-                continue;
-              const metadata = { ...entry.data } as Record<string, unknown>;
-              if (parentSessionPath && parentSessionId) {
-                metadata.parentSessionId = parentSessionId;
-                metadata.parentSessionPath = parentSessionPath;
-              } else {
-                delete metadata.parentSessionId;
-                delete metadata.parentSessionPath;
-              }
-              entry.data = metadata;
-              lines[index] = JSON.stringify(entry);
-              break;
-            }
-            writeFileSync(childPath, lines.join("\n"));
-          }
-        } catch {
-          /* skip malformed */
-        }
-      }
-    } catch {
-      /* skip if dir unreadable */
-    }
-
-    await getRpcSession(id)?.shutdown();
-    unlinkSync(filePath);
-    invalidateSessionPathCache(id);
-    invalidateSessionListCache();
-    return HttpResponse.json({ ok: true });
+    const body = (await req.json().catch(() => ({}))) as { token?: unknown };
+    const result = await deleteSessionWithPreview(id, body.token);
+    return HttpResponse.json({
+      ok: true,
+      deletedSessionIds: result.deletedSessionIds,
+      summary: result.summary,
+    });
   } catch (error) {
-    return HttpResponse.json({ error: String(error) }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    const status =
+      (error as Error & { status?: number }).status ??
+      (message === "Session not found" ? 404 : 500);
+    return HttpResponse.json({ error: message }, { status });
   }
 }

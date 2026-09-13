@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rmdir, unlink } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, rmdir, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
@@ -244,6 +244,10 @@ test("normal session teardown paths use graceful extension shutdown", async () =
     new URL("../../../app/api/project-trust/route.ts", import.meta.url),
     "utf8",
   );
+  const sessionDeletionSource = await readFile(
+    new URL("../../../lib/session-deletion.ts", import.meta.url),
+    "utf8",
+  );
   const idleSource = source.slice(
     source.indexOf("  private resetIdleTimer"),
     source.indexOf("  private persistBashOnlySession"),
@@ -265,7 +269,14 @@ test("normal session teardown paths use graceful extension shutdown", async () =
   assert.match(replacementShutdownSource, /await this\.shutdown\(\)/);
   assert.match(forkSource, /shutdownAfterSessionReplacement\("fork"\)/);
   assert.match(cloneSource, /shutdownAfterSessionReplacement\("clone"\)/);
-  assert.match(deleteRouteSource, /await getRpcSession\(id\)\?\.shutdown\(\)/);
+  assert.match(
+    deleteRouteSource,
+    /deleteSessionWithPreview\(id, body\.token\)/,
+  );
+  assert.match(
+    sessionDeletionSource,
+    /await getRpcSession\(deletedSessionId\)\?\.shutdown\(\)/,
+  );
   assert.match(
     trustRouteSource,
     /await destroyRpcSessionsForCwd\(result\.cwd\)/,
@@ -435,6 +446,54 @@ test("session replacement rejects active work and clone writes one reopenable ch
     if (sourceFile) await unlink(sourceFile);
     await rmdir(sessionDir);
     await rmdir(root);
+  }
+});
+
+test("forking at the first user message writes a reopenable child header", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pi-web-x-fork-first-"));
+  const sessionDir = join(root, "sessions");
+  await mkdir(sessionDir);
+  const manager = SessionManager.create(root, sessionDir);
+  manager.appendMessage({
+    role: "user",
+    content: "first prompt",
+    timestamp: Date.now(),
+  });
+  manager.appendMessage({
+    role: "assistant",
+    content: [{ type: "text", text: "first response" }],
+    timestamp: Date.now(),
+  });
+  const sourceFile = manager.getSessionFile();
+  const userEntry = manager
+    .getEntries()
+    .find((entry) => entry.type === "message");
+  assert.ok(sourceFile);
+  assert.ok(userEntry?.id);
+  const wrapper = new AgentSessionWrapper({
+    sessionId: manager.getSessionId(),
+    sessionFile: sourceFile,
+    sessionManager: manager,
+    isStreaming: false,
+    isCompacting: false,
+    isBashRunning: false,
+    extensionRunner: { emit: async () => {} },
+    agent: { state: {} },
+    dispose() {},
+  });
+
+  try {
+    const result = await wrapper.send({ type: "fork", entryId: userEntry.id });
+    assert.equal(result.cancelled, false);
+    assert.ok(result.newSessionId);
+    const listed = await SessionManager.list(root, sessionDir);
+    const child = listed.find((item) => item.id === result.newSessionId);
+    assert.ok(child);
+    const reopened = SessionManager.open(child.path, sessionDir);
+    assert.equal(reopened.getHeader().parentSession, sourceFile);
+  } finally {
+    wrapper.destroy();
+    await rm(root, { recursive: true, force: true });
   }
 });
 

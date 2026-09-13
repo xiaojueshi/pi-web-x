@@ -2,6 +2,26 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
+## [Unreleased]
+
+### 新增
+
+- 大文本文件预览改为按需分页：文本文件在不超过 10 MiB 时以 256 KiB、UTF-8 安全的分块加载；文件面板提供“加载更多”。预览加载期间文件发生变化时，保留当前快照并要求用户手动刷新，避免混合两个版本的内容；无效 UTF-8 明确提示下载原文件。
+- 当前聊天会话新增短期 Selected Session Lease：浏览器每 30 秒续租一次、服务端 90 秒过期，仅保活已经存在的当前 AgentSession，不会为租约冷启动历史会话；它与 extension-owned background work 的 Extension Liveness 保持独立。
+- 删除会话新增只读影响预览与确认 token：确认前显示将递归删除的 Built-in Inline Subagent 后代数和运行数；成功响应返回所有 `deletedSessionIds[]`，当前选中的已删后代也会正确退出。
+
+### 修复
+
+- 重新打开运行中的会话时不再清空已收到的流式 assistant partial；SSE 重连后会重放运行中 `bash` / `powershell` 工具的最近输出，并在流式 tool card 中继续显示。
+- 第一条用户消息现在可 Fork，也可“从这里编辑”建立分支；首消息 Fork 产生的 child JSONL 会立即写入可重新打开的 session header。
+- 内置 Slash Command 执行期间锁定输入控件和同步重入入口，连续 Enter 或点击不再重复提交同一内置命令。
+- 保存 Built-in Inline Subagent Profile 时保留 pi-web-x 不管理的 YAML frontmatter 和 `ext:` tool selector；这些 selector 仍不被解释或赋权。若现有 frontmatter 损坏，保存会拒绝覆盖原文件。
+- 删除 parent session 不再改挂 Built-in Inline Subagent：无运行中后代时，服务端对全部受影响 JSONL 创建操作级备份后递归删除，普通 fork child 仍保留并改挂或去父化；任一改挂或删除失败都会恢复完整文件集，若恢复本身失败则保留磁盘备份供人工恢复。每次删除前后都核验 preview 绑定的文件版本，确认 token 过期、后代树/文件发生变化或出现运行中后代时返回 409，不做文件修改；删除确认不再允许 Shift 绕过。
+
+### 测试与工程化
+
+- 新增/扩展覆盖流式恢复、shell 工具输出重放、首消息 Fork、内置命令重入、Profile 无损保存、递归删除预览/冲突、部分删除失败恢复、恢复失败保留备份、最终删除前文件变更、文本分页 UTF-8 边界、文件变更、Selected Session Lease TTL 与无 cold-start 等回归场景。
+
 ## [0.11.2] - 2026-09-10
 
 ### 修复

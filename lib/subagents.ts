@@ -9,7 +9,7 @@ import {
   unlinkSync,
 } from "fs";
 import { basename, dirname, join, resolve } from "path";
-import { parseFrontmatter } from "./frontmatter";
+import { readFrontmatterBlock } from "./frontmatter";
 import { getProjectTrustStatus } from "./project-trust";
 import { writePrivateFileAtomicSync } from "./atomic-file";
 import { isExistingPathWithinRoots } from "./path-security";
@@ -37,6 +37,8 @@ export interface SubagentProfile {
   description: string;
   systemPrompt: string;
   tools: string[];
+  /** 未解释、未启用的 legacy extension tool selector，仅用于配置写回。 */
+  toolSelectors?: string[];
   loadSkills: boolean;
   loadExtensions: boolean;
   model?: string;
@@ -169,17 +171,28 @@ function booleanValue(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
-function parseTools(value: unknown, fallback: string[]): string[] {
+function toolValues(value: unknown): string[] {
   const values = Array.isArray(value)
     ? value
     : typeof value === "string"
       ? value.split(",")
       : [];
-  const tools = values.map((item) => String(item).trim()).filter(Boolean);
+  return values.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function parseTools(value: unknown, fallback: string[]): string[] {
+  const tools = toolValues(value);
   if (tools.includes("none")) return [];
   if (tools.includes("all") || tools.includes("*")) return [...DEFAULT_TOOLS];
   if (tools.length === 0) return [...fallback];
   return [...new Set(tools.filter((tool) => BUILTIN_TOOLS.has(tool)))];
+}
+
+/** 保留历史 ext: selector，但绝不把它解释成可执行工具或权限。 */
+function parseToolSelectors(value: unknown): string[] {
+  return [
+    ...new Set(toolValues(value).filter((tool) => tool.startsWith("ext:"))),
+  ];
 }
 
 function parseProfileFile(
@@ -188,7 +201,8 @@ function parseProfileFile(
 ): SubagentProfile | null {
   try {
     const source = readFileSync(filePath, "utf8");
-    const { data, rest } = parseFrontmatter(source);
+    const { data, rest, found, valid } = readFrontmatterBlock(source);
+    if (found && !valid) return null;
     const name = basename(filePath, ".md");
     const thinkingValue = stringValue(data?.thinking) as
       | ThinkingLevel
@@ -205,6 +219,9 @@ function parseProfileFile(
       description: stringValue(data?.description) ?? name,
       systemPrompt: rest.trim(),
       tools: tools.filter((tool) => !disallowedTools.has(tool)),
+      ...(parseToolSelectors(data?.tools).length > 0
+        ? { toolSelectors: parseToolSelectors(data?.tools) }
+        : {}),
       loadSkills: booleanValue(data?.load_skills, false),
       loadExtensions: booleanValue(data?.load_extensions, false),
       ...(stringValue(data?.model) ? { model: stringValue(data?.model) } : {}),
@@ -377,6 +394,20 @@ function assertWritableProfileDirectory(
   return dir;
 }
 
+/** 返回同一作用域内与 profile 名大小写无关匹配的文件路径。 */
+function matchingProfilePaths(dir: string, name: string): string[] {
+  if (!existsSync(dir)) return [];
+  const normalized = name.toLowerCase();
+  return readdirSync(dir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.endsWith(".md") &&
+        basename(entry.name, ".md").toLowerCase() === normalized,
+    )
+    .map((entry) => join(dir, entry.name));
+}
+
 export function saveSubagentProfile(
   cwd: string,
   scope: SubagentWritableScope,
@@ -386,6 +417,8 @@ export function saveSubagentProfile(
   const tools = [
     ...new Set(profile.tools.filter((tool) => BUILTIN_TOOLS.has(tool))),
   ];
+  // ext: selector 仅作为不可执行的配置数据保留，运行时始终只使用 tools。
+  const toolSelectors = parseToolSelectors(profile.toolSelectors);
   if (profile.thinking && !THINKING_LEVELS.has(profile.thinking)) {
     throw new Error(`Invalid thinking level: ${profile.thinking}`);
   }
@@ -410,11 +443,30 @@ export function saveSubagentProfile(
   if (scope === "project" && !isProjectProfilePathAllowed(cwd, dir)) {
     throw new Error("Agent profile directory is outside the project root");
   }
-  const filePath = join(dir, `${name}.md`);
+  const matchingPaths = matchingProfilePaths(dir, name);
+  if (matchingPaths.length > 1) {
+    throw new Error(
+      "Multiple agent profile files differ only by letter case; resolve them before saving",
+    );
+  }
+  // 使用已有文件的大小写，避免在大小写敏感文件系统中创建同名幽灵 profile。
+  const filePath = matchingPaths[0] ?? join(dir, `${name}.md`);
+  let preserved: Record<string, unknown> = {};
+  if (existsSync(filePath)) {
+    const source = readFileSync(filePath, "utf8");
+    const parsed = readFrontmatterBlock(source);
+    if (parsed.found && !parsed.valid) {
+      throw new Error(
+        "Refusing to overwrite malformed agent profile frontmatter",
+      );
+    }
+    if (parsed.data) preserved = { ...parsed.data };
+  }
   const frontmatter: Record<string, unknown> = {
+    ...preserved,
     description,
     display_name: displayName,
-    tools: tools.length > 0 ? tools.join(", ") : "none",
+    tools: [...tools, ...toolSelectors].join(", ") || "none",
     load_skills: loadSkills,
     load_extensions: loadExtensions,
     enabled: profile.enabled,
@@ -439,6 +491,7 @@ export function saveSubagentProfile(
     description,
     systemPrompt,
     tools,
+    ...(toolSelectors.length > 0 ? { toolSelectors } : {}),
     loadSkills,
     loadExtensions,
     ...(model ? { model } : { model: undefined }),
@@ -454,11 +507,14 @@ export function deleteSubagentProfile(
   name: string,
 ): void {
   const safeName = assertProfileName(name);
-  const filePath = join(
-    assertWritableProfileDirectory(cwd, scope),
-    `${safeName}.md`,
-  );
-  if (existsSync(filePath)) unlinkSync(filePath);
+  const dir = assertWritableProfileDirectory(cwd, scope);
+  const matchingPaths = matchingProfilePaths(dir, safeName);
+  if (matchingPaths.length > 1) {
+    throw new Error(
+      "Multiple agent profile files differ only by letter case; resolve them before deleting",
+    );
+  }
+  if (matchingPaths[0]) unlinkSync(matchingPaths[0]);
 }
 
 export function saveProjectSubagentProfile(

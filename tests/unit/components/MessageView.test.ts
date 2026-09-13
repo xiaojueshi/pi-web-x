@@ -46,6 +46,39 @@ test("keeps streamed tool input out of collapsed markup while counting it", () =
   assert.equal(getTokenEstimateText(block), block.rawInput);
 });
 
+test("renders a live shell partial result in its streaming tool card", () => {
+  const block = {
+    type: "toolCall",
+    toolCallId: "call-bash-1",
+    toolName: "bash",
+    input: { command: "npm test" },
+  };
+  const html = renderMessage(
+    {
+      role: "assistant",
+      provider: "anthropic",
+      model: "claude-test",
+      content: [block],
+    },
+    {
+      isStreaming: true,
+      toolResults: new Map([
+        [
+          block.toolCallId,
+          {
+            role: "toolResult",
+            toolCallId: block.toolCallId,
+            content: [{ type: "text", text: "running 12 tests..." }],
+          },
+        ],
+      ]),
+    },
+  );
+
+  assert.match(html, /data-tool-partial-result="true"/);
+  assert.match(html, /running 12 tests/);
+});
+
 test("renders subagents as standard tool calls with only an extra session button", () => {
   const block = {
     type: "toolCall",

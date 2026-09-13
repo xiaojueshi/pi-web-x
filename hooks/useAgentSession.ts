@@ -17,6 +17,7 @@ import type {
   ExtensionWidgetItem,
   SessionInfo,
   SessionTreeNode,
+  ToolResultMessage,
   UserMessage,
 } from "@/lib/types";
 import { isBlockingExtensionUiRequest } from "@/lib/browser-notifications";
@@ -430,6 +431,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     null,
   );
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  // Shell tools emit cumulative partial results while they run. Keep the last
+  // snapshot per call so the matching streaming tool card can render it.
+  const [activeToolResults, setActiveToolResults] = useState<
+    Map<string, ToolResultMessage>
+  >(new Map());
   const [promptAnchorActive, setPromptAnchorActive] = useState(false);
   const [slashCommands, setSlashCommands] = useState<SlashCommandInfo[]>([]);
   const [slashCommandsLoading, setSlashCommandsLoading] = useState(false);
@@ -1157,6 +1163,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setAgentRunning(false);
     setAgentPhase(null);
     setRetryInfo(null);
+    setActiveToolResults(new Map());
     dispatch({ type: "end" });
     return wasRunning;
   }, []);
@@ -1448,13 +1455,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     (event: AgentEvent) => {
       switch (event.type) {
         case "connected": {
-          dispatch({ type: "end" });
+          // Reconnecting to an existing run must not erase the partial shown
+          // before the EventSource dropped. The following server snapshot will
+          // correct it if needed.
           if (event.isStreaming === true) {
             cancelEventStreamGrace();
             sdkAgentActiveRef.current = true;
             agentRunningRef.current = true;
             setAgentRunning(true);
             setAgentPhase({ kind: "waiting_model" });
+            dispatch({ type: "resume" });
+          } else {
+            dispatch({ type: "end" });
+            setActiveToolResults(new Map());
           }
           break;
         }
@@ -1464,6 +1477,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           agentRunningRef.current = true;
           setAgentRunning(true);
           setAgentPhase({ kind: "waiting_model" });
+          setActiveToolResults(new Map());
           dispatch({ type: "start" });
           break;
         case "agent_end":
@@ -1638,6 +1652,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         case "tool_execution_update": {
           const id = event.toolCallId as string;
           const name = event.toolName as string;
+          if ((name === "bash" || name === "powershell") && id) {
+            const partialResult = event.partialResult;
+            if (
+              partialResult &&
+              typeof partialResult === "object" &&
+              Array.isArray((partialResult as { content?: unknown }).content)
+            ) {
+              setActiveToolResults((previous) =>
+                new Map(previous).set(id, {
+                  ...(partialResult as Omit<ToolResultMessage, "role" | "toolCallId">),
+                  role: "toolResult",
+                  toolCallId: id,
+                }),
+              );
+            }
+          }
           const progress = getToolExecutionProgress(event.partialResult);
           setAgentPhase((prev) => {
             const tools = prev?.kind === "running_tools" ? [...prev.tools] : [];
@@ -1656,6 +1686,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
         case "tool_execution_end": {
           const id = event.toolCallId as string;
+          setActiveToolResults((previous) => {
+            if (!previous.has(id)) return previous;
+            const next = new Map(previous);
+            next.delete(id);
+            return next;
+          });
           setAgentPhase((prev) => {
             if (prev?.kind !== "running_tools") return prev;
             const tools = prev.tools.filter((t) => t.id !== id);
@@ -2546,7 +2582,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
                 ? { kind: "waiting_model" }
                 : { kind: "running_command" },
             );
-            dispatch({ type: "start" });
+            dispatch({ type: "resume" });
             void maintainEventsConnected(session.id);
             if (
               !agentState.state.isStreaming &&
@@ -2766,6 +2802,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sendExtensionCustomInput,
     isAutoModelSelection: isNew && newSessionModel === null,
     agentPhase,
+    activeToolResults,
     isNew,
     promptAnchorActive,
     // Refs

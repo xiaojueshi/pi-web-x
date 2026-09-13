@@ -175,20 +175,79 @@ test("untrusted repository profiles remain visible but cannot enter runtime reso
   }
 });
 
-test("legacy extension selectors are omitted from lightweight profile tools", async () => {
+test("legacy extension selectors stay inert and round-trip with unknown frontmatter", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagents-"));
   try {
     await mkdir(join(cwd, ".pi", "agents"), { recursive: true });
+    const path = join(cwd, ".pi", "agents", "legacy.md");
     await writeFile(
-      join(cwd, ".pi", "agents", "legacy.md"),
-      "---\ndescription: Legacy\ntools: read, ext:mcp/search, write\ndisallowed_tools: write\n---\nInspect only.\n",
+      path,
+      "---\ndescription: Legacy\ntools: read, ext:mcp/search, write\ndisallowed_tools: write\nplugin_option:\n  keep: true\n---\nInspect only.\n",
     );
     const profile = listSubagentProfiles(cwd).find(
       (item) => item.name === "legacy",
     );
     assert.deepEqual(profile.tools, ["read"]);
+    assert.deepEqual(profile.toolSelectors, ["ext:mcp/search"]);
     assert.equal(profile.loadSkills, false);
     assert.equal(profile.loadExtensions, false);
+
+    saveProjectSubagentProfile(cwd, { ...profile, description: "Updated" });
+    const saved = await readFile(path, "utf8");
+    assert.match(saved, /tools: read, ext:mcp\/search/);
+    assert.match(saved, /plugin_option:\n  keep: true/);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("refuses to overwrite a profile with malformed existing frontmatter", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagents-"));
+  try {
+    await mkdir(join(cwd, ".pi", "agents"), { recursive: true });
+    const path = join(cwd, ".pi", "agents", "broken.md");
+    const malformed = "---\ndescription: [unterminated\n---\nDo not replace.\n";
+    await writeFile(path, malformed);
+    assert.throws(
+      () => saveProjectSubagentProfile(cwd, profile({ name: "broken" })),
+      /Refusing to overwrite malformed agent profile frontmatter/,
+    );
+    assert.equal(await readFile(path, "utf8"), malformed);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("refuses same-scope profile files that differ only by letter case", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagents-"));
+  try {
+    const dir = join(cwd, ".pi", "agents");
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, "Scout.md"),
+      "---\ndescription: Upper\n---\nUpper.",
+    );
+    await writeFile(
+      join(dir, "scout.md"),
+      "---\ndescription: Lower\n---\nLower.",
+    );
+
+    assert.throws(
+      () => saveProjectSubagentProfile(cwd, profile({ name: "scout" })),
+      /differ only by letter case/,
+    );
+    assert.throws(
+      () => deleteProjectSubagentProfile(cwd, "scout"),
+      /differ only by letter case/,
+    );
+    assert.equal(
+      await readFile(join(dir, "Scout.md"), "utf8"),
+      "---\ndescription: Upper\n---\nUpper.",
+    );
+    assert.equal(
+      await readFile(join(dir, "scout.md"), "utf8"),
+      "---\ndescription: Lower\n---\nLower.",
+    );
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }

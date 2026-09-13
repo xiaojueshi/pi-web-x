@@ -11,7 +11,6 @@ import {
 import {
   DOCX_PREVIEW_MAX_BYTES,
   IMAGE_PREVIEW_MAX_BYTES,
-  TEXT_PREVIEW_MAX_BYTES,
   documentPreviewKind,
   getAudioMime,
   getDocumentMime,
@@ -32,6 +31,11 @@ import {
   RequestBodyTooLargeError,
 } from "@/lib/bounded-form-data";
 import { samePath } from "@/lib/paths";
+import {
+  TEXT_PREVIEW_TOTAL_MAX_BYTES,
+  TextPreviewError,
+  readUtf8TextPreviewChunk,
+} from "@/lib/text-preview";
 
 const IGNORED_NAMES = new Set([
   "node_modules",
@@ -654,15 +658,54 @@ export async function GET(
           request.headers.get("range"),
         );
       }
-      if (stat.size > TEXT_PREVIEW_MAX_BYTES) {
+      if (stat.size > TEXT_PREVIEW_TOTAL_MAX_BYTES) {
         return HttpResponse.json(
-          { error: "File too large for preview (>256KB)" },
+          { error: "File too large for text preview (>10MB)" },
           { status: 413 },
         );
       }
-      const content = fs.readFileSync(filePath, "utf-8");
-      const language = getLanguage(filePath);
-      return HttpResponse.json({ content, language, size: stat.size });
+      const rawOffset = request.nextUrl.searchParams.get("offset");
+      const rawMtimeMs = request.nextUrl.searchParams.get("mtimeMs");
+      const offset = rawOffset === null ? 0 : Number(rawOffset);
+      const mtimeMs = rawMtimeMs === null ? undefined : Number(rawMtimeMs);
+      if (mtimeMs !== undefined && !Number.isFinite(mtimeMs)) {
+        return HttpResponse.json(
+          { error: "Invalid text preview version" },
+          { status: 400 },
+        );
+      }
+      try {
+        const chunk = readUtf8TextPreviewChunk(
+          filePath,
+          stat.size,
+          offset,
+          mtimeMs,
+        );
+        // Keep the historic small-file shape while extending it with paging
+        // metadata. Existing clients can continue consuming content/language/size.
+        return HttpResponse.json({
+          ...chunk,
+          language: getLanguage(filePath),
+          size: stat.size,
+          mtimeMs: stat.mtimeMs,
+        });
+      } catch (error) {
+        if (error instanceof TextPreviewError) {
+          const status =
+            error.code === "file_changed"
+              ? 409
+              : error.code === "invalid_utf8"
+                ? 422
+                : error.code === "too_large"
+                  ? 413
+                  : 400;
+          return HttpResponse.json(
+            { error: error.message, code: error.code, downloadAvailable: true },
+            { status },
+          );
+        }
+        throw error;
+      }
     }
 
     if (type === "download") {

@@ -15,6 +15,8 @@ export interface StreamingState {
 
 export type StreamAction =
   | { type: "start" }
+  /** 恢复已有流：保留断线前的 partial，等待服务端快照校正。 */
+  | { type: "resume" }
   | { type: "snapshot"; message: AgentMessage }
   | { type: "delta"; event: ClientAssistantMessageEvent }
   | { type: "end" };
@@ -133,6 +135,8 @@ export function streamReducer(
   switch (action.type) {
     case "start":
       return { isStreaming: true, streamingMessage: null };
+    case "resume":
+      return { ...state, isStreaming: true };
     case "snapshot": {
       const message = normalizeStreamingToolCalls(action.message);
       return message.role === "assistant"

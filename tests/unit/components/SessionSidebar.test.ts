@@ -8,11 +8,15 @@ const source = await readFile(
 );
 const sessionItemSource = source.slice(source.indexOf("function SessionItem("));
 
-test("only Shift+click bypasses session deletion confirmation", () => {
+test("session deletion always obtains a server preview before confirmation", () => {
   assert.match(
     sessionItemSource,
-    /const handleDeleteClick[\s\S]*?if \(e\.shiftKey\) \{\s*void performDelete\(\);\s*\} else \{\s*setConfirmDelete\(true\);/,
+    /const handleDeleteClick[\s\S]*?void requestDeletePreview\(\);/,
   );
+  assert.doesNotMatch(sessionItemSource, /e\.shiftKey/);
+  assert.match(sessionItemSource, /\/delete-preview/);
+  assert.match(sessionItemSource, /JSON\.stringify\(\{ token: deletePreview\.token \}\)/);
+  assert.match(sessionItemSource, /deleteDescendants/);
 });
 
 test("does not register row-level session deletion shortcuts", () => {

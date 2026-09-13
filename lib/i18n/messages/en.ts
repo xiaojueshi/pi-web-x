@@ -359,8 +359,8 @@ export const enLocale: LocalePlugin = {
     "sidebar.deleteSession": "Delete {title}?",
     "sidebar.rename": "Rename",
     "sidebar.delete": "Delete",
-    "sidebar.deleteWithShiftClick":
-      "Delete (Shift+click to delete without confirmation)",
+    "sidebar.deleteWithShiftClick": "Delete",
+    "sidebar.deleteDescendants": "{count} inline descendants; {running} running",
     "sidebar.expandSubagents": "Expand subagents",
     "sidebar.collapseSubagents": "Collapse subagents",
     "sidebar.messagesCount": "{count} msgs",

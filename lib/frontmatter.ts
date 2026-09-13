@@ -7,6 +7,12 @@ export interface FrontmatterResult {
   rest: string;
 }
 
+/** 原始 frontmatter 的解析结果，供写回配置前区分「不存在」和「已损坏」。 */
+export interface FrontmatterBlockResult extends FrontmatterResult {
+  found: boolean;
+  valid: boolean;
+}
+
 interface FrontmatterBlock {
   yaml: string;
   rest: string;
@@ -31,20 +37,30 @@ function extractFrontmatter(markdown: string): FrontmatterBlock | null {
   };
 }
 
-export function parseFrontmatter(markdown: string): FrontmatterResult {
+export function readFrontmatterBlock(markdown: string): FrontmatterBlockResult {
   const block = extractFrontmatter(markdown);
-  if (!block) return { data: null, rest: markdown };
+  if (!block) return { found: false, valid: true, data: null, rest: markdown };
 
   try {
     const parsed = parseYaml(block.yaml);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return { data: parsed as Record<string, unknown>, rest: block.rest };
+      return {
+        found: true,
+        valid: true,
+        data: parsed as Record<string, unknown>,
+        rest: block.rest,
+      };
     }
   } catch {
     // The remark plugin still hides a syntactically fenced malformed block.
   }
 
-  return { data: null, rest: block.rest };
+  return { found: true, valid: false, data: null, rest: block.rest };
+}
+
+export function parseFrontmatter(markdown: string): FrontmatterResult {
+  const { data, rest } = readFrontmatterBlock(markdown);
+  return { data, rest };
 }
 
 export function formatFrontmatterValue(value: unknown): string {

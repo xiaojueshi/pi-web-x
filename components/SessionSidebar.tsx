@@ -114,7 +114,7 @@ interface Props {
   skipInitialProjectSelection?: boolean;
   onInitialRestoreDone?: () => void;
   refreshKey?: number;
-  onSessionDeleted?: (sessionId: string) => void;
+  onSessionDeleted?: (deletedSessionIds: string[]) => void;
   selectedCwd?: string | null;
   onCwdChange?: (
     cwd: string | null,
@@ -2366,8 +2366,8 @@ export function SessionSidebar({
                 )}
                 onClick={() => handleSelectSessionFromList(family.root)}
                 onRenamed={loadSessions}
-                onDeleted={(id) => {
-                  onSessionDeleted?.(id);
+                onDeleted={(deletedSessionIds) => {
+                  onSessionDeleted?.(deletedSessionIds);
                   loadSessions();
                 }}
               />
@@ -2790,7 +2790,7 @@ function SessionItem({
   sessionRowRef?: Ref<HTMLDivElement>;
   onClick: () => void;
   onRenamed?: () => void;
-  onDeleted?: (id: string) => void;
+  onDeleted?: (deletedSessionIds: string[]) => void;
   depth?: number;
   hasChildren?: boolean;
   collapsed?: boolean;
@@ -2801,6 +2801,14 @@ function SessionItem({
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletePreview, setDeletePreview] = useState<{
+    token: string;
+    summary: {
+      subagentDescendantCount: number;
+      runningDescendantCount: number;
+    };
+  } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -2855,30 +2863,73 @@ function SessionItem({
     }
   }, [renameValue, session.id, session.name, onRenamed, title]);
 
-  const performDelete = useCallback(async () => {
-    if (session.transient) return;
-    setConfirmDelete(false);
+  const requestDeletePreview = useCallback(async () => {
+    if (session.transient || deleting) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
-      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, {
-        method: "DELETE",
-      });
-      onDeleted?.(session.id);
-    } catch {
+      const response = await fetch(
+        `/api/sessions/${encodeURIComponent(session.id)}/delete-preview`,
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        token?: string;
+        summary?: {
+          subagentDescendantCount: number;
+          runningDescendantCount: number;
+        };
+        error?: string;
+      };
+      if (!response.ok || !data.token || !data.summary)
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      setDeletePreview({ token: data.token, summary: data.summary });
+      setConfirmDelete(true);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : String(error));
+    } finally {
       setDeleting(false);
     }
-  }, [session.id, session.transient, onDeleted]);
+  }, [deleting, session.id, session.transient]);
+
+  const performDelete = useCallback(async () => {
+    if (session.transient || !deletePreview) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const response = await fetch(
+        `/api/sessions/${encodeURIComponent(session.id)}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: deletePreview.token }),
+        },
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        deletedSessionIds?: unknown;
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      const deletedSessionIds = Array.isArray(data.deletedSessionIds)
+        ? data.deletedSessionIds.filter(
+            (id): id is string => typeof id === "string" && id.length > 0,
+          )
+        : [session.id];
+      onDeleted?.(deletedSessionIds);
+    } catch (error) {
+      // 409（仍在运行的后代）和 500 都保留在确认面板中，用户不会误以为已删除。
+      setDeleteError(error instanceof Error ? error.message : String(error));
+      setDeletePreview(null);
+    } finally {
+      setDeleting(false);
+    }
+  }, [deletePreview, onDeleted, session.id, session.transient]);
 
   const handleDeleteClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (e.shiftKey) {
-        void performDelete();
-      } else {
-        setConfirmDelete(true);
-      }
+      void requestDeletePreview();
     },
-    [performDelete],
+    [requestDeletePreview],
   );
 
   const handleDeleteConfirm = useCallback(
@@ -2892,6 +2943,8 @@ function SessionItem({
   const handleDeleteCancel = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setConfirmDelete(false);
+    setDeletePreview(null);
+    setDeleteError(null);
   }, []);
 
   const handleContextMenu = useCallback(
@@ -2968,6 +3021,19 @@ function SessionItem({
             {t("sidebar.deleteSession", {
               title: title.slice(0, 22) + (title.length > 22 ? "…" : ""),
             })}
+            {deletePreview && (
+              <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>
+                {t("sidebar.deleteDescendants", {
+                  count: deletePreview.summary.subagentDescendantCount,
+                  running: deletePreview.summary.runningDescendantCount,
+                })}
+              </span>
+            )}
+            {deleteError && (
+              <span style={{ color: "#ef4444", marginLeft: 4 }}>
+                {deleteError}
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
             <button
@@ -3253,7 +3319,7 @@ function SessionItem({
               </button>
               <button
                 onClick={handleDeleteClick}
-                title={t("sidebar.deleteWithShiftClick")}
+                title={t("sidebar.delete")}
                 style={{
                   display: "flex",
                   alignItems: "center",

@@ -84,6 +84,18 @@ _Avoid_: inactive session, user-controlled subagent
 The rule that stopping a parent Agent stops every active Built-in Inline Subagent belonging to that parent, while preserving their aborted histories for observation.
 _Avoid_: session deletion, completed-session removal
 
+**Parent Session Deletion Cascade**:
+The rule that deleting a parent Web Session deletes its persisted Built-in Inline Subagent descendants as one file-level transaction. A parent with a running descendant is not deletable; ordinary fork children remain independent and are re-parented or de-parented.
+_Avoid_: Parent Abort Cascade, reparented subagent, best-effort deletion
+
+**Session Deletion Preview**:
+A short-lived, read-only description of a Parent Session Deletion Cascade, including descendant counts, running state, and the confirmation token that binds user consent to that exact session tree.
+_Avoid_: delete request, cached session list, deletion authorization
+
+**Selected Session Lease**:
+A short-lived browser-observation claim that preserves the already-live AgentSession of the chat currently selected in a browser. It is renewed explicitly and never starts a dormant AgentSession.
+_Avoid_: Extension Liveness, Web Session, SSE heartbeat, authentication keepalive
+
 **Repository-scoped Subagent Profile**:
 A workspace or project profile supplied by the opened repository. It is visible but unavailable to the Built-in Inline Subagent until that project is trusted.
 _Avoid_: global profile, user profile

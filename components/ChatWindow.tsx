@@ -538,6 +538,7 @@ export function ChatWindow({
     setNoticePaused,
     isAutoModelSelection,
     agentPhase,
+    activeToolResults,
     isNew,
     sessionIdRef,
     messagesEndRef,
@@ -1532,16 +1533,17 @@ export function ChatWindow({
                               : undefined
                           }
                           onFork={
-                            sessionBusy ||
-                            isNew ||
-                            (idx === 0 && msg.role === "user")
-                              ? undefined
-                              : handleFork
+                            sessionBusy || isNew ? undefined : handleFork
                           }
                           forking={forkingEntryId === entryIds[idx]}
                           onNavigate={sessionBusy ? undefined : handleNavigate}
                           prevAssistantEntryId={
-                            sessionBusy ? undefined : prevAssistantEntryId
+                            sessionBusy
+                              ? undefined
+                              : prevAssistantEntryId ??
+                                (msg.role === "user" && idx === 0
+                                  ? entryIds[idx]
+                                  : undefined)
                           }
                           onEditContent={handleEditContent}
                           showTimestamp={showTimestamp}
@@ -1793,6 +1795,7 @@ export function ChatWindow({
                       <MessageView
                         message={streamState.streamingMessage as AgentMessage}
                         isStreaming
+                        toolResults={activeToolResults}
                         modelNames={modelNames}
                         cwd={messageCwd}
                         onOpenFile={onOpenFile}

@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -30,6 +30,7 @@ const NODE_MODULES = resolve(
   import.meta.dir,
   "../../../node_modules/@earendil-works/pi-coding-agent/dist",
 );
+const temporaryRoots = new Set<string>();
 
 /** 把 manifest 内全部资产文件复制到 root（内容与发布物一致）。 */
 function materializeAssets(root: string): boolean {
@@ -54,14 +55,14 @@ function makeRoot(): string {
   );
   rmSync(root, { recursive: true, force: true });
   mkdirSync(join(root, "nested"), { recursive: true });
+  temporaryRoots.add(root);
   return root;
 }
 
-beforeEach(() => {
-  rmSync(resolve(import.meta.dir, "../../.tmp"), {
-    recursive: true,
-    force: true,
-  });
+afterEach(() => {
+  for (const root of temporaryRoots)
+    rmSync(root, { recursive: true, force: true });
+  temporaryRoots.clear();
 });
 
 test("测试环境（非编译二进制）isCompiledBinary 为 false", () => {

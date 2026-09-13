@@ -1325,6 +1325,7 @@ function BlockView({
       <ToolCallBlock
         block={tc}
         result={result}
+        isPartialResult={Boolean(isStreaming && result)}
         duration={duration}
         onOpenSession={onOpenSession}
       />
@@ -1466,11 +1467,14 @@ function isSubagentToolDetails(value: unknown): value is SubagentToolDetails {
 function ToolCallBlock({
   block,
   result,
+  isPartialResult,
   duration,
   onOpenSession,
 }: {
   block: ToolCallContent;
   result?: ToolResultMessage;
+  /** A shell/powershell update snapshot, not the persisted final result. */
+  isPartialResult?: boolean;
   duration?: number;
   onOpenSession?: (sessionId: string) => void;
 }) {
@@ -1650,9 +1654,33 @@ function ToolCallBlock({
         </pre>
       )}
 
-      {/* ── Paired result — only shown when expanded ── */}
+      {/* Shell/powershell update snapshots are useful progress, so expose them
+          immediately instead of making the user expand a card that is changing. */}
+      {isPartialResult && result && (
+        <div
+          data-tool-partial-result
+          style={{
+            padding: "7px 10px",
+            borderTop: "1px solid rgba(34,197,94,0.2)",
+            background: "var(--bg-subtle)",
+            color: "var(--text-muted)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            lineHeight: 1.5,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            maxHeight: 220,
+            overflow: "auto",
+          }}
+        >
+          {resultText || "…"}
+        </div>
+      )}
+
+      {/* ── Paired final result — only shown when expanded ── */}
       {expanded &&
         result &&
+        !isPartialResult &&
         (resultDiff ? (
           <PairedDiffResult diff={resultDiff} />
         ) : (
