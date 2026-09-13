@@ -1098,14 +1098,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           // 不能替换当前 dialog：对象引用变化会触发 ExtensionPromptCard 的
           // 重置副作用，导致用户已选选项/正在输入的内容丢失（尤其带输入框时
           // 键盘焦点也会丢）。
-          const isNewDialog = extensionDialogIdRef.current !== request.id;
           extensionDialogIdRef.current = request.id;
           setExtensionDialog((current) =>
             current?.id === request.id ? current : request,
           );
-          if (isNewDialog)
-            // 提问卡片内联在消息流底部，出现时滚动到可见位置（小屏移动端必需）
-            requestAnimationFrame(() => scrollToBottom("auto"));
+          // ChatWindow 会在新卡片完成挂载后的布局阶段滚动到底部；此处
+          // 不能滚动，因为 React 尚未提交，messagesEndRef 仍位于旧内容末尾。
           break;
         }
         case "notify": {
@@ -1154,7 +1152,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           break;
       }
     },
-    [addNotice, onAttentionNeeded, opts.chatInputRef, scrollToBottom],
+    [addNotice, onAttentionNeeded, opts.chatInputRef],
   );
 
   const settleUiStage = useCallback(() => {

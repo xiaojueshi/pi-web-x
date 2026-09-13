@@ -1149,6 +1149,14 @@ export function ChatWindow({
     promptAnchorUpdateRef.current?.();
   }, [streamState.streamingMessage]);
 
+  // extensionDialog 改变后卡片才会挂载到 messagesEndRef 前。等待一次布局帧，
+  // 避免在 SSE handler 中、React 提交前滚动到旧消息末尾。
+  useLayoutEffect(() => {
+    if (!extensionDialog) return;
+    const frame = requestAnimationFrame(() => scrollToBottom("auto"));
+    return () => cancelAnimationFrame(frame);
+  }, [extensionDialog, scrollToBottom]);
+
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[
         `${displayModelValue.provider}:${displayModelValue.modelId}`

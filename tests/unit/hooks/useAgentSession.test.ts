@@ -822,17 +822,22 @@ test("重复投递的 extension_ui_request 不会重置提问卡片状态", () =
   );
   assert.match(
     dialogCaseSource,
-    /const isNewDialog = extensionDialogIdRef\.current !== request\.id/,
-  );
-  assert.match(
-    dialogCaseSource,
     /setExtensionDialog\(\(current\) =>\s*current\?\.id === request\.id \? current : request,\s*\)/,
   );
-  // 只在真正的新请求出现时滚动，重放投递不触发
-  assert.match(
-    dialogCaseSource,
-    /if \(isNewDialog\)[\s\S]*?requestAnimationFrame/,
+  // SSE handler 不在 React 提交前滚动；卡片挂载后由 ChatWindow 统一处理。
+  assert.doesNotMatch(dialogCaseSource, /requestAnimationFrame/);
+  assert.doesNotMatch(dialogCaseSource, /scrollToBottom/);
+  const dialogScrollEffect = chatWindowSource.slice(
+    chatWindowSource.indexOf("// extensionDialog 改变后卡片才会挂载"),
+    chatWindowSource.indexOf("const availableThinkingLevels"),
   );
+  assert.match(dialogScrollEffect, /useLayoutEffect\(\(\) =>/);
+  assert.match(dialogScrollEffect, /if \(!extensionDialog\) return/);
+  assert.match(
+    dialogScrollEffect,
+    /requestAnimationFrame\(\(\) => scrollToBottom\("auto"\)\)/,
+  );
+  assert.match(dialogScrollEffect, /cancelAnimationFrame\(frame\)/);
   // 答复后清除 id 记录，下一次提问视为新请求
   assert.match(
     source,

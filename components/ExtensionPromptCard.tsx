@@ -185,7 +185,8 @@ function BatchAskUserPromptCard({
       aria-modal="false"
       style={{
         width: "100%",
-        maxWidth: 560,
+        maxWidth: "100%",
+        boxSizing: "border-box",
         margin: "10px 0 4px",
         borderRadius: 12,
         border: "1px solid var(--border)",
@@ -568,7 +569,8 @@ export function ExtensionPromptCard({
       onKeyDown={handleKeyDown}
       style={{
         width: "100%",
-        maxWidth: 560,
+        maxWidth: "100%",
+        boxSizing: "border-box",
         margin: "10px 0 4px",
         borderRadius: 12,
         border: "1px solid var(--border)",

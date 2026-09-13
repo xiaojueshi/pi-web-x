@@ -151,7 +151,7 @@ test("skips notifications only when the visible page is focused", async () => {
 
 test("claims only blocking extension requests and deduplicates their ids", async () => {
   const { claimExtensionAttentionNotification } = await loadSubject();
-  const notifiedIds = new Set();
+  const notifiedIds = new Set<string>();
   const confirmRequest = {
     type: "extension_ui_request",
     id: "confirm-1",
@@ -187,6 +187,22 @@ test("claims only blocking extension requests and deduplicates their ids", async
       id: "editor-1",
       method: "editor",
       title: "Edit value",
+    },
+    {
+      type: "extension_ui_request",
+      id: "ask-user-1",
+      method: "ask_user",
+      title: "Choose implementation",
+      questions: [
+        {
+          question: "Which option should be used?",
+          options: [{ label: "Option A" }],
+        },
+        {
+          question: "Should it be enabled?",
+          options: [{ label: "Yes" }],
+        },
+      ],
     },
   ]) {
     assert.equal(
@@ -233,6 +249,13 @@ test("claims only blocking extension requests and deduplicates their ids", async
   );
   assert.deepEqual(
     [...notifiedIds],
-    ["confirm-1", "select-1", "input-1", "editor-1", "custom-open"],
+    [
+      "confirm-1",
+      "select-1",
+      "input-1",
+      "editor-1",
+      "ask-user-1",
+      "custom-open",
+    ],
   );
 });

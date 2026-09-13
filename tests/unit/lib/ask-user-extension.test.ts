@@ -68,7 +68,8 @@ test("内置扩展缺席时原样返回", () => {
 test("工具定义暴露名称与完整参数 schema", () => {
   const def = createAskUserToolDefinition();
   assert.equal(def.name, "ask_user");
-  assert.match(def.description, /ask the user/i);
+  assert.match(def.description, /MUST use this tool/i);
+  assert.match(def.promptSnippet ?? "", /MUST use ask_user/i);
   const schema = def.parameters;
   assert.equal(schema.type, "object");
   assert.ok(schema.properties.question, "单题 question 存在");
@@ -83,7 +84,7 @@ test("工具定义暴露名称与完整参数 schema", () => {
     "question 与 questions 二选一，由运行时校验",
   );
   assert.deepEqual(def.promptGuidelines, [
-    "Use ask_user instead of guessing when a required user decision or clarification would materially change the result. Batch independent clarifications in one questions call rather than asking one at a time.",
+    "When user input is required before continuing, you MUST call ask_user instead of asking in assistant text or guessing. Batch independent clarifications in one questions call rather than asking one at a time.",
   ]);
 });
 
@@ -149,7 +150,7 @@ User additional context: Keep the setup minimal.`,
   ]);
 });
 
-test("启用 ask_user 时向每轮 system prompt 注入主动澄清策略", () => {
+test("启用 ask_user 时向每轮 system prompt 注入严格工具化提问协议", () => {
   const extension = createAskUserExtension();
   assert.notEqual(typeof extension, "function");
   if (typeof extension === "function") return;
@@ -170,11 +171,12 @@ test("启用 ask_user 时向每轮 system prompt 注入主动澄清策略", () =
   assert.deepEqual(beforeAgentStart({ systemPrompt: "base prompt" }), {
     systemPrompt: `base prompt
 
-## User clarification
-- Proactively call the ask_user tool before proceeding whenever information from the user is genuinely needed to resolve an ambiguity, select between materially different options, or avoid an irreversible or high-impact assumption.
-- Do not silently choose or guess in those cases. Ask one focused question and use the answer before continuing.
-- When several independent clarifications are needed, call ask_user once with questions so the user can answer them in one tabbed flow.
-- Do not call ask_user for information you can infer safely, for routine status updates, or merely to request confirmation.`,
+## Mandatory user-input protocol
+- When you need an answer, preference, choice, approval, or clarification from the user before continuing, you MUST call the ask_user tool before sending any assistant text that asks for it.
+- Do not ask the user questions, present choices, request confirmation, or leave a decision for them to answer in normal assistant text. Use ask_user instead, then wait for its tool result before continuing.
+- Do not silently choose or guess when the missing input could materially change the work, create an irreversible or high-impact outcome, or select between materially different options.
+- Ask one focused question when possible. When several independent answers are required, make one ask_user call with questions so the user can answer them in one tabbed flow.
+- Do not call ask_user for information you can safely infer, for a status update, or for confirmation that is not genuinely required.`,
   });
 });
 

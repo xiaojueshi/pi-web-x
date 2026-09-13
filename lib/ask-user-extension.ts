@@ -25,11 +25,12 @@ const DISMISSED_MESSAGE = "User dismissed the question (no answer provided)";
  * 工具描述本身不足以让部分模型主动澄清需求；将这条策略置于系统提示词末尾，
  * 让模型在需要用户决定时优先调用 ask_user，而不是擅自假设。
  */
-const ASK_USER_SYSTEM_GUIDANCE = `## User clarification
-- Proactively call the ask_user tool before proceeding whenever information from the user is genuinely needed to resolve an ambiguity, select between materially different options, or avoid an irreversible or high-impact assumption.
-- Do not silently choose or guess in those cases. Ask one focused question and use the answer before continuing.
-- When several independent clarifications are needed, call ask_user once with questions so the user can answer them in one tabbed flow.
-- Do not call ask_user for information you can infer safely, for routine status updates, or merely to request confirmation.`;
+const ASK_USER_SYSTEM_GUIDANCE = `## Mandatory user-input protocol
+- When you need an answer, preference, choice, approval, or clarification from the user before continuing, you MUST call the ask_user tool before sending any assistant text that asks for it.
+- Do not ask the user questions, present choices, request confirmation, or leave a decision for them to answer in normal assistant text. Use ask_user instead, then wait for its tool result before continuing.
+- Do not silently choose or guess when the missing input could materially change the work, create an irreversible or high-impact outcome, or select between materially different options.
+- Ask one focused question when possible. When several independent answers are required, make one ask_user call with questions so the user can answer them in one tabbed flow.
+- Do not call ask_user for information you can safely infer, for a status update, or for confirmation that is not genuinely required.`;
 
 const askUserQuestionParameters = Type.Object({
   question: Type.String({
@@ -129,14 +130,14 @@ export function createAskUserToolDefinition(): ToolDefinition<
     name: ASK_USER_TOOL_NAME,
     label: "Ask user",
     description:
-      "Ask the user when clarification, a choice, or preference/context gathering is needed. "
+      "When user input is required before continuing, you MUST use this tool rather than ask in normal assistant text. "
       + "Use question for one question, or questions (2–8) to collect independent answers in one tabbed flow with an optional final supplement. "
       + "Each batch question supports tab (a short custom tab label), single/multi-choice, custom answers, or plain-text input. "
       + "Use only when user input is genuinely required; never for confirmations you could infer yourself.",
     promptSnippet:
-      "Proactively ask the user focused questions when required decisions or clarifications are unavailable; batch independent questions with questions.",
+      "MUST use ask_user for required user decisions or clarifications; never ask for them in assistant text. Batch independent clarifications with questions.",
     promptGuidelines: [
-      "Use ask_user instead of guessing when a required user decision or clarification would materially change the result. Batch independent clarifications in one questions call rather than asking one at a time.",
+      "When user input is required before continuing, you MUST call ask_user instead of asking in assistant text or guessing. Batch independent clarifications in one questions call rather than asking one at a time.",
     ],
     parameters: askUserParameters,
     executionMode: "sequential",

@@ -100,9 +100,10 @@ test("contains chat content and inputs within the mobile viewport", () => {
     /\.markdown-code-block \{[\s\S]*?min-width: 0;[\s\S]*?max-width: 100%;/,
   );
   assert.match(chatWindowSource, /overflow-x-hidden overflow-y-auto/);
-  // 提问卡片改为消息流内联渲染（取代旧模态对话框），限制最大宽度防止撑破小屏
+  // 提问卡片内联在消息流中，填满与消息相同的内容列，同时不撑破小屏。
   assert.match(chatWindowSource, /<ExtensionPromptCard/);
-  assert.match(promptCardSource, /maxWidth: 560/);
+  assert.match(promptCardSource, /maxWidth: "100%"/);
+  assert.match(promptCardSource, /boxSizing: "border-box"/);
   assert.match(chatInputSource, /flex: 1,\s*minWidth: 0,\s*width: "100%",/);
 });
 

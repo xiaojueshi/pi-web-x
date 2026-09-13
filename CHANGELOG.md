@@ -17,6 +17,7 @@
 - 内置 Slash Command 执行期间锁定输入控件和同步重入入口，连续 Enter 或点击不再重复提交同一内置命令。
 - 保存 Built-in Inline Subagent Profile 时保留 pi-web-x 不管理的 YAML frontmatter 和 `ext:` tool selector；这些 selector 仍不被解释或赋权。若现有 frontmatter 损坏，保存会拒绝覆盖原文件。
 - 删除 parent session 不再改挂 Built-in Inline Subagent：无运行中后代时，服务端对全部受影响 JSONL 创建操作级备份后递归删除，普通 fork child 仍保留并改挂或去父化；任一改挂或删除失败都会恢复完整文件集，若恢复本身失败则保留磁盘备份供人工恢复。每次删除前后都核验 preview 绑定的文件版本，确认 token 过期、后代树/文件发生变化或出现运行中后代时返回 409，不做文件修改；删除确认不再允许 Shift 绕过。
+- `ask_user` 的每轮注入规则升级为强制用户输入协议：模型需要用户回答、选择、偏好、批准或澄清时，必须先调用工具，不能在普通 assistant 文本中直接提问、列出选项或留下待答决策。`ask_user` 现在也被识别为阻塞式扩展请求：页面隐藏或失焦且浏览器通知已授权时，会走现有 Service Worker/浏览器通知链提醒用户回答。内联提问卡片会在 React 挂载完成后滚至消息流底部，并填满与聊天内容相同的列宽。
 
 ### 测试与工程化
 

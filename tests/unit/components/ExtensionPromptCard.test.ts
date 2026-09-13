@@ -29,3 +29,11 @@ test("批量 ask_user 单选后自动进入下一题", () => {
     /setAnswer\(activeTab, label\);[\s\S]*?requestAnimationFrame\(\(\) =>\s*setActiveTab/,
   );
 });
+
+test("提问卡片填满消息内容列且不会因边框溢出", () => {
+  const fullWidthCards = source.match(/maxWidth: "100%"/g) ?? [];
+  const borderBoxCards = source.match(/boxSizing: "border-box"/g) ?? [];
+  assert.equal(fullWidthCards.length, 2);
+  assert.equal(borderBoxCards.length, 2);
+  assert.doesNotMatch(source, /maxWidth: 560/);
+});
