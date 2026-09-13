@@ -1540,18 +1540,16 @@ export function ChatWindow({
                               ? searchBlock
                               : undefined
                           }
-                          onFork={
-                            sessionBusy || isNew ? undefined : handleFork
-                          }
+                          onFork={sessionBusy || isNew ? undefined : handleFork}
                           forking={forkingEntryId === entryIds[idx]}
                           onNavigate={sessionBusy ? undefined : handleNavigate}
                           prevAssistantEntryId={
                             sessionBusy
                               ? undefined
-                              : prevAssistantEntryId ??
+                              : (prevAssistantEntryId ??
                                 (msg.role === "user" && idx === 0
                                   ? entryIds[idx]
-                                  : undefined)
+                                  : undefined))
                           }
                           onEditContent={handleEditContent}
                           showTimestamp={showTimestamp}

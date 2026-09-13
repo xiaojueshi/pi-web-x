@@ -195,11 +195,32 @@ function BatchAskUserPromptCard({
         overflow: "hidden",
       }}
     >
-      <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ color: "var(--accent)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+      <div
+        style={{
+          padding: "12px 16px 10px",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div
+          style={{
+            color: "var(--accent)",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
           {t("chat.promptCardLabel")}
         </div>
-        <div style={{ marginTop: 4, color: "var(--text)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+        <div
+          style={{
+            marginTop: 4,
+            color: "var(--text)",
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.5,
+          }}
+        >
           {request.title}
         </div>
       </div>
@@ -207,7 +228,12 @@ function BatchAskUserPromptCard({
       <div
         role="tablist"
         aria-label={t("chat.promptCardQuestions")}
-        style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 16px 0" }}
+        style={{
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          padding: "10px 16px 0",
+        }}
       >
         {questions.map((question, index) => (
           <button
@@ -222,8 +248,10 @@ function BatchAskUserPromptCard({
               padding: "0 9px",
               borderRadius: 6,
               border: `1px solid ${activeTab === index ? "var(--accent)" : "var(--border)"}`,
-              background: activeTab === index ? "var(--bg-selected)" : "var(--bg-panel)",
-              color: activeTab === index ? "var(--accent)" : "var(--text-muted)",
+              background:
+                activeTab === index ? "var(--bg-selected)" : "var(--bg-panel)",
+              color:
+                activeTab === index ? "var(--accent)" : "var(--text-muted)",
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 600,
@@ -243,7 +271,9 @@ function BatchAskUserPromptCard({
             padding: "0 9px",
             borderRadius: 6,
             border: `1px solid ${isSupplementTab ? "var(--accent)" : "var(--border)"}`,
-            background: isSupplementTab ? "var(--bg-selected)" : "var(--bg-panel)",
+            background: isSupplementTab
+              ? "var(--bg-selected)"
+              : "var(--bg-panel)",
             color: isSupplementTab ? "var(--accent)" : "var(--text-muted)",
             cursor: "pointer",
             fontSize: 12,
@@ -258,11 +288,25 @@ function BatchAskUserPromptCard({
       <div style={{ padding: "14px 16px" }}>
         {currentQuestion && (
           <div>
-            <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+            <div
+              style={{
+                color: "var(--text)",
+                fontSize: 14,
+                fontWeight: 600,
+                lineHeight: 1.5,
+              }}
+            >
               {currentQuestion.question}
             </div>
             {currentQuestion.context && (
-              <div style={{ marginTop: 4, color: "var(--text-muted)", fontSize: 12, lineHeight: 1.6 }}>
+              <div
+                style={{
+                  marginTop: 4,
+                  color: "var(--text-muted)",
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                }}
+              >
                 {currentQuestion.context}
               </div>
             )}
@@ -270,7 +314,8 @@ function BatchAskUserPromptCard({
               <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
                 {currentOptions.map((option) => {
                   const checked = isMulti
-                    ? Array.isArray(currentAnswer) && currentAnswer.includes(option.label)
+                    ? Array.isArray(currentAnswer) &&
+                      currentAnswer.includes(option.label)
                     : currentAnswer === option.label;
                   return (
                     <button
@@ -285,7 +330,9 @@ function BatchAskUserPromptCard({
                         padding: isMobile ? "11px 12px" : "9px 11px",
                         borderRadius: 8,
                         border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                        background: checked ? "color-mix(in srgb, var(--accent) 8%, var(--bg-panel))" : "var(--bg-panel)",
+                        background: checked
+                          ? "color-mix(in srgb, var(--accent) 8%, var(--bg-panel))"
+                          : "var(--bg-panel)",
                         color: "var(--text)",
                         cursor: "pointer",
                         textAlign: "left",
@@ -294,8 +341,22 @@ function BatchAskUserPromptCard({
                     >
                       {radioMark(checked, isMulti)}
                       <span style={{ minWidth: 0, flex: 1 }}>
-                        <span style={{ display: "block", lineHeight: 1.45 }}>{option.label}</span>
-                        {option.description && <span style={{ display: "block", marginTop: 2, color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5 }}>{option.description}</span>}
+                        <span style={{ display: "block", lineHeight: 1.45 }}>
+                          {option.label}
+                        </span>
+                        {option.description && (
+                          <span
+                            style={{
+                              display: "block",
+                              marginTop: 2,
+                              color: "var(--text-muted)",
+                              fontSize: 12,
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {option.description}
+                          </span>
+                        )}
                       </span>
                     </button>
                   );
@@ -303,7 +364,9 @@ function BatchAskUserPromptCard({
                 {currentQuestion.allowFreeform !== false && (
                   <input
                     value={currentFreeform}
-                    onChange={(event) => setFreeform(activeTab, event.target.value)}
+                    onChange={(event) =>
+                      setFreeform(activeTab, event.target.value)
+                    }
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         event.preventDefault();
@@ -311,7 +374,16 @@ function BatchAskUserPromptCard({
                       }
                     }}
                     placeholder={t("chat.promptCardOtherPlaceholder")}
-                    style={{ width: "100%", padding: isMobile ? "10px 12px" : "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text)", outline: "none", fontSize: 13 }}
+                    style={{
+                      width: "100%",
+                      padding: isMobile ? "10px 12px" : "8px 10px",
+                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-panel)",
+                      color: "var(--text)",
+                      outline: "none",
+                      fontSize: 13,
+                    }}
                   />
                 )}
               </div>
@@ -326,14 +398,31 @@ function BatchAskUserPromptCard({
                     advance();
                   }
                 }}
-                style={{ width: "100%", marginTop: 12, padding: isMobile ? "11px 12px" : "9px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text)", outline: "none", fontSize: 13 }}
+                style={{
+                  width: "100%",
+                  marginTop: 12,
+                  padding: isMobile ? "11px 12px" : "9px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-panel)",
+                  color: "var(--text)",
+                  outline: "none",
+                  fontSize: 13,
+                }}
               />
             )}
           </div>
         )}
         {isSupplementTab && (
           <div>
-            <div style={{ color: "var(--text)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+            <div
+              style={{
+                color: "var(--text)",
+                fontSize: 14,
+                fontWeight: 600,
+                lineHeight: 1.5,
+              }}
+            >
               {t("chat.promptCardAdditionalTitle")}
             </div>
             <textarea
@@ -341,28 +430,105 @@ function BatchAskUserPromptCard({
               value={supplement}
               onChange={(event) => setSupplement(event.target.value)}
               placeholder={t("chat.promptCardAdditionalPlaceholder")}
-              style={{ width: "100%", minHeight: 120, marginTop: 12, padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-panel)", color: "var(--text)", outline: "none", resize: "vertical", fontSize: 13, lineHeight: 1.55, fontFamily: "var(--font-mono)" }}
+              style={{
+                width: "100%",
+                minHeight: 120,
+                marginTop: 12,
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                background: "var(--bg-panel)",
+                color: "var(--text)",
+                outline: "none",
+                resize: "vertical",
+                fontSize: 13,
+                lineHeight: 1.55,
+                fontFamily: "var(--font-mono)",
+              }}
             />
           </div>
         )}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "10px 16px", borderTop: "1px solid var(--border)", background: "var(--bg-panel)" }}>
-        <button type="button" onClick={() => onRespond(request, { cancelled: true })} style={{ padding: isMobile ? "9px 14px" : "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "10px 16px",
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg-panel)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onRespond(request, { cancelled: true })}
+          style={{
+            padding: isMobile ? "9px 14px" : "6px 12px",
+            borderRadius: 7,
+            border: "1px solid var(--border)",
+            background: "var(--bg)",
+            color: "var(--text-muted)",
+            cursor: "pointer",
+            fontSize: 13,
+          }}
+        >
           {t("chat.cancel")}
         </button>
         <div style={{ display: "flex", gap: 8 }}>
           {!isSupplementTab && activeTab > 0 && (
-            <button type="button" onClick={() => setActiveTab((current) => current - 1)} style={{ padding: isMobile ? "9px 14px" : "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab((current) => current - 1)}
+              style={{
+                padding: isMobile ? "9px 14px" : "6px 12px",
+                borderRadius: 7,
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
               {t("chat.promptCardBack")}
             </button>
           )}
           {isSupplementTab ? (
-            <button type="button" onClick={submit} disabled={!allQuestionsAnswered} style={{ padding: isMobile ? "9px 16px" : "6px 14px", borderRadius: 7, border: "none", background: "var(--accent)", color: "#fff", cursor: allQuestionsAnswered ? "pointer" : "not-allowed", opacity: allQuestionsAnswered ? 1 : 0.45, fontSize: 13, fontWeight: 600 }}>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!allQuestionsAnswered}
+              style={{
+                padding: isMobile ? "9px 16px" : "6px 14px",
+                borderRadius: 7,
+                border: "none",
+                background: "var(--accent)",
+                color: "#fff",
+                cursor: allQuestionsAnswered ? "pointer" : "not-allowed",
+                opacity: allQuestionsAnswered ? 1 : 0.45,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
               {t("chat.submit")}
             </button>
           ) : (
-            <button type="button" onClick={advance} disabled={!canAdvance} style={{ padding: isMobile ? "9px 16px" : "6px 14px", borderRadius: 7, border: "none", background: "var(--accent)", color: "#fff", cursor: canAdvance ? "pointer" : "not-allowed", opacity: canAdvance ? 1 : 0.45, fontSize: 13, fontWeight: 600 }}>
+            <button
+              type="button"
+              onClick={advance}
+              disabled={!canAdvance}
+              style={{
+                padding: isMobile ? "9px 16px" : "6px 14px",
+                borderRadius: 7,
+                border: "none",
+                background: "var(--accent)",
+                color: "#fff",
+                cursor: canAdvance ? "pointer" : "not-allowed",
+                opacity: canAdvance ? 1 : 0.45,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
               {t("chat.promptCardNext")}
             </button>
           )}
@@ -881,7 +1047,13 @@ export function ExtensionPromptCard({
             {t("chat.promptCardHint")}
           </span>
         )}
-        <div style={{ display: "flex", gap: 8, ...(isMobile ? { marginLeft: "auto" } : {}) }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            ...(isMobile ? { marginLeft: "auto" } : {}),
+          }}
+        >
           <button
             type="button"
             onClick={cancel}

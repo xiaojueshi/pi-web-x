@@ -39,11 +39,7 @@ test("内置 ask_user 胜出：移除第三方同名工具，保留其余工具"
   assert.equal(host!.tools.has("ask_user"), true, "内置 ask_user 保留");
   assert.ok(third, "第三方扩展整体保留");
   assert.equal(third!.tools.has("ask_user"), false, "第三方 ask_user 被移除");
-  assert.equal(
-    third!.tools.has("other_tool"),
-    true,
-    "第三方其它工具不受影响",
-  );
+  assert.equal(third!.tools.has("other_tool"), true, "第三方其它工具不受影响");
   assert.equal(result.errors.length, 0, "内置冲突诊断被清除");
 });
 
@@ -163,7 +159,9 @@ test("启用 ask_user 时向每轮 system prompt 注入严格工具化提问协�
     getActiveTools: () => ["ask_user"],
     on: (event: string, handler: unknown) => {
       if (event === "before_agent_start")
-        beforeAgentStart = handler as (event: { systemPrompt: string }) => unknown;
+        beforeAgentStart = handler as (event: {
+          systemPrompt: string;
+        }) => unknown;
     },
   } as never);
 
@@ -193,7 +191,9 @@ test("未启用 ask_user 时不注入澄清策略", () => {
     getActiveTools: () => [],
     on: (event: string, handler: unknown) => {
       if (event === "before_agent_start")
-        beforeAgentStart = handler as (event: { systemPrompt: string }) => unknown;
+        beforeAgentStart = handler as (event: {
+          systemPrompt: string;
+        }) => unknown;
     },
   } as never);
 

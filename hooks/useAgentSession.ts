@@ -1659,7 +1659,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             ) {
               setActiveToolResults((previous) =>
                 new Map(previous).set(id, {
-                  ...(partialResult as Omit<ToolResultMessage, "role" | "toolCallId">),
+                  ...(partialResult as Omit<
+                    ToolResultMessage,
+                    "role" | "toolCallId"
+                  >),
                   role: "toolResult",
                   toolCallId: id,
                 }),

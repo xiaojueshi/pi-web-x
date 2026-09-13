@@ -136,15 +136,17 @@ test("keeps modal dialogs clear of the iOS status bar in standalone mode", () =>
 test("todo 面板由顶部工具栏统一承载（工具按钮右侧、统一下拉）", () => {
   // 工具栏按钮：位于 tools 按钮之后，激活态与工具栏按钮同款
   // （borderTop 2px accent / bg-selected / data-mobile-toolbar-action）
-  const toolsBtnIndex = appShellSource.indexOf('handleSystemInfoToggle("tools"');
+  const toolsBtnIndex = appShellSource.indexOf(
+    'handleSystemInfoToggle("tools"',
+  );
   const todoBtnIndex = appShellSource.indexOf('toggleTopPanel("todo"');
   assert.ok(toolsBtnIndex > -1, "存在工具按钮");
   assert.ok(todoBtnIndex > toolsBtnIndex, "TODO 按钮位于工具按钮之后");
+  assert.match(appShellSource, /aria-pressed=\{activeTopPanel === "todo"\}/);
   assert.match(
     appShellSource,
-    /aria-pressed=\{activeTopPanel === "todo"\}/,
+    /data-mobile-toolbar-action=\{mobile \? "todo" : undefined\}/,
   );
-  assert.match(appShellSource, /data-mobile-toolbar-action=\{mobile \? "todo" : undefined\}/);
   assert.match(
     appShellSource,
     /borderTop:\s*\n\s*activeTopPanel === "todo"\s*\n\s*\? "2px solid var\(--accent\)"\s*\n\s*: "2px solid transparent",/,

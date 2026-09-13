@@ -38,12 +38,14 @@ const askUserQuestionParameters = Type.Object({
   }),
   tab: Type.Optional(
     Type.String({
-      description: "Short label for this question's tab. Omit to use the localized question number.",
+      description:
+        "Short label for this question's tab. Omit to use the localized question number.",
     }),
   ),
   context: Type.Optional(
     Type.String({
-      description: "Background: why this information is needed and how it will be used.",
+      description:
+        "Background: why this information is needed and how it will be used.",
     }),
   ),
   options: Type.Optional(
@@ -51,20 +53,27 @@ const askUserQuestionParameters = Type.Object({
       Type.Object({
         label: Type.String({ description: "Option text shown to the user." }),
         description: Type.Optional(
-          Type.String({ description: "Optional supplementary description for the option." }),
+          Type.String({
+            description: "Optional supplementary description for the option.",
+          }),
         ),
       }),
-      { description: "Suggested options; omit to show a plain-text input question." },
+      {
+        description:
+          "Suggested options; omit to show a plain-text input question.",
+      },
     ),
   ),
   allowMultiple: Type.Optional(
     Type.Boolean({
-      description: "Whether multiple selection is allowed. Default false (single-select).",
+      description:
+        "Whether multiple selection is allowed. Default false (single-select).",
     }),
   ),
   allowFreeform: Type.Optional(
     Type.Boolean({
-      description: "Whether the user may type a custom answer (the \"Other\" input). Default true.",
+      description:
+        'Whether the user may type a custom answer (the "Other" input). Default true.',
     }),
   ),
 });
@@ -73,8 +82,12 @@ const askUserParameters = Type.Object({
   question: Type.Optional(askUserQuestionParameters.properties.question),
   context: Type.Optional(askUserQuestionParameters.properties.context),
   options: Type.Optional(askUserQuestionParameters.properties.options),
-  allowMultiple: Type.Optional(askUserQuestionParameters.properties.allowMultiple),
-  allowFreeform: Type.Optional(askUserQuestionParameters.properties.allowFreeform),
+  allowMultiple: Type.Optional(
+    askUserQuestionParameters.properties.allowMultiple,
+  ),
+  allowFreeform: Type.Optional(
+    askUserQuestionParameters.properties.allowFreeform,
+  ),
   questions: Type.Optional(
     Type.Array(askUserQuestionParameters, {
       minItems: 2,
@@ -130,10 +143,10 @@ export function createAskUserToolDefinition(): ToolDefinition<
     name: ASK_USER_TOOL_NAME,
     label: "Ask user",
     description:
-      "When user input is required before continuing, you MUST use this tool rather than ask in normal assistant text. "
-      + "Use question for one question, or questions (2–8) to collect independent answers in one tabbed flow with an optional final supplement. "
-      + "Each batch question supports tab (a short custom tab label), single/multi-choice, custom answers, or plain-text input. "
-      + "Use only when user input is genuinely required; never for confirmations you could infer yourself.",
+      "When user input is required before continuing, you MUST use this tool rather than ask in normal assistant text. " +
+      "Use question for one question, or questions (2–8) to collect independent answers in one tabbed flow with an optional final supplement. " +
+      "Each batch question supports tab (a short custom tab label), single/multi-choice, custom answers, or plain-text input. " +
+      "Use only when user input is genuinely required; never for confirmations you could infer yourself.",
     promptSnippet:
       "MUST use ask_user for required user decisions or clarifications; never ask for them in assistant text. Batch independent clarifications with questions.",
     promptGuidelines: [
@@ -152,7 +165,9 @@ export function createAskUserToolDefinition(): ToolDefinition<
       if (questions && questions.length > 0) {
         const response = await ui.askUser(questions, { signal });
         if (!response) {
-          return textResult("User dismissed the questions (no answers provided)");
+          return textResult(
+            "User dismissed the questions (no answers provided)",
+          );
         }
         const answers = questions.map((item, index) => {
           const answer = response.answers[index];
@@ -164,12 +179,20 @@ export function createAskUserToolDefinition(): ToolDefinition<
       }
 
       const question = input.question;
-      if (!question) return textResult("Error: question or questions is required");
-      const { context, options = [], allowMultiple = false, allowFreeform = true } = input;
+      if (!question)
+        return textResult("Error: question or questions is required");
+      const {
+        context,
+        options = [],
+        allowMultiple = false,
+        allowFreeform = true,
+      } = input;
       if (options.length === 0) {
         const answer = await ui.input(question, undefined, { signal });
         if (answer === undefined || answer.trim() === "") {
-          return textResult(`${DISMISSED_MESSAGE} Original question: ${question}`);
+          return textResult(
+            `${DISMISSED_MESSAGE} Original question: ${question}`,
+          );
         }
         return textResult(`User answer to "${question}": ${answer.trim()}`);
       }
@@ -181,9 +204,13 @@ export function createAskUserToolDefinition(): ToolDefinition<
         ...(context !== undefined ? { context } : {}),
       });
       if (selected === undefined || formatAnswer(selected) === "") {
-        return textResult(`${DISMISSED_MESSAGE} Original question: ${question}`);
+        return textResult(
+          `${DISMISSED_MESSAGE} Original question: ${question}`,
+        );
       }
-      return textResult(`User answer to "${question}": ${formatAnswer(selected)}`);
+      return textResult(
+        `User answer to "${question}": ${formatAnswer(selected)}`,
+      );
     },
   };
 }
