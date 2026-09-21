@@ -7,6 +7,12 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
+import {
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, afterAll } from "bun:test";
@@ -20,6 +26,25 @@ beforeEach(() => {
 afterEach(async () => {
   for (const fn of tcompatCleanups.splice(0).reverse()) await fn();
 });
+
+/**
+ * 探测当前临时目录所在文件系统是否大小写敏感。
+ *
+ * macOS（APFS 默认）与 Windows（NTFS）大小写不敏感，同一目录中
+ * `Scout.md` 与 `scout.md` 指向同一文件，依赖双文件共存的用例在这些
+ * 平台上无法成立；探测结果用于跳过此类测试。
+ *
+ * @returns 文件系统大小写敏感时返回 true，否则返回 false
+ */
+function isCaseSensitiveFilesystem(): boolean {
+  const probeDir = mkdtempSync(join(tmpdir(), "pi-web-x-caseprobe-"));
+  try {
+    writeFileSync(join(probeDir, "probe.md"), "x");
+    return !existsSync(join(probeDir, "PROBE.md"));
+  } finally {
+    rmSync(probeDir, { recursive: true, force: true });
+  }
+}
 
 const originalAgentDir = process.env.PI_CODING_AGENT_DIR;
 const testAgentDir = await mkdtemp(
@@ -218,7 +243,9 @@ test("refuses to overwrite a profile with malformed existing frontmatter", async
   }
 });
 
-test("refuses same-scope profile files that differ only by letter case", async () => {
+test.skipIf(!isCaseSensitiveFilesystem())(
+  "refuses same-scope profile files that differ only by letter case",
+  async () => {
   const cwd = await mkdtemp(join(tmpdir(), "pi-web-x-subagents-"));
   try {
     const dir = join(cwd, ".pi", "agents");
@@ -251,7 +278,8 @@ test("refuses same-scope profile files that differ only by letter case", async (
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }
-});
+},
+);
 
 test("persisted subagent metadata reconstructs the final run", () => {
   const entries = [
