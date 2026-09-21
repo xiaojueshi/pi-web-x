@@ -6,7 +6,7 @@ Release notes are the complete, reviewable source text for GitHub Releases. `CHA
 
 | Version | Status | Notes |
 | --- | --- | --- |
-| [v0.12.0](./v0.12.0.md) | Draft | 大文本分页预览、Selected Session Lease、递归删除保护、ask_user 强制协议 |
+| [v0.12.0](./v0.12.0.md) | Released | 大文本分页预览、Selected Session Lease、递归删除保护、ask_user 强制协议 |
 | [v0.11.2](./v0.11.2.md) | Released | 侧边栏加载态遗留竞态修复补全，连接安全提示不再误报 |
 | [v0.11.1](./v0.11.1.md) | Released | SSE 心跳保活（订阅登录/事件流/文件 watch），侧边栏加载态修复 |
 | [v0.11.0](./v0.11.0.md) | Released | Built-in subagents, batch ask_user, system prompt editor, session search |
