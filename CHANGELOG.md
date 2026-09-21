@@ -2,7 +2,7 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，按 [SemVer](https://semver.org/lang/zh-CN/) 版本。
 
-## [Unreleased]
+## [0.12.0] - 2026-09-21
 
 ### 新增
 
@@ -235,6 +235,7 @@
 - 依赖 `@earendil-works/pi-coding-agent@0.84.3`（MIT）
 - Host/API 来源校验、Basic Auth、默认 loopback 监听不变量全部保留
 
+[0.12.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.12.0
 [0.11.2]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.2
 [0.11.1]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.1
 [0.11.0]: https://github.com/xiaojueshi/pi-web-x/releases/tag/v0.11.0
